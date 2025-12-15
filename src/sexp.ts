@@ -417,7 +417,10 @@ export class Parser {
         const t = this.peek();
         if (t.kind === 'Symbol' && t.value.startsWith('!')) {
             this.consume();
-            return t.value as IrisEffect;
+            if (['!Pure', '!IO', '!Net', '!Any', '!Infer'].includes(t.value)) {
+                return t.value as IrisEffect;
+            }
+            throw new Error(`Unknown effect: ${t.value}`);
         }
         throw new Error("Expected effect starting with !");
     }

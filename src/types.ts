@@ -9,7 +9,7 @@ export type IrisType =
   | { type: 'Record'; fields: Record<string, IrisType> }
   | { type: 'Fn'; args: IrisType[]; ret: IrisType; eff: IrisEffect };
 
-export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any';
+export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any' | '!Infer';
 
 // AST
 export type Program = {

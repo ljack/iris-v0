@@ -149,7 +149,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 10: effect mismatch',
-    expect: "TypeError: EffectMismatch: Effect violation: !Pure cannot perform !IO in Intrinsic io.read_file",
+    expect: 'TypeError: EffectMismatch: Function main: Inferred !IO but declared !Pure',
     source: `(program
  (module (name "t10") (version 0))
  (defs
@@ -305,6 +305,147 @@ const tests: TestCase[] = [
       (match (Err "oops")
         (case (tag "Ok" (v)) "fine")
         (case (tag "Err" (e)) e))))))`
+  },
+  // v0.2 Tests: Effects Lattice + Inference
+  {
+    name: 'Test 21: Pure can call Pure',
+    expect: "3",
+    source: `(program
+ (module (name "t21") (version 0))
+ (defs
+  (deffn (name p) (args) (ret I64) (eff !Pure) (body (+ 1 2)))
+  (deffn (name main) (args) (ret I64) (eff !Pure) (body (call p)))))`
+  },
+  {
+    name: 'Test 22: Pure calling IO function is rejected',
+    expect: "TypeError: EffectMismatch: Function main: Inferred !IO but declared !Pure",
+    source: `(program
+ (module (name "t22") (version 0))
+ (defs
+  (deffn (name ioer)
+    (args)
+    (ret (Result Str Str))
+    (eff !IO)
+    (body (io.read_file "/a.txt")))
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !Pure)
+    (body (call ioer)))))`
+  },
+  {
+    name: 'Test 23: Declared !IO can call Pure',
+    expect: "3",
+    source: `(program
+ (module (name "t23") (version 0))
+ (defs
+  (deffn (name p) (args) (ret I64) (eff !Pure) (body (+ 1 2)))
+  (deffn (name main) (args) (ret I64) (eff !IO) (body (call p)))))`
+  },
+  {
+    name: 'Test 24: Declared !Any can call IO',
+    expect: '(Ok "hello")',
+    fs: { "/a.txt": "hello" },
+    source: `(program
+ (module (name "t24") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !Any)
+    (body (io.read_file "/a.txt")))))`
+  },
+  {
+    name: 'Test 25: Inference through if-branches (IO in one branch)',
+    expect: "TypeError: EffectMismatch: Function main: Inferred !IO but declared !Pure",
+    source: `(program
+ (module (name "t25") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !Pure)
+    (body
+      (if true
+          (io.read_file "/a.txt")
+          (Ok "x"))))))`
+  },
+  {
+    name: 'Test 26: Same as t25 but declared !IO succeeds',
+    expect: '(Ok "hello")',
+    fs: { "/a.txt": "hello" },
+    source: `(program
+ (module (name "t26") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !IO)
+    (body
+      (if true
+          (io.read_file "/a.txt")
+          (Ok "x"))))))`
+  },
+  {
+    name: 'Test 27: Inference through let-binding (IO in bound expr)',
+    expect: "TypeError: EffectMismatch: Function main: Inferred !IO but declared !Pure",
+    source: `(program
+ (module (name "t27") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !Pure)
+    (body
+      (let (x (io.read_file "/a.txt"))
+        x)))))`
+  },
+  {
+    name: 'Test 28: Helper hides IO must still propagate',
+    expect: "TypeError: EffectMismatch: Function wrapper: Inferred !IO but declared !Pure", // Wrapper calls helper (!IO) so wrapper infers !IO, fails !Pure.
+    source: `(program
+ (module (name "t28") (version 0))
+ (defs
+  (deffn (name helper)
+    (args)
+    (ret (Result Str Str))
+    (eff !IO)
+    (body (io.read_file "/a.txt")))
+  (deffn (name wrapper)
+    (args)
+    (ret (Result Str Str))
+    (eff !Pure)
+    (body (call helper)))
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !Pure)
+    (body (call wrapper)))))`
+  },
+  {
+    name: 'Test 29: !Infer pure body infers !Pure',
+    expect: "3",
+    source: `(program
+ (module (name "t29") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Infer)
+    (body (+ 1 2)))))`
+  },
+  {
+    name: 'Test 30: !Infer should infer !IO if body uses IO',
+    expect: '(Ok "hello")',
+    fs: { "/a.txt": "hello" },
+    source: `(program
+ (module (name "t30") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Result Str Str))
+    (eff !Infer)
+    (body (io.read_file "/a.txt")))))`
   }
 ];
 

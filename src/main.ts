@@ -13,24 +13,16 @@ export function run(source: string, fs: Record<string, string> = {}): string {
             return `ParseError: ${e.message}`;
         }
 
-        // 2. Typecheck
-        const checker = new TypeChecker(program);
+        // 3. Typecheck
+        const checker = new TypeChecker();
         try {
-            checker.check();
+            checker.check(program);
         } catch (e: any) {
-            // Map common errors to canonical format if needed, OR just ensure messages are prefixed often
-            // My typechecker throws "Type Error..." or "Effect violation".
-            // Canonical spec says: `TypeError: <message>`, `TypeError: EffectMismatch: <message>`
-            // My typechecker output: `Type Error in ...: ...` or `Effect violation: ...`
-
-            let msg = e.message;
-            if (msg.startsWith('Type Error')) {
-                return `TypeError: ${msg}`;
+            // If the error message already starts with "TypeError:", just return it.
+            if (e.message.startsWith('TypeError:')) {
+                return e.message;
             }
-            if (msg.startsWith('Effect violation')) {
-                return `TypeError: EffectMismatch: ${msg}`;
-            }
-            return `TypeError: ${msg}`; // Default to TypeError for checker phase
+            return `TypeError: ${e.message}`;
         }
 
         // 3. Interpret
