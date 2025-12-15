@@ -146,13 +146,6 @@ export class Interpreter {
         if (op === 'Some') {
             return { kind: 'Option', value: args[0] };
         }
-        if (op === 'None') { // Wait, None is a Literal in typical usage, but here acts as intrinsic? 
-            // Actually my parser parses 'None' as literal 'Option'.
-            // If it appears as (None), it's a call/intrinsic. Spec says "None" is a constructor.
-            // My parser handles bare 'None' as Literal. 
-            // If code says (None), parser sees Intrinsic 'None' with 0 args.
-            return { kind: 'Option', value: null };
-        }
 
         if (op === 'Ok') return { kind: 'Result', isOk: true, value: args[0] };
         if (op === 'Err') return { kind: 'Result', isOk: false, value: args[0] }; // Value is the error string or obj

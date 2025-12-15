@@ -47,7 +47,7 @@ export type Expr =
 
 export type IntrinsicOp =
   | '+' | '-' | '*' | '/' | '<=' | '<' | '='
-  | 'Some' | 'None' | 'Ok' | 'Err'
+  | 'Some' | 'Ok' | 'Err'
   | 'cons'
   | 'io.print' | 'io.read_file' | 'io.write_file';
 

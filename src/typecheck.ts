@@ -195,7 +195,7 @@ export class TypeChecker {
                 }
 
                 if (expr.op === 'Some') return { type: { type: 'Option', inner: argTypes[0] }, eff: joinedEff };
-                if (expr.op === 'None') return { type: { type: 'Option', inner: { type: 'I64' } }, eff: joinedEff }; // Default inner I64
+
                 if (expr.op === 'Ok') return { type: { type: 'Result', ok: argTypes[0], err: { type: 'Str' } }, eff: joinedEff };
                 if (expr.op === 'Err') return { type: { type: 'Result', ok: { type: 'I64' }, err: argTypes[0] }, eff: joinedEff };
                 if (expr.op === 'cons') return { type: { type: 'List', inner: argTypes[0] }, eff: joinedEff }; // Simplified
