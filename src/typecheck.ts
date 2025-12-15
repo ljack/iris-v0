@@ -109,44 +109,59 @@ export class TypeChecker {
 
             case 'Match': {
                 const targetType = this.checkExpr(expr.target, env, allowedEff);
-                // Expect Option T 
-                if (targetType.type !== 'Option') {
-                    // Or Result T E? Test 07 uses match on recursive call result.
-                    // Test 07: match (call fact ...) -> Result. 
-                    // Spec said: "Note: This test intentionally reveals a v0 gap: we didn’t define match for Result."
-                    // Prompt says: implement recommended which uses Option.
-                    // But valid IRIS v0 should support match on Option.
-                    if (targetType.type === 'Result') {
-                        // Allow match on Result for completeness if needed or throw
-                        // For recommended T07, it's Option.
-                    } else {
-                        throw new Error(`Match target must be Option (got ${targetType.type})`);
+
+                if (targetType.type === 'Option') {
+                    const innerType = targetType.inner;
+                    let retType: IrisType | null = null;
+                    for (const c of expr.cases) {
+                        const newEnv = new Map(env);
+                        if (c.tag === 'Some') {
+                            if (c.vars.length !== 1) throw new Error("Some case expects 1 variable");
+                            newEnv.set(c.vars[0], innerType);
+                        } else if (c.tag === 'None') {
+                            if (c.vars.length !== 0) throw new Error("None case expects 0 variables");
+                        } else {
+                            throw new Error(`Unknown option match tag: ${c.tag}`);
+                        }
+                        const tBody = this.checkExpr(c.body, newEnv, allowedEff);
+                        if (retType) this.expectType(retType, tBody, 'Match arms mismatch');
+                        else retType = tBody;
                     }
+                    return retType!;
+                } else if (targetType.type === 'Result') {
+                    const okType = targetType.ok;
+                    const errType = targetType.err;
+                    let retType: IrisType | null = null;
+
+                    // We need both cases? Spec doesn't enforce exhaustiveness explicitly but implies it.
+                    // Simple check: iterate cases.
+                    for (const c of expr.cases) {
+                        const newEnv = new Map(env);
+                        if (c.tag === 'Ok') {
+                            if (c.vars.length !== 1) throw new Error("Ok case expects 1 variable");
+                            newEnv.set(c.vars[0], okType);
+                        } else if (c.tag === 'Err') {
+                            if (c.vars.length !== 1) throw new Error("Err case expects 1 variable");
+                            newEnv.set(c.vars[0], errType);
+                        } else {
+                            throw new Error(`Unknown result match tag: ${c.tag}`);
+                        }
+                        const tBody = this.checkExpr(c.body, newEnv, allowedEff);
+                        if (retType) this.expectType(retType, tBody, 'Match arms mismatch');
+                        else retType = tBody;
+                    }
+                    return retType!;
+                } else {
+                    throw new Error(`Match target must be Option or Result (got ${targetType.type})`);
                 }
+            }
 
-                const innerType = targetType.type === 'Option' ? targetType.inner : null; // TODO Result support
-
-                let retType: IrisType | null = null;
-                for (const c of expr.cases) {
-                    const newEnv = new Map(env);
-
-                    if (c.tag === 'Some') {
-                        if (c.vars.length !== 1) throw new Error("Some case expects 1 variable");
-                        if (innerType) newEnv.set(c.vars[0], innerType);
-                    } else if (c.tag === 'None') {
-                        if (c.vars.length !== 0) throw new Error("None case expects 0 variables");
-                    } else {
-                        throw new Error(`Unknown match tag: ${c.tag}`);
-                    }
-
-                    const tBody = this.checkExpr(c.body, newEnv, allowedEff);
-                    if (retType) {
-                        this.expectType(retType, tBody, 'Match arms mismatch');
-                    } else {
-                        retType = tBody;
-                    }
+            case 'Record': {
+                const fields: Record<string, IrisType> = {};
+                for (const [key, valExpr] of Object.entries(expr.fields)) {
+                    fields[key] = this.checkExpr(valExpr, env, allowedEff);
                 }
-                return retType!;
+                return { type: 'Record', fields };
             }
 
             default:
@@ -220,6 +235,18 @@ export class TypeChecker {
         if (t1.type !== t2.type) return false;
         if (t1.type === 'Option') return this.typesEqual(t1.inner, (t2 as any).inner);
         if (t1.type === 'Result') return this.typesEqual(t1.ok, (t2 as any).ok) && this.typesEqual(t1.err, (t2 as any).err);
+        if (t1.type === 'Record') {
+            const f1 = t1.fields;
+            const f2 = (t2 as any).fields;
+            const k1 = Object.keys(f1).sort();
+            const k2 = Object.keys(f2).sort();
+            if (k1.length !== k2.length) return false;
+            for (let i = 0; i < k1.length; i++) {
+                if (k1[i] !== k2[i]) return false;
+                if (!this.typesEqual(f1[k1[i]], f2[k1[i]])) return false;
+            }
+            return true;
+        }
         // ...
         return true;
     }

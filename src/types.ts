@@ -20,13 +20,13 @@ export type Program = {
 export type Definition =
   | { kind: 'DefConst'; name: string; type: IrisType; value: Expr }
   | {
-      kind: 'DefFn';
-      name: string;
-      args: { name: string; type: IrisType }[];
-      ret: IrisType;
-      eff: IrisEffect;
-      body: Expr;
-    };
+    kind: 'DefFn';
+    name: string;
+    args: { name: string; type: IrisType }[];
+    ret: IrisType;
+    eff: IrisEffect;
+    body: Expr;
+  };
 
 export type Expr =
   | { kind: 'Literal'; value: Value }
@@ -36,13 +36,14 @@ export type Expr =
   | { kind: 'Match'; target: Expr; cases: MatchCase[] }
   | { kind: 'Call'; fn: string; args: Expr[] }
   | {
-      kind: 'Intrinsic';
-      op: IntrinsicOp;
-      args: Expr[];
-    }
+    kind: 'Intrinsic';
+    op: IntrinsicOp;
+    args: Expr[];
+  }
   | { kind: 'List'; items: Expr[] } // List construction
   | { kind: 'Fold'; list: Expr; init: Expr; fn: Expr } // fn is likely a Lambda or Var
-  | { kind: 'Lambda'; args: { name: string; type: IrisType }[]; ret: IrisType; eff: IrisEffect; body: Expr }; // For fold
+  | { kind: 'Lambda'; args: { name: string; type: IrisType }[]; ret: IrisType; eff: IrisEffect; body: Expr }
+  | { kind: 'Record'; fields: Record<string, Expr> };
 
 export type IntrinsicOp =
   | '+' | '-' | '*' | '<=' | '<' | '='

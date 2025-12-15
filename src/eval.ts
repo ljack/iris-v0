@@ -89,7 +89,6 @@ export class Interpreter {
                             if (c.vars.length > 0) newBindings.set(c.vars[0], target.value);
                         }
                     } else if (target.kind === 'Result') {
-                        // Basic support for Result matching if needed
                         if (c.tag === 'Ok' && target.isOk) {
                             match = true;
                             if (c.vars.length > 0) newBindings.set(c.vars[0], target.value);
@@ -104,6 +103,14 @@ export class Interpreter {
                     }
                 }
                 throw new Error(`No matching case for value ${JSON.stringify(target)}`);
+            }
+
+            case 'Record': {
+                const fields: Record<string, Value> = {};
+                for (const [key, valExpr] of Object.entries(expr.fields)) {
+                    fields[key] = this.evalExpr(valExpr, env);
+                }
+                return { kind: 'Record', fields };
             }
 
             case 'Intrinsic':

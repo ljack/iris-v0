@@ -266,6 +266,27 @@ export class Parser {
                     this.expect('RParen');
                     return { kind: 'Let', name, value: val, body };
                 }
+                if (op === 'record') {
+                    // (record (k v) ...)
+                    const fields: { [k: string]: Expr } = {};
+                    while (!this.check('RParen')) {
+                        this.expect('LParen');
+                        const key = this.expectSymbol();
+                        const val = this.parseExpr();
+                        this.expect('RParen');
+                        fields[key] = val; // checking duplicates?
+                    }
+                    this.expect('RParen');
+                    // We need 'Record' in Expr? types.ts defined Expr with Intrinsic, etc.
+                    // Let's see types.ts... "kind: 'Record' matches structural?"
+                    // types.ts Expr definition doesn't have Record value construction yet in the provided view?
+                    // Wait, I need to check types.ts.
+                    // The previous view of types.ts (Step 223) shows:
+                    // export type Expr = ... | { kind: 'List' ... } | { kind: 'Fold' ... } | { kind: 'Lambda' ... } 
+                    // It DOES NOT have 'Record' kind in Expr. I need to simple-return a special Intrinsic or add it to Expr.
+                    // Let's add it to Expr in types.ts too.
+                    return { kind: 'Record', fields };
+                }
                 if (op === 'if') {
                     const cond = this.parseExpr();
                     const thenBr = this.parseExpr();
@@ -370,6 +391,19 @@ export class Parser {
                 const inner = this.parseType();
                 this.expect('RParen');
                 return { type: 'List', inner };
+            }
+            if (tMap === 'Record') {
+                // (Record (f1 T1) (f2 T2))
+                const fields: Record<string, IrisType> = {};
+                while (!this.check('RParen')) {
+                    this.expect('LParen');
+                    const name = this.expectSymbol();
+                    const type = this.parseType();
+                    this.expect('RParen');
+                    fields[name] = type;
+                }
+                this.expect('RParen');
+                return { type: 'Record', fields };
             }
 
             this.expect('RParen'); // Fallback
