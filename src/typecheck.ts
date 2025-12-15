@@ -1,10 +1,14 @@
-import { Program, Definition, Expr, IrisType, IrisEffect, IntrinsicOp } from './types';
+import { Program, Definition, Expr, IrisType, IrisEffect, IntrinsicOp, ModuleResolver } from './types';
 
 export class TypeChecker {
     private functions = new Map<string, { args: IrisType[], ret: IrisType, eff: IrisEffect }>();
     private constants = new Map<string, IrisType>();
+    private currentProgram?: Program;
+
+    constructor(private resolver?: ModuleResolver) { }
 
     check(program: Program) {
+        this.currentProgram = program;
         // First pass: collect signatures
         for (const def of program.defs) {
             if (def.kind === 'DefConst') {
@@ -146,18 +150,40 @@ export class TypeChecker {
             }
 
             case 'Call': {
-                const fn = this.functions.get(expr.fn);
-                if (!fn) throw new Error(`TypeError: Unknown function call: ${expr.fn}`);
-                if (expr.args.length !== fn.args.length) throw new Error(`TypeError: Arity mismatch for ${expr.fn}`);
+                let func = this.functions.get(expr.fn);
+
+                if (!func && expr.fn.includes('.')) {
+                    // Try to resolve imported function
+                    const [alias, fname] = expr.fn.split('.');
+                    const importDecl = this.currentProgram?.imports.find(i => i.alias === alias);
+                    if (importDecl && this.resolver) {
+                        const importedProg = this.resolver(importDecl.path);
+                        if (importedProg) {
+                            const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
+                            if (targetDef) {
+                                func = {
+                                    args: targetDef.args.map((a: any) => a.type), // re-parse type if needed, but it's AST
+                                    ret: targetDef.ret,
+                                    eff: targetDef.eff
+                                };
+                                // TODO: Recursive check of the imported module? 
+                                // For v0.4 we assume imported modules are valid or we'd loop forever if circular.
+                            }
+                        }
+                    }
+                }
+
+                if (!func) throw new Error(`TypeError: Unknown function call: ${expr.fn}`);
+                if (expr.args.length !== func.args.length) throw new Error(`TypeError: Arity mismatch for ${expr.fn}`);
                 let eff: IrisEffect = '!Pure';
                 for (let i = 0; i < expr.args.length; i++) {
                     const arg = this.checkExprFull(expr.args[i], env);
-                    this.expectType(fn.args[i], arg.type, `Argument ${i} mismatch`);
+                    this.expectType(func.args[i], arg.type, `Argument ${i} mismatch`);
                     eff = this.joinEffects(eff, arg.eff);
                 }
                 // Handle !Infer: if callee is !Infer, treat as !Any (pessimistic) unless we know better.
-                const callEff = fn.eff === '!Infer' ? '!Any' : fn.eff;
-                return { type: fn.ret, eff: this.joinEffects(eff, callEff) };
+                const callEff = func.eff === '!Infer' ? '!Any' : func.eff;
+                return { type: func.ret, eff: this.joinEffects(eff, callEff) };
             }
 
             case 'Record': {

@@ -10,7 +10,7 @@ let failed = 0;
 tests.forEach(t => {
   try {
     console.log(`Running ${t.name}...`);
-    const val = run(t.source, t.fs);
+    const val = run(t.source, t.fs, t.modules);
 
     // Strict equality check
     if (val === t.expect) {

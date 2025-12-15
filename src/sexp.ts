@@ -1,4 +1,4 @@
-import { Program, Definition, Expr, IrisType, IrisEffect, MatchCase, IntrinsicOp, Value } from './types';
+import { Program, Definition, Expr, IrisType, IrisEffect, MatchCase, IntrinsicOp, Value, Import, ModuleDecl } from './types';
 
 export type Token =
     | { kind: 'LParen'; line: number; col: number }
@@ -151,34 +151,56 @@ export class Parser {
         this.expect('LParen');
         this.expectSymbol('program');
 
-        // (module (name "X") (version 0))
-        this.expect('LParen');
-        this.expectSymbol('module');
-        this.expect('LParen');
-        this.expectSymbol('name');
-        const modName = this.expectString();
-        this.expect('RParen');
-        this.expect('LParen');
-        this.expectSymbol('version');
-        const version = this.expectInt();
-        this.expect('RParen');
-        this.expect('RParen');
-
-        // (defs ...)
-        this.expect('LParen');
-        this.expectSymbol('defs');
+        let moduleDecl = { name: 'unknown', version: 0 };
+        const imports: Import[] = [];
         const defs: Definition[] = [];
+
         while (!this.check('RParen')) {
-            defs.push(this.parseDefinition());
+            this.expect('LParen');
+            const section = this.expectSymbol();
+            if (section === 'module') {
+                this.expect('LParen');
+                this.expectSymbol('name');
+                const name = this.expectString();
+                this.expect('RParen');
+                this.expect('LParen');
+                this.expectSymbol('version');
+                const version = Number(this.expectInt());
+                this.expect('RParen');
+                this.expect('RParen');
+                moduleDecl = { name, version };
+            } else if (section === 'imports') {
+                while (!this.check('RParen')) {
+                    this.expect('LParen');
+                    this.expectSymbol('import');
+                    const path = this.expectString();
+                    let alias = '';
+                    if (this.check('LParen')) {
+                        this.expect('LParen');
+                        this.expectSymbol('as');
+                        alias = this.expectString();
+                        this.expect('RParen');
+                    } else {
+                        // Default alias = basename of path? or require explicit alias?
+                        // v0.4 spec says: (import "..." (as "..."))
+                        throw new Error("Import must have alias currently");
+                    }
+                    this.expect('RParen');
+                    imports.push({ path, alias });
+                }
+                this.expect('RParen');
+            } else if (section === 'defs') {
+                while (!this.check('RParen')) {
+                    defs.push(this.parseDefinition());
+                }
+                this.expect('RParen');
+            } else {
+                throw new Error(`Unknown program section: ${section}`);
+            }
         }
-        this.expect('RParen');
 
         this.expect('RParen');
-
-        return {
-            module: { name: modName, version: Number(version) },
-            defs
-        };
+        return { module: moduleDecl, imports, defs };
     }
 
     private parseDefinition(): Definition {

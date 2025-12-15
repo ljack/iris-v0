@@ -1,4 +1,4 @@
-import { Program, Definition, Expr, Value, IntrinsicOp, MatchCase } from './types';
+import { Program, Definition, Expr, Value, IntrinsicOp, MatchCase, ModuleResolver } from './types';
 
 export class Interpreter {
     private program: Program;
@@ -6,7 +6,7 @@ export class Interpreter {
     private constants = new Map<string, Value>();
     private fs: Record<string, string>;
 
-    constructor(program: Program, fs: Record<string, string> = {}) {
+    constructor(program: Program, fs: Record<string, string> = {}, private resolver?: ModuleResolver) {
         this.program = program;
         this.fs = fs;
 
@@ -29,6 +29,38 @@ export class Interpreter {
         if (!main) throw new Error("No main function defined");
 
         return this.evalExpr(main.body, new Map());
+    }
+
+    // Public method to call a specific function with values
+    callFunction(name: string, args: Value[]): Value {
+        // Init constants first if not done? 
+        // Ideally constants are lazy or init on constructor? 
+        // For v0.4, let's init constants on first call or constructor.
+        // Or re-init. Re-init is wasteful but safe.
+        // Better: this.initConstants();
+        this.initConstants();
+
+        const func = this.functions.get(name);
+        if (!func) throw new Error(`Unknown function: ${name}`);
+        if (args.length !== func.args.length) throw new Error(`Arity mismatch call ${name}`);
+
+        const newEnv = new Map<string, Value>();
+        for (let i = 0; i < args.length; i++) {
+            newEnv.set(func.args[i].name, args[i]);
+        }
+        return this.evalExpr(func.body, newEnv);
+    }
+
+    private initConstants() {
+        if (this.constants.size > 0) return; // Already done? 
+        // Actually constants map might be empty if no constants.
+        // We need a flag.
+        // For now, just re-run safe if idempotent.
+        for (const def of this.program.defs) {
+            if (def.kind === 'DefConst') {
+                this.constants.set(def.name, this.evalExpr(def.value, new Map()));
+            }
+        }
     }
 
     private evalExpr(expr: Expr, env: Map<string, Value>): Value {
@@ -62,15 +94,64 @@ export class Interpreter {
             }
 
             case 'Call': {
-                const fn = this.functions.get(expr.fn);
-                if (!fn) throw new Error(`Function not found: ${expr.fn}`);
+                let func = this.functions.get(expr.fn);
 
-                const argVals = expr.args.map(a => this.evalExpr(a, env));
-                const newEnv = new Map<string, Value>();
-                for (let i = 0; i < fn.args.length; i++) {
-                    newEnv.set(fn.args[i].name, argVals[i]);
+                if (!func && expr.fn.includes('.')) {
+                    const [alias, fname] = expr.fn.split('.');
+                    const importDecl = this.program.imports.find(i => i.alias === alias);
+                    if (importDecl && this.resolver) {
+                        const importedProg = this.resolver(importDecl.path);
+                        if (importedProg) {
+                            const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
+                            if (targetDef) {
+                                // For evaluation, we basically need to switch context to that module?
+                                // But v0.4 is pure and stateless except IO.
+                                // Recursive call via new interpreter or simple substitution?
+                                // Simplest: Create new Interpreter for that module and run evalExpr.
+                                // But we need to pass arguments.
+                                func = targetDef;
+                                // We can't just set func = targetDef because evalExpr expects `func` to be in `this.functions`?
+                                // Use a trick: Evaluate arguments here, then spawn sub-interpreter.
+                            }
+                        }
+                    }
                 }
-                return this.evalExpr(fn.body, newEnv);
+
+                if (!func) throw new Error(`Unknown function: ${expr.fn}`);
+
+                // Evaluate args in current scope
+                const args = expr.args.map(a => this.evalExpr(a, env));
+
+                if (expr.fn.includes('.')) {
+                    // It's a cross-module call.
+                    const [alias, fname] = expr.fn.split('.');
+                    const importDecl = this.program.imports.find(i => i.alias === alias);
+                    if (importDecl && this.resolver) {
+                        const importedProg = this.resolver(importDecl.path)!;
+                        // New interpreter instance for the other module
+                        // Share FS? Yes. Share resolver? Yes.
+                        const subInterp = new Interpreter(importedProg, this.fs, this.resolver);
+                        // We need to inject arguments.
+                        // We can't use evalMain. We need evalExpr on loop.
+                        // We need access to subInterp methods.
+                        return subInterp.callFunction(fname, args);
+                    }
+                }
+
+                if (args.length !== func.args.length) throw new Error(`Arity mismatch for ${expr.fn}`);
+
+                // Create new env for function body
+                const newEnv = new Map<string, Value>();
+                for (let i = 0; i < args.length; i++) {
+                    newEnv.set(func.args[i].name, args[i]);
+                }
+
+                // Recurse checks
+                // Fuel checks? If we implement helper, pass fuel logic.
+                // Assuming fuel is managed via `recur` which is separate AST node.
+                // If the called function is just a DefFn, it's just a body evaluation.
+
+                return this.evalExpr(func.body, newEnv);
             }
 
             case 'Match': {

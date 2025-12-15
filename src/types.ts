@@ -11,11 +11,21 @@ export type IrisType =
 
 export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any' | '!Infer';
 
+export interface Import {
+  path: string;
+  alias: string;
+}
+
+export type ModuleDecl = { name: string; version: number };
+
 // AST
-export type Program = {
-  module: { name: string; version: number };
+export interface Program {
+  module: ModuleDecl;
+  imports: Import[];
   defs: Definition[];
 };
+
+export type ModuleResolver = (path: string) => Program | undefined;
 
 export type Definition =
   | { kind: 'DefConst'; name: string; type: IrisType; value: Expr }
