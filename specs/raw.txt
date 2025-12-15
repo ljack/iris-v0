@@ -1,2 +1,3 @@
 https://raw.githubusercontent.com/ljack/iris-v0/master/specs/iris-v0.2.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/specs/iris-v0.3.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/specs/iris-v0.4.md

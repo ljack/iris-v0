@@ -1,6 +1,8 @@
 https://raw.githubusercontent.com/ljack/iris-v0/master/IRIS-v0.1.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/ROADMAP.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/canonical-printer-and-normalization-rules.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/generate_raw_links.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/iris-v0-specification.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/package-lock.json
 https://raw.githubusercontent.com/ljack/iris-v0/master/package.json
