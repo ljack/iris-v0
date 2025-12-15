@@ -10,6 +10,11 @@ export class TypeChecker {
             if (def.kind === 'DefConst') {
                 this.constants.set(def.name, def.type);
             } else if (def.kind === 'DefFn') {
+                const argNames = new Set<string>();
+                for (const a of def.args) {
+                    if (argNames.has(a.name)) throw new Error(`TypeError: Duplicate argument name: ${a.name}`);
+                    argNames.add(a.name);
+                }
                 this.functions.set(def.name, {
                     args: def.args.map(a => a.type),
                     ret: def.ret,
@@ -150,8 +155,8 @@ export class TypeChecker {
                     this.expectType(fn.args[i], arg.type, `Argument ${i} mismatch`);
                     eff = this.joinEffects(eff, arg.eff);
                 }
-                // Handle !Infer: if callee is !Infer, treat as !Pure (optimistic) or whatever stored (if updated).
-                const callEff = fn.eff === '!Infer' ? '!Pure' : fn.eff;
+                // Handle !Infer: if callee is !Infer, treat as !Any (pessimistic) unless we know better.
+                const callEff = fn.eff === '!Infer' ? '!Any' : fn.eff;
                 return { type: fn.ret, eff: this.joinEffects(eff, callEff) };
             }
 
@@ -181,7 +186,7 @@ export class TypeChecker {
                     for (let i = 0; i < argTypes.length; i++) {
                         if (argTypes[i].type !== 'I64') {
                             // Equality allows others in theory, but v0 spec strict.
-                            if (['+', '-', '*'].includes(expr.op)) {
+                            if (['+', '-', '*', '/'].includes(expr.op)) {
                                 throw new Error(`TypeError: Type Error in ${expr.op} operand ${i + 1}: Expected I64, got ${argTypes[i].type}`);
                             }
                         }

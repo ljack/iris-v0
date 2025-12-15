@@ -122,7 +122,7 @@ export class Interpreter {
     }
 
     private evalIntrinsic(op: IntrinsicOp, args: Value[]): Value {
-        if (['+', '-', '*', '<=', '<', '='].includes(op)) {
+        if (['+', '-', '*', '/', '<=', '<', '='].includes(op)) {
             const v1 = args[0];
             const v2 = args[1];
             if (v1.kind !== 'I64' || v2.kind !== 'I64') throw new Error("Math expects I64");
@@ -133,6 +133,10 @@ export class Interpreter {
                 case '+': return { kind: 'I64', value: a + b };
                 case '-': return { kind: 'I64', value: a - b };
                 case '*': return { kind: 'I64', value: a * b };
+                case '/': {
+                    if (b === 0n) throw new Error("Division by zero");
+                    return { kind: 'I64', value: a / b };
+                }
                 case '<=': return { kind: 'Bool', value: a <= b };
                 case '<': return { kind: 'Bool', value: a < b };
                 case '=': return { kind: 'Bool', value: a === b };

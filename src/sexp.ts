@@ -331,7 +331,7 @@ export class Parser {
                 }
 
                 // Constructors / Intrinsics
-                if (['+', '-', '*', '<=', '<', '=', 'Some', 'Ok', 'Err', 'cons', 'io.print', 'io.read_file', 'io.write_file'].includes(op)) {
+                if (['+', '-', '*', '/', '<=', '<', '=', 'Some', 'Ok', 'Err', 'cons', 'io.print', 'io.read_file', 'io.write_file'].includes(op)) {
                     const args: Expr[] = [];
                     while (!this.check('RParen')) {
                         args.push(this.parseExpr());
@@ -474,6 +474,7 @@ export function printValue(v: Value): string {
         case 'Record':
             // Sorted keys
             const keys = Object.keys(v.fields).sort();
+            if (keys.length === 0) return '(record)';
             const fields = keys.map(k => `(${k} ${printValue(v.fields[k])})`).join(' ');
             return `(record ${fields})`;
     }

@@ -46,7 +46,7 @@ export type Expr =
   | { kind: 'Record'; fields: Record<string, Expr> };
 
 export type IntrinsicOp =
-  | '+' | '-' | '*' | '<=' | '<' | '='
+  | '+' | '-' | '*' | '/' | '<=' | '<' | '='
   | 'Some' | 'None' | 'Ok' | 'Err'
   | 'cons'
   | 'io.print' | 'io.read_file' | 'io.write_file';
