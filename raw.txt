@@ -4,7 +4,7 @@ https://raw.githubusercontent.com/ljack/iris-v0/master/generate_raw_links.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/iris-v0-specification.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/package-lock.json
 https://raw.githubusercontent.com/ljack/iris-v0/master/package.json
-https://github.com/ljack/iris-v0/tree/master/specs
-https://github.com/ljack/iris-v0/tree/master/src
-https://github.com/ljack/iris-v0/tree/master/tests
+https://github.com/ljack/iris-v0/blob/master/specs/raw.txt
+https://github.com/ljack/iris-v0/blob/master/src/raw.txt
+https://github.com/ljack/iris-v0/blob/master/tests/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/tsconfig.json

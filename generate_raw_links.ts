@@ -5,7 +5,7 @@ const REPO_USER = 'ljack';
 const REPO_NAME = 'iris-v0';
 const BRANCH = 'master';
 const BASE_RAW = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/${BRANCH}`;
-const BASE_TREE = `https://github.com/${REPO_USER}/${REPO_NAME}/tree/${BRANCH}`;
+const BASE_BLOB = `https://github.com/${REPO_USER}/${REPO_NAME}/blob/${BRANCH}`;
 
 const ROOT = process.cwd();
 const IGNORE = ['.git', 'node_modules', '.DS_Store', 'raw.txt', 'dist', '.gemini', '.claude', '.agent'];
@@ -24,7 +24,7 @@ function processDir(dir: string) {
         const itemRelative = path.relative(ROOT, fullPath);
 
         if (stat.isDirectory()) {
-            lines.push(`${BASE_TREE}/${itemRelative}`);
+            lines.push(`${BASE_BLOB}/${itemRelative}/raw.txt`);
             processDir(fullPath); // Recurse
         } else {
             lines.push(`${BASE_RAW}/${itemRelative}`);
