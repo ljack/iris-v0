@@ -49,6 +49,28 @@ export function tokenize(input: string): Token[] {
             let strVal = '';
             while (pos < input.length && input[pos] !== '"') {
                 const c = input[pos];
+                if (c === '\\') {
+                    // Handle escapes in source code if needed?
+                    // Spec: "Tokens: ... strings "..."."
+                    // Usually source strings allow escapes. 
+                    // For v0 let's handle basic escapes if we encounter backslash.
+                    // But spec "Lexical" doesn't explicitly detail escape sequences for *parsing*, 
+                    // only for *printing*.
+                    // Let's assume standard JSON-ish behavior or raw.
+                    // Ideally we should process escapes.
+                    if (pos + 1 < input.length) {
+                        const next = input[pos + 1];
+                        if (next === '"') strVal += '"';
+                        else if (next === 'n') strVal += '\n';
+                        else if (next === 't') strVal += '\t';
+                        else if (next === 'r') strVal += '\r';
+                        else if (next === '\\') strVal += '\\';
+                        else strVal += next;
+                        pos += 2; col += 2;
+                        continue;
+                    }
+                }
+
                 if (c === '\n') {
                     line++;
                     col = 1;
@@ -395,17 +417,27 @@ export class Parser {
     private expectInt() { const t = this.peek(); if (t.kind !== 'Int') throw new Error(`Expected Int`); this.consume(); return t.value; }
 }
 
+function escapeStr(s: string): string {
+    return s.replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\t/g, '\\t')
+        .replace(/\r/g, '\\r');
+}
+
 export function printValue(v: Value): string {
     switch (v.kind) {
         case 'I64': return v.value.toString();
         case 'Bool': return v.value.toString();
-        case 'Str': return `"${v.value}"`;
+        case 'Str': return `"${escapeStr(v.value)}"`;
         case 'Option': return v.value === null ? "None" : `(Some ${printValue(v.value)})`;
         case 'Result': return v.isOk ? `(Ok ${printValue(v.value)})` : `(Err ${printValue(v.value)})`;
         case 'List': return `(list ${v.items.map(printValue).join(' ')})`;
         case 'Tuple': return `(tuple ${v.items.map(printValue).join(' ')})`;
         case 'Record':
-            const fields = Object.entries(v.fields).map(([k, val]) => `(${k} ${printValue(val)})`).join(' ');
+            // Sorted keys
+            const keys = Object.keys(v.fields).sort();
+            const fields = keys.map(k => `(${k} ${printValue(v.fields[k])})`).join(' ');
             return `(record ${fields})`;
     }
 }

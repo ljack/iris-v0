@@ -5,7 +5,6 @@ type TestCase = {
   source: string;
   expect: string;
   fs?: Record<string, string>;
-  shouldFail?: boolean;
 };
 
 const tests: TestCase[] = [
@@ -149,8 +148,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 10: effect mismatch',
-    expect: "TypeError",
-    shouldFail: true,
+    expect: "TypeError: EffectMismatch: Effect violation: !Pure cannot perform !IO in Intrinsic io.read_file",
     source: `(program
  (module (name "t10") (version 0))
  (defs
@@ -170,26 +168,18 @@ tests.forEach(t => {
     console.log(`Running ${t.name}...`);
     const val = run(t.source, t.fs);
 
-    if (t.shouldFail) {
-      console.error(`❌ FAILED ${t.name}: Expected failure, got success: ${val}`);
-      failed++;
-    } else {
-      if (val === t.expect) {
-        console.log(`✅ PASS ${t.name}`);
-        passed++;
-      } else {
-        console.error(`❌ FAILED ${t.name}: Expected ${t.expect}, got ${val}`);
-        failed++;
-      }
-    }
-  } catch (e: any) {
-    if (t.shouldFail) {
-      console.log(`✅ PASS ${t.name} (Caught expected error: ${e.message})`);
+    // Check strict equality or prefix match for errors if we want to be linient
+    // But canonical rules say "print output", so exact match is best.
+    if (val === t.expect) {
+      console.log(`✅ PASS ${t.name}`);
       passed++;
     } else {
-      console.error(`❌ FAILED ${t.name}: Exception: ${e.message}`);
+      console.error(`❌ FAILED ${t.name}: Expected '${t.expect}', got '${val}'`);
       failed++;
     }
+  } catch (e: any) {
+    console.error(`❌ FAILED ${t.name}: Exception: ${e.message}`);
+    failed++;
   }
 });
 
