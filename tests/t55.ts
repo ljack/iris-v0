@@ -11,5 +11,5 @@ export const t55: TestCase = {
     (body
       (match (Ok 42)
         (case (tag "Ok" (v)) v)
-        (case (tag "Err" (e)) (int.const 0)))))))`
+        (case (tag "Err" (e)) 0))))))`
 };

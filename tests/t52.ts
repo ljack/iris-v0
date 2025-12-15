@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 
 export const t52: TestCase = {
   name: 'Test 52: Pattern match type mismatch in case body',
-  expect: 'TypeError: Expression type mismatch',
+  expect: 'TypeError: Match arms mismatch: Expected I64, got Str',
   source: `(program
  (module (name "t52") (version 0))
  (defs

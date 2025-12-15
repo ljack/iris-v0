@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 
 export const t58: TestCase = {
   name: 'Test 58: Record missing required field',
-  expect: 'TypeError: Expression type mismatch',
+  expect: 'TypeError: Function main return type mismatch: Expected (Record (a I64) (b I64) (c I64)), got (Record (a I64) (b I64))',
   source: `(program
  (module (name "t58") (version 0))
  (defs

@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 
 export const t49: TestCase = {
   name: 'Test 49: Function argument type mismatch',
-  expect: 'TypeError: Expression type mismatch',
+  expect: 'TypeError: Argument 0 mismatch: Expected I64, got Str',
   source: `(program
  (module (name "t49") (version 0))
  (defs

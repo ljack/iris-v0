@@ -8,7 +8,7 @@ export const t44: TestCase = {
  (defs
   (deffn (name pure_fn)
     (args) (ret I64) (eff !Pure)
-    (body (int.const 42)))
+    (body 42))
   (deffn (name caller)
     (args) (ret I64) (eff !Any)
     (body (call pure_fn)))
