@@ -24,7 +24,7 @@ function processDir(dir: string) {
         const itemRelative = path.relative(ROOT, fullPath);
 
         if (stat.isDirectory()) {
-            lines.push(`${BASE_BLOB}/${itemRelative}/raw.txt`);
+            lines.push(`${BASE_RAW}/${itemRelative}/raw.txt`);
             processDir(fullPath); // Recurse
         } else {
             lines.push(`${BASE_RAW}/${itemRelative}`);
