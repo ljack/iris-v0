@@ -1,18 +1,17 @@
-import { run } from '../src/index';
-import { Value } from '../src/types';
+import { run } from '../src/main';
 
 type TestCase = {
   name: string;
   source: string;
-  expect: any; // Simplified check
+  expect: string;
   fs?: Record<string, string>;
-  shouldFail?: boolean; // Expect type error or similar
+  shouldFail?: boolean;
 };
 
 const tests: TestCase[] = [
   {
     name: 'Test 01: pure add',
-    expect: 3n,
+    expect: "3",
     source: `(program
  (module (name "t01") (version 0))
  (defs
@@ -24,7 +23,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 02: let + arithmetic',
-    expect: 42n,
+    expect: "42",
     source: `(program
  (module (name "t02") (version 0))
  (defs
@@ -38,7 +37,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 03: if',
-    expect: 9n,
+    expect: "9",
     source: `(program
  (module (name "t03") (version 0))
  (defs
@@ -50,7 +49,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 04: Option match',
-    expect: 5n,
+    expect: "5",
     source: `(program
  (module (name "t04") (version 0))
  (defs
@@ -65,7 +64,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 05: None branch',
-    expect: 0n,
+    expect: "0",
     source: `(program
  (module (name "t05") (version 0))
  (defs
@@ -80,7 +79,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 06: simple function call',
-    expect: 11n,
+    expect: "11",
     source: `(program
  (module (name "t06") (version 0))
  (defs
@@ -95,10 +94,9 @@ const tests: TestCase[] = [
     (eff !Pure)
     (body (call add10 1)))))`
   },
-  // Recommended Test 07
   {
     name: 'Test 07: recursion with fuel',
-    expect: { kind: 'Option', value: 13n },
+    expect: "(Some 13)",
     source: `(program
  (module (name "t07") (version 0))
  (defs
@@ -125,7 +123,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 08: IO read_file',
-    expect: { kind: 'Result', isOk: true, value: { kind: 'Str', value: "hello" } },
+    expect: '(Ok "hello")',
     fs: { "/a.txt": "hello" },
     source: `(program
  (module (name "t08") (version 0))
@@ -138,7 +136,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 09: IO read_file missing',
-    expect: { kind: 'Result', isOk: false, value: { kind: 'Str', value: "ENOENT" } },
+    expect: '(Err "ENOENT")',
     fs: {},
     source: `(program
  (module (name "t09") (version 0))
@@ -151,7 +149,7 @@ const tests: TestCase[] = [
   },
   {
     name: 'Test 10: effect mismatch',
-    expect: "TypeError", // Type error expected
+    expect: "TypeError",
     shouldFail: true,
     source: `(program
  (module (name "t10") (version 0))
@@ -164,52 +162,6 @@ const tests: TestCase[] = [
   }
 ];
 
-function checkEq(actual: any, expected: any): boolean {
-  if (expected === "TypeError") return false;
-
-  // Unwrap Convenience for tests
-  if (typeof expected === 'bigint') {
-    return actual.kind === 'I64' && actual.value === expected;
-  }
-
-  // If both are BigInt (inside recursion)
-  if (typeof actual === 'bigint' && typeof expected === 'bigint') return actual === expected;
-
-  if (typeof expected === 'object' && expected !== null && actual !== null) {
-    // If expected is array (e.g. List items)
-    if (Array.isArray(expected)) {
-      if (!Array.isArray(actual) || actual.length !== expected.length) return false;
-      return expected.every((val, i) => checkEq(actual[i], val));
-    }
-
-    // If actual is Value object
-    if (actual.kind && expected.kind) {
-      if (actual.kind !== expected.kind) return false;
-    }
-
-    const k1 = Object.keys(expected);
-    const k2 = Object.keys(actual);
-    if (k1.length !== k2.length) return false;
-
-    for (const key of k1) {
-      // Skip internal fields if needed, but here we want exact match
-      if (!k2.includes(key)) return false;
-      if (!checkEq(actual[key], expected[key])) return false;
-    }
-    return true;
-  }
-
-  return actual === expected;
-}
-
-function safeStringify(obj: any): string {
-  return JSON.stringify(obj, (key, value) =>
-    typeof value === 'bigint'
-      ? value.toString() + 'n'
-      : value
-  );
-}
-
 let passed = 0;
 let failed = 0;
 
@@ -219,14 +171,14 @@ tests.forEach(t => {
     const val = run(t.source, t.fs);
 
     if (t.shouldFail) {
-      console.error(`❌ FAILED ${t.name}: Expected failure, got success`);
+      console.error(`❌ FAILED ${t.name}: Expected failure, got success: ${val}`);
       failed++;
     } else {
-      if (checkEq(val, t.expect)) {
+      if (val === t.expect) {
         console.log(`✅ PASS ${t.name}`);
         passed++;
       } else {
-        console.error(`❌ FAILED ${t.name}: Expected ${safeStringify(t.expect)}, got ${safeStringify(val)}`);
+        console.error(`❌ FAILED ${t.name}: Expected ${t.expect}, got ${val}`);
         failed++;
       }
     }
