@@ -160,7 +160,7 @@ export class Interpreter {
         if (op === 'io.read_file') {
             const path = args[0];
             if (path.kind !== 'Str') throw new Error("path must be string");
-            if (this.fs[path.value]) {
+            if (Object.prototype.hasOwnProperty.call(this.fs, path.value)) {
                 return { kind: 'Result', isOk: true, value: { kind: 'Str', value: this.fs[path.value] } };
             } else {
                 return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "ENOENT" } };
