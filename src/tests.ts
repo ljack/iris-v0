@@ -8,6 +8,7 @@ type TestCase = {
 };
 
 const tests: TestCase[] = [
+  // Tier-1 Tests
   {
     name: 'Test 01: pure add',
     expect: "3",
@@ -157,6 +158,122 @@ const tests: TestCase[] = [
     (ret (Result Str Str))
     (eff !Pure)
     (body (io.read_file "/a.txt")))))`
+  },
+  // Tier-2 Tests
+  {
+    name: 'Test 11: string escaping',
+    expect: '"a\\"b\\\\c\\n"',
+    source: `(program
+ (module (name "t11") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret Str)
+    (eff !Pure)
+    (body "a\\"b\\\\c\\n"))))`
+  },
+  {
+    name: 'Test 12: record field order',
+    expect: '(record (a 1) (b 2))',
+    source: `(program
+ (module (name "t12") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Record (a I64) (b I64)))
+    (eff !Pure)
+    (body (record (b 2) (a 1))))))`
+  },
+  {
+    name: 'Test 13: type error if condition',
+    expect: 'TypeError: Type Error in If condition: Expected Bool, got I64',
+    source: `(program
+ (module (name "t13") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body (if 1 2 3)))))`
+  },
+  {
+    name: 'Test 14: type error intrinsic arg',
+    expect: 'TypeError: Type Error in + operand 1: Expected I64, got Bool',
+    source: `(program
+ (module (name "t14") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body (+ true 1)))))`
+  },
+  {
+    name: 'Test 15: undefined function',
+    expect: 'TypeError: Unknown function call: no_such_fn',
+    source: `(program
+ (module (name "t15") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body (call no_such_fn 1)))))`
+  },
+  {
+    name: 'Test 16: arity mismatch',
+    expect: 'TypeError: Arity mismatch for add10',
+    source: `(program
+ (module (name "t16") (version 0))
+ (defs
+  (deffn (name add10) (args (a I64)) (ret I64) (eff !Pure) (body (+ a 10)))
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body (call add10)))))`
+  },
+  {
+    name: 'Test 17: match non-option',
+    expect: 'TypeError: Match target must be Option (got I64)',
+    source: `(program
+ (module (name "t17") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body
+      (match 5
+        (case (tag "Some" (v)) v)
+        (case (tag "None") 0))))))`
+  },
+  {
+    name: 'Test 18: fuel exhaustion',
+    expect: 'None',
+    source: `(program
+ (module (name "t18") (version 0))
+ (defs
+  (deffn (name fib)
+    (args (n I64) (fuel I64))
+    (ret (Option I64))
+    (eff !Pure)
+    (body
+      (if (= fuel 0)
+          None
+          (if (<= n 1)
+              (Some n)
+              (match (call fib (- n 1) (- fuel 1))
+                (case (tag "None") None)
+                (case (tag "Some" (a))
+                  (match (call fib (- n 2) (- fuel 1))
+                    (case (tag "None") None)
+                    (case (tag "Some" (b)) (Some (+ a b))))))))))
+  (deffn (name main)
+    (args)
+    (ret (Option I64))
+    (eff !Pure)
+    (body (call fib 10 2)))))` // Fuel 2 is enough for N<=1 but not N=10 which is deep, should exhaused.
   }
 ];
 
@@ -168,8 +285,6 @@ tests.forEach(t => {
     console.log(`Running ${t.name}...`);
     const val = run(t.source, t.fs);
 
-    // Check strict equality or prefix match for errors if we want to be linient
-    // But canonical rules say "print output", so exact match is best.
     if (val === t.expect) {
       console.log(`✅ PASS ${t.name}`);
       passed++;
