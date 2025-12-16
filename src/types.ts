@@ -60,7 +60,7 @@ export type IntrinsicOp =
   | '+' | '-' | '*' | '/' | '<=' | '<' | '='
   | 'Some' | 'Ok' | 'Err'
   | 'cons'
-  | 'io.print' | 'io.read_file' | 'io.write_file' | 'io.file_exists'
+  | 'io.print' | 'io.read_file' | 'io.write_file' | 'io.file_exists' | 'io.read_dir'
   | 'net.listen' | 'net.accept' | 'net.read' | 'net.write' | 'net.close'
   | 'http.parse_request'
   | 'str.concat' | 'str.contains' | 'str.ends_with';

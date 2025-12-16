@@ -55,7 +55,7 @@ function checkCircularImports(entryPath: string, modules: Record<string, string>
     return; // logic moved to run()
 }
 
-import { IFileSystem } from './eval';
+import { IFileSystem, INetwork } from './eval';
 
 // Helper to encapsulate program + resolver for interpreter
 type CheckResult = { success: true, program: Program, resolver: ModuleResolver } | { success: false, error: string };
@@ -139,15 +139,19 @@ export function check(source: string, modules: Record<string, string> = {}): Che
     return { success: true, program, resolver };
 }
 
-export function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}): string {
+
+
+// ... other imports
+
+export async function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}, net?: INetwork): Promise<string> {
     const checked = check(source, modules);
     if (!checked.success) return checked.error;
 
     // 3. Interpret
-    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver);
+    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver, net);
     let result;
     try {
-        result = interpreter.evalMain();
+        result = await interpreter.evalMain();
     } catch (e: any) {
         return `RuntimeError: ${e.message}`;
     }

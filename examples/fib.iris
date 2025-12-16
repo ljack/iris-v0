@@ -1,0 +1,21 @@
+(program
+  (module (name "fib") (version 0))
+  (defs
+    (deffn (name fib) (args (n I64)) (ret I64) (eff !Pure)
+      (body 
+        (if (< n 2)
+            n
+            (+ (call fib (- n 1)) (call fib (- n 2))))
+      )
+    )
+    
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body 
+        (let (res (io.print "Calculating fib(10)..."))
+             (let (val (call fib 10))
+                  (let (res2 (io.print val))
+                       val)))
+      )
+    )
+  )
+)

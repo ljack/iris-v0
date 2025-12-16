@@ -1,0 +1,106 @@
+(program
+  (module (name "server") (version 0))
+
+  (defs
+    ;; Helper to join strings in a list (for index generation)
+    (deffn (name join_files) (args (files (List Str))) (ret Str) (eff !Pure)
+      (body 
+        (match files
+          (case (tag "cons" (head tail)) 
+             (str.concat
+                (str.concat "<li><a href=\"/" (str.concat head (str.concat "\">" head)))
+                (str.concat "</a></li>" (call join_files tail))
+             )
+          )
+          (case (tag "nil") "")
+        )
+      )
+    )
+
+    (deffn (name serve_index) (args) (ret Str) (eff !IO)
+      (body
+        (let (files_res (io.read_dir "examples"))
+          (match files_res
+            (case (tag "Ok" (files))
+              (str.concat "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><h1>Examples</h1><ul>" 
+                 (str.concat (call join_files files) "</ul></body></html>"))
+            )
+            (case (tag "Err" (msg))
+              (str.concat "HTTP/1.1 500 Internal Server Error\r\n\r\nErr: " msg))
+          )
+        )
+      )
+    )
+
+    (deffn (name serve_file) (args (path Str)) (ret Str) (eff !IO)
+      (body
+        ;; Naive path safety: Check if it contains ".."
+        (if (str.contains path "..")
+           "HTTP/1.1 403 Forbidden\r\n\r\nForbidden"
+           (let (full_path (str.concat "examples" path)) ;; path starts with /, e.g., /hello.iris -> examples/hello.iris
+                (if (io.file_exists full_path)
+                    (match (io.read_file full_path)
+                       (case (tag "Ok" (content))
+                          (str.concat "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n" content)
+                       )
+                       (case (tag "Err" (msg)) "HTTP/1.1 500 error\r\n\r\nRead error")
+                    )
+                    "HTTP/1.1 404 Not Found\r\n\r\nFile not found"
+                )
+           )
+        )
+      )
+    )
+
+    (deffn (name handle_client) (args (sock I64)) (ret I64) (eff !Net)
+      (body
+        (match (net.read sock)
+           (case (tag "Ok" (raw_req))
+              (match (http.parse_request raw_req)
+                 (case (tag "Ok" (req))
+                    (let (response (if (str.ends_with req.path "/") (call serve_index) (call serve_file req.path)))
+                       (let (_ (net.write sock response)) 
+                          (match (net.close sock) 
+                             (case (tag "Ok" (ok)) 0) 
+                             (case (tag "Err" (e)) 1))
+                       )
+                    )
+                 )
+                 (case (tag "Err" (e)) (let (_ (net.close sock)) 1))
+              )
+           )
+           (case (tag "Err" (e)) (let (_ (net.close sock)) 1))
+        )
+      )
+    )
+
+    (deffn (name start_server) (args) (ret I64) (eff !Net)
+      (body
+         (match (net.listen 8080)
+            (case (tag "Ok" (server_sock))
+               (let (_ (io.print "Listening on http://localhost:8080"))
+                   (call loop server_sock)
+               )
+            )
+            (case (tag "Err" (e)) (io.print "Failed to listen"))
+         )
+      )
+    )
+    
+    (deffn (name loop) (args (server_sock I64)) (ret I64) (eff !Net)
+      (body
+         (match (net.accept server_sock)
+            (case (tag "Ok" (client_sock))
+               (let (_ (call handle_client client_sock))
+                   (call loop server_sock))
+            )
+            (case (tag "Err" (e)) (call loop server_sock))
+         )
+      )
+    )
+
+    (deffn (name main) (args) (ret I64) (eff !Net)
+       (body (call start_server))
+    )
+  )
+)

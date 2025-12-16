@@ -1,0 +1,171 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                 IRIS v0 CODE COVERAGE ANALYSIS - SUMMARY                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ OVERALL METRICS ───────────────────────────────────────────────────────────────┐
+│ Total Source Code:     1,495 lines                                              │
+│ Estimated Coverage:    83% (1,204/1,495 lines)                                 │
+│ Total Tests:           96 (94 passing, 2 failing)                               │
+│ Pass Rate:             97.9%                                                    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ MODULE COVERAGE BREAKDOWN ─────────────────────────────────────────────────────┐
+│                                                                                 │
+│  src/sexp.ts (Parser/Lexer)         541 lines    ███████░░░░░░  82%          │
+│  src/typecheck.ts (Type Checker)    389 lines    ███████░░░░░░  80%          │
+│  src/eval.ts (Evaluator)            408 lines    ███████░░░░░░  77%          │
+│  src/main.ts (Entry Point)          157 lines    ███████████░░  95%          │
+│                                                                                 │
+│  WEIGHTED AVERAGE:                                 ███████░░░░░░  83%          │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ KEY FINDINGS ──────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│ STRENGTHS:                                                                      │
+│   ✅ Core expression evaluation well-tested (85%+)                              │
+│   ✅ Type system thoroughly covered (80%+)                                      │
+│   ✅ Effect system comprehensively tested (95%+)                                │
+│   ✅ Function call and module system covered (90%+)                             │
+│   ✅ Error detection and reporting solid (90%+)                                 │
+│   ✅ Arithmetic and matching operations excellent (90%+)                        │
+│                                                                                 │
+│ WEAKNESSES:                                                                     │
+│   ❌ Network operations only mocked (0% real behavior)                          │
+│   ❌ IO operations partially tested (print/read_dir gaps)                       │
+│   ❌ HTTP parsing edge cases untested (malformed requests)                      │
+│   ❌ String operations minimal coverage (50%)                                   │
+│   ❌ Parser error conditions mostly untested                                    │
+│   ❌ 2 failing tests (T17, T53) - error message mismatch                        │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ FAILING TESTS ─────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  ❌ Test 17: match non-option                                                  │
+│     Issue: Error message includes "List" but test expects "Option or Result"    │
+│     Fix:   Update test t17.ts expected message                                  │
+│     Time:  5 minutes                                                            │
+│                                                                                 │
+│  ❌ Test 53: Pattern match on wrong type constructor                            │
+│     Issue: Same error message mismatch as T17                                  │
+│     Fix:   Update test t53.ts expected message                                  │
+│     Time:  5 minutes                                                            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CRITICAL GAPS (Recommended Fixes) ──────────────────────────────────────────────┐
+│                                                                                 │
+│  IMMEDIATE (Before Release):                                                    │
+│  1. Fix T17 & T53 error messages                  Time: 10 min                  │
+│  2. Add IO operations tests (io.print, io.read_dir)  Time: 2-3 hours           │
+│  3. Add HTTP parsing edge case tests              Time: 1-2 hours              │
+│  4. Remove dead code (checkCircularImports)       Time: 30 min                  │
+│     Subtotal: ~4-6 hours                                                        │
+│                                                                                 │
+│  NEAR-TERM (Next Sprint):                                                       │
+│  5. String operations comprehensive testing       Time: 2-3 hours              │
+│  6. Record field access tests                     Time: 1-2 hours              │
+│  7. Parser error condition tests                  Time: 1-2 hours              │
+│  8. Tuple value type tests                        Time: 30 min                  │
+│  9. Match error handling tests                    Time: 1 hour                  │
+│     Subtotal: ~8-10 hours                                                       │
+│                                                                                 │
+│  STRETCH (Code Quality):                                                        │
+│  10. Property-based tests for math operators      Time: 3-4 hours              │
+│  11. Stress tests (deeply nested expressions)     Time: 2-3 hours              │
+│  12. Test fixture library                         Time: 2-3 hours              │
+│      Subtotal: ~7-10 hours                                                      │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CODE PATH COVERAGE BY FEATURE ─────────────────────────────────────────────────┐
+│                                                                                 │
+│  Parsing:                                                                       │
+│    - Literals, operators, symbols              100% ✅                          │
+│    - String tokenization                        95% ✅                          │
+│    - Error handling                             15% ❌ (untested)               │
+│                                                                                 │
+│  Type Checking:                                                                 │
+│    - Basic types                               100% ✅                          │
+│    - Effect inference                           95% ✅                          │
+│    - Intrinsics                                 75% ⚠️  (some ops untested)     │
+│    - Cross-module resolution                    90% ✅                          │
+│                                                                                 │
+│  Evaluation:                                                                    │
+│    - Expression evaluation                      85% ✅                          │
+│    - IO operations                              60% ⚠️  (print/read_dir gaps)   │
+│    - Network operations                          0% ❌ (mocked only)             │
+│    - HTTP parsing                               80% ⚠️  (edge cases missing)     │
+│                                                                                 │
+│  Entry Point:                                                                   │
+│    - Check pipeline                             95% ✅                          │
+│    - Run pipeline                               95% ✅                          │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ UNTESTED CODE PATHS (Critical for Production) ──────────────────────────────────┐
+│                                                                                 │
+│  Parser:                                                                        │
+│    • Unterminated string error (line 92)        3 lines                        │
+│    • Unexpected character error (line 143)      2 lines                        │
+│    • Unknown type constructor (line 470)        1 line                         │
+│    • Optional requires/ensures parsing          13 lines                       │
+│                                                                                 │
+│  Type Checker:                                                                  │
+│    • Record field access (lines 89-105)         17 lines                       │
+│    • io.print type (line 252)                   1 line                         │
+│    • io.read_dir type (line 251)                1 line                         │
+│    • Duplicate arg detection (line 19)          2 lines                        │
+│    • Unknown intrinsic (line 297)               1 line                         │
+│                                                                                 │
+│  Evaluator:                                                                     │
+│    • No matching case error (line 222)          1 line                         │
+│    • io.read_dir eval (lines 296-309)           14 lines                       │
+│    • io.print eval (lines 311-321)              11 lines                       │
+│    • HTTP parse edge cases (lines 335-386)      15 lines                       │
+│    • String ops edge cases (lines 388-404)      12 lines                       │
+│    • Network op errors (lines 323-333)          11 lines                       │
+│                                                                                 │
+│  Total Untested: ~104 critical lines (7% of source)                            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ RECOMMENDATIONS PRIORITY MATRIX ──────────────────────────────────────────────┐
+│                                                                                 │
+│ HIGH IMPACT, HIGH EFFORT:         │ HIGH IMPACT, LOW EFFORT:                  │
+│ • Property-based math tests       │ • Fix T17 & T53 (2 tests)                │
+│ • Full network implementation     │ • String ops tests (2-3 tests)            │
+│ • HTTP edge cases                 │ • IO print/read_dir tests (2 tests)       │
+│ • Stress tests                    │                                           │
+│ Effort: 8-12 hours                │ Effort: 3-4 hours                         │
+│                                                                                 │
+│ LOW IMPACT, HIGH EFFORT:          │ LOW IMPACT, LOW EFFORT:                   │
+│ • Parser error conditions         │ • Tuple value tests (1 test)              │
+│ • Dead code cleanup               │ • Record field tests (1-2 tests)          │
+│ • Test fixture library            │ • Match error tests (1 test)              │
+│ Effort: 4-6 hours                 │ Effort: 1-2 hours                         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ COVERAGE IMPROVEMENT ROADMAP ────────────────────────────────────────────────┐
+│                                                                                │
+│  Current State: 83% (1,204/1,495 lines)                                       │
+│  ├─ Phase 1: Fix failing tests (10 min)                                       │
+│  │            Add quick win tests (3-4 hours)                                 │
+│  │            → New Coverage: 86% (1,287/1,495 lines)                        │
+│  │                                                                             │
+│  ├─ Phase 2: Add IO/HTTP tests (4-6 hours)                                   │
+│  │            → New Coverage: 89% (1,331/1,495 lines)                        │
+│  │                                                                             │
+│  ├─ Phase 3: Parser/record/string tests (4-5 hours)                          │
+│  │            → New Coverage: 92% (1,375/1,495 lines)                        │
+│  │                                                                             │
+│  └─ Phase 4 (Optional): Properties/stress tests (8-10 hours)                  │
+│                → Final Coverage: 95%+ (1,420+/1,495 lines)                   │
+│                                                                                │
+│  Total effort for 92% coverage: ~12-15 hours                                  │
+│  Total effort for 95%+ coverage: ~20-25 hours                                 │
+│                                                                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+

@@ -5,6 +5,15 @@ export interface IFileSystem {
     readFile(path: string): string | null; // null if not found/error
     writeFile(path: string, content: string): boolean;
     exists(path: string): boolean;
+    readDir?(path: string): string[] | null; // Optional
+}
+
+export interface INetwork {
+    listen(port: number): Promise<number | null>;
+    accept(serverHandle: number): Promise<number | null>;
+    read(handle: number): Promise<string | null>;
+    write(handle: number, data: string): Promise<boolean>;
+    close(handle: number): Promise<boolean>;
 }
 
 class MockFileSystem implements IFileSystem {
@@ -12,6 +21,18 @@ class MockFileSystem implements IFileSystem {
     readFile(path: string) { return this.data[path] ?? null; }
     writeFile(path: string, content: string) { this.data[path] = content; return true; }
     exists(path: string) { return path in this.data; }
+    readDir(path: string) {
+        if (path === '.') return Object.keys(this.data);
+        return Object.keys(this.data).filter(k => k.startsWith(path + '/'));
+    }
+}
+
+class MockNetwork implements INetwork {
+    async listen(port: number) { return 1; }
+    async accept(h: number) { return 2; } // Return a client handle
+    async read(h: number) { return "GET / HTTP/1.1\r\n\r\n"; }
+    async write(h: number, d: string) { return true; }
+    async close(h: number) { return true; }
 }
 
 export class Interpreter {
@@ -19,15 +40,17 @@ export class Interpreter {
     private functions = new Map<string, Definition & { kind: 'DefFn' }>();
     private constants = new Map<string, Value>();
     private fs: IFileSystem;
+    private net: INetwork;
 
-    constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver) {
+    constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver, net?: INetwork) {
         this.program = program;
         // Backwards compatibility with tests passing Record
-        if (typeof fs.readFile === 'function') {
+        if (typeof (fs as any).readFile === 'function') {
             this.fs = fs as IFileSystem;
         } else {
             this.fs = new MockFileSystem(fs as Record<string, string>);
         }
+        this.net = net || new MockNetwork();
 
         for (const def of program.defs) {
             if (def.kind === 'DefFn') {
@@ -36,13 +59,9 @@ export class Interpreter {
         }
     }
 
-    evalMain(): Value {
+    async evalMain(): Promise<Value> {
         // initialize constants
-        for (const def of this.program.defs) {
-            if (def.kind === 'DefConst') {
-                this.constants.set(def.name, this.evalExpr(def.value, new Map()));
-            }
-        }
+        await this.initConstants();
 
         const main = this.functions.get('main');
         if (!main) throw new Error("No main function defined");
@@ -51,13 +70,8 @@ export class Interpreter {
     }
 
     // Public method to call a specific function with values
-    callFunction(name: string, args: Value[]): Value {
-        // Init constants first if not done? 
-        // Ideally constants are lazy or init on constructor? 
-        // For v0.4, let's init constants on first call or constructor.
-        // Or re-init. Re-init is wasteful but safe.
-        // Better: this.initConstants();
-        this.initConstants();
+    async callFunction(name: string, args: Value[]): Promise<Value> {
+        await this.initConstants();
 
         const func = this.functions.get(name);
         if (!func) throw new Error(`Unknown function: ${name}`);
@@ -70,19 +84,16 @@ export class Interpreter {
         return this.evalExpr(func.body, newEnv);
     }
 
-    private initConstants() {
-        if (this.constants.size > 0) return; // Already done? 
-        // Actually constants map might be empty if no constants.
-        // We need a flag.
-        // For now, just re-run safe if idempotent.
+    private async initConstants() {
+        if (this.constants.size > 0) return;
         for (const def of this.program.defs) {
             if (def.kind === 'DefConst') {
-                this.constants.set(def.name, this.evalExpr(def.value, new Map()));
+                this.constants.set(def.name, await this.evalExpr(def.value, new Map()));
             }
         }
     }
 
-    private evalExpr(expr: Expr, env: Map<string, Value>): Value {
+    private async evalExpr(expr: Expr, env: Map<string, Value>): Promise<Value> {
         switch (expr.kind) {
             case 'Literal':
                 return expr.value;
@@ -92,18 +103,33 @@ export class Interpreter {
                 if (v !== undefined) return v;
                 const c = this.constants.get(expr.name);
                 if (c !== undefined) return c;
+
+                if (expr.name.includes('.')) {
+                    const parts = expr.name.split('.');
+                    let currentVal = env.get(parts[0]) || this.constants.get(parts[0]);
+                    if (currentVal) {
+                        for (let i = 1; i < parts.length; i++) {
+                            if (currentVal!.kind !== 'Record') throw new Error(`Runtime: Cannot access field ${parts[i]} of non-record`);
+                            const fieldVal: Value = (currentVal as any).fields[parts[i]];
+                            if (!fieldVal) throw new Error(`Runtime: Unknown field ${parts[i]}`);
+                            currentVal = fieldVal;
+                        }
+                        return currentVal!;
+                    }
+                }
+
                 throw new Error(`Runtime Unknown variable: ${expr.name}`);
             }
 
             case 'Let': {
-                const val = this.evalExpr(expr.value, env);
+                const val = await this.evalExpr(expr.value, env);
                 const newEnv = new Map(env);
                 newEnv.set(expr.name, val);
                 return this.evalExpr(expr.body, newEnv);
             }
 
             case 'If': {
-                const cond = this.evalExpr(expr.cond, env);
+                const cond = await this.evalExpr(expr.cond, env);
                 if (cond.kind !== 'Bool') throw new Error("If condition must be Bool");
                 if (cond.value) {
                     return this.evalExpr(expr.then, env);
@@ -123,14 +149,7 @@ export class Interpreter {
                         if (importedProg) {
                             const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
                             if (targetDef) {
-                                // For evaluation, we basically need to switch context to that module?
-                                // But v0.4 is pure and stateless except IO.
-                                // Recursive call via new interpreter or simple substitution?
-                                // Simplest: Create new Interpreter for that module and run evalExpr.
-                                // But we need to pass arguments.
                                 func = targetDef;
-                                // We can't just set func = targetDef because evalExpr expects `func` to be in `this.functions`?
-                                // Use a trick: Evaluate arguments here, then spawn sub-interpreter.
                             }
                         }
                     }
@@ -139,7 +158,10 @@ export class Interpreter {
                 if (!func) throw new Error(`Unknown function: ${expr.fn}`);
 
                 // Evaluate args in current scope
-                const args = expr.args.map(a => this.evalExpr(a, env));
+                const args: Value[] = [];
+                for (const arg of expr.args) {
+                    args.push(await this.evalExpr(arg, env));
+                }
 
                 if (expr.fn.includes('.')) {
                     // It's a cross-module call.
@@ -148,11 +170,7 @@ export class Interpreter {
                     if (importDecl && this.resolver) {
                         const importedProg = this.resolver(importDecl.path)!;
                         // New interpreter instance for the other module
-                        // Share FS? Yes. Share resolver? Yes.
-                        const subInterp = new Interpreter(importedProg, this.fs, this.resolver);
-                        // We need to inject arguments.
-                        // We can't use evalMain. We need evalExpr on loop.
-                        // We need access to subInterp methods.
+                        const subInterp = new Interpreter(importedProg, this.fs, this.resolver, this.net);
                         return subInterp.callFunction(fname, args);
                     }
                 }
@@ -165,22 +183,17 @@ export class Interpreter {
                     newEnv.set(func.args[i].name, args[i]);
                 }
 
-                // Recurse checks
-                // Fuel checks? If we implement helper, pass fuel logic.
-                // Assuming fuel is managed via `recur` which is separate AST node.
-                // If the called function is just a DefFn, it's just a body evaluation.
-
                 return this.evalExpr(func.body, newEnv);
             }
 
             case 'Match': {
-                const target = this.evalExpr(expr.target, env);
+                const target = await this.evalExpr(expr.target, env);
 
                 // Find matching case
                 for (const c of expr.cases) {
                     // Check tag match
                     let match = false;
-                    let newBindings = new Map(env); // This copy is slightly inefficient but safe
+                    let newBindings = new Map(env);
 
                     if (target.kind === 'Option') {
                         if (c.tag === 'None' && target.value === null) match = true;
@@ -196,6 +209,16 @@ export class Interpreter {
                             match = true;
                             if (c.vars.length > 0) newBindings.set(c.vars[0], target.value);
                         }
+                    } else if (target.kind === 'List') {
+                        if (c.tag === 'nil' && target.items.length === 0) {
+                            match = true;
+                        } else if (c.tag === 'cons' && target.items.length > 0) {
+                            match = true;
+                            if (c.vars.length >= 1) newBindings.set(c.vars[0], target.items[0]);
+                            if (c.vars.length >= 2) {
+                                newBindings.set(c.vars[1], { kind: 'List', items: target.items.slice(1) });
+                            }
+                        }
                     }
 
                     if (match) {
@@ -208,20 +231,25 @@ export class Interpreter {
             case 'Record': {
                 const fields: Record<string, Value> = {};
                 for (const [key, valExpr] of Object.entries(expr.fields)) {
-                    fields[key] = this.evalExpr(valExpr, env);
+                    fields[key] = await this.evalExpr(valExpr, env);
                 }
                 return { kind: 'Record', fields };
             }
 
-            case 'Intrinsic':
-                return this.evalIntrinsic(expr.op, expr.args.map(a => this.evalExpr(a, env)));
+            case 'Intrinsic': {
+                const args: Value[] = [];
+                for (const arg of expr.args) {
+                    args.push(await this.evalExpr(arg, env));
+                }
+                return this.evalIntrinsic(expr.op, args);
+            }
 
             default:
-                throw new Error(`Unimplemented eval for ${expr.kind}`);
+                throw new Error(`Unimplemented eval for ${(expr as any).kind}`);
         }
     }
 
-    private evalIntrinsic(op: IntrinsicOp, args: Value[]): Value {
+    private async evalIntrinsic(op: IntrinsicOp, args: Value[]): Promise<Value> {
         if (['+', '-', '*', '/', '<=', '<', '='].includes(op)) {
             const v1 = args[0];
             const v2 = args[1];
@@ -248,7 +276,7 @@ export class Interpreter {
         }
 
         if (op === 'Ok') return { kind: 'Result', isOk: true, value: args[0] };
-        if (op === 'Err') return { kind: 'Result', isOk: false, value: args[0] }; // Value is the error string or obj
+        if (op === 'Err') return { kind: 'Result', isOk: false, value: args[0] };
 
         if (op === 'io.read_file') {
             const path = args[0];
@@ -276,6 +304,21 @@ export class Interpreter {
             return { kind: 'Bool', value: this.fs.exists(path.value) };
         }
 
+        if (op === 'io.read_dir') {
+            const path = args[0];
+            if (path.kind !== 'Str') throw new Error("path must be string");
+            if (!this.fs.readDir) return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Not supported" } };
+
+            const entries = this.fs.readDir(path.value);
+            if (entries === null) return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Directory not found or error" } };
+
+            const listVal: Value = {
+                kind: 'List',
+                items: entries.map(s => ({ kind: 'Str', value: s }))
+            };
+            return { kind: 'Result', isOk: true, value: listVal };
+        }
+
         if (op === 'io.print') {
             const val = args[0];
             if (val.kind === 'Str') {
@@ -285,19 +328,47 @@ export class Interpreter {
             } else {
                 console.log(JSON.stringify(val));
             }
-            return { kind: 'I64', value: 0n }; // Return 0
+            return { kind: 'I64', value: 0n };
         }
 
         if (op.startsWith('net.')) {
-            // Stub network operations for now
-            console.log(`[NET] Mock Executing ${op}`, args);
-            // Default success for stubs
-            if (op === 'net.listen' || op === 'net.accept' || op === 'net.write')
-                return { kind: 'Result', isOk: true, value: { kind: 'I64', value: 1n } }; // handle 1
-            if (op === 'net.read')
-                return { kind: 'Result', isOk: true, value: { kind: 'Str', value: "GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n" } };
-            if (op === 'net.close')
-                return { kind: 'Result', isOk: true, value: { kind: 'Bool', value: true } };
+            if (op === 'net.listen') {
+                const port = args[0];
+                if (port.kind !== 'I64') throw new Error("net.listen expects I64 port");
+                const h = await this.net.listen(Number(port.value));
+                if (h !== null) return { kind: 'Result', isOk: true, value: { kind: 'I64', value: BigInt(h) } };
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Listen failed" } };
+            }
+            if (op === 'net.accept') {
+                const serverSock = args[0];
+                if (serverSock.kind !== 'I64') throw new Error("net.accept expects I64");
+                const h = await this.net.accept(Number(serverSock.value));
+                if (h !== null) return { kind: 'Result', isOk: true, value: { kind: 'I64', value: BigInt(h) } };
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Accept failed" } };
+            }
+            if (op === 'net.read') {
+                const sock = args[0];
+                if (sock.kind !== 'I64') throw new Error("net.read expects I64");
+                const s = await this.net.read(Number(sock.value));
+                if (s !== null) return { kind: 'Result', isOk: true, value: { kind: 'Str', value: s } };
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Read failed" } };
+            }
+            if (op === 'net.write') {
+                const sock = args[0];
+                const str = args[1];
+                if (sock.kind !== 'I64') throw new Error("net.write expects I64");
+                if (str.kind !== 'Str') throw new Error("net.write expects Str");
+                const s = await this.net.write(Number(sock.value), str.value);
+                if (s) return { kind: 'Result', isOk: true, value: { kind: 'I64', value: BigInt(s ? 1 : 0) } };
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Write failed" } };
+            }
+            if (op === 'net.close') {
+                const sock = args[0];
+                if (sock.kind !== 'I64') throw new Error("net.close expects I64");
+                const s = await this.net.close(Number(sock.value));
+                if (s) return { kind: 'Result', isOk: true, value: { kind: 'Bool', value: true } };
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Close failed" } };
+            }
         }
 
         if (op === 'http.parse_request') {
@@ -308,7 +379,7 @@ export class Interpreter {
             try {
                 const parts = text.split(/\r?\n\r?\n/); // Split head and body
                 const head = parts[0];
-                const body = parts.slice(1).join('\n\n'); // Rejoin body if needed? usually one body.
+                const body = parts.slice(1).join('\n\n');
 
                 const lines = head.split(/\r?\n/);
                 if (lines.length === 0) throw new Error("Empty request");
@@ -317,7 +388,6 @@ export class Interpreter {
                 if (reqLine.length < 3) throw new Error("Invalid request line");
                 const method = reqLine[0];
                 const path = reqLine[1];
-                // version is reqLine[2]
 
                 const headers: Value[] = [];
                 for (let i = 1; i < lines.length; i++) {

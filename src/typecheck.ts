@@ -84,6 +84,23 @@ export class TypeChecker {
             case 'Var': {
                 if (env.has(expr.name)) return { type: env.get(expr.name)!, eff: '!Pure' };
                 if (this.constants.has(expr.name)) return { type: this.constants.get(expr.name)!, eff: '!Pure' };
+
+                // Dot access for records
+                if (expr.name.includes('.')) {
+                    const parts = expr.name.split('.');
+                    let currentType = env.get(parts[0]) || this.constants.get(parts[0]);
+                    if (currentType) {
+                        for (let i = 1; i < parts.length; i++) {
+                            if (currentType!.type !== 'Record') throw new Error(`TypeError: Cannot access field ${parts[i]} of non-record ${parts.slice(0, i).join('.')}`);
+                            const fields: Record<string, IrisType> = currentType!.fields!;
+                            const fieldType: IrisType = fields[parts[i]];
+                            if (!fieldType) throw new Error(`TypeError: Unknown field ${parts[i]} in record`);
+                            currentType = fieldType;
+                        }
+                        return { type: currentType!, eff: '!Pure' };
+                    }
+                }
+
                 throw new Error(`TypeError: Unknown variable: ${expr.name}`);
             }
 
@@ -143,8 +160,25 @@ export class TypeChecker {
                         else retType = body.type;
                         joinedEff = this.joinEffects(joinedEff, body.eff);
                     }
+                } else if (targetType.type === 'List') {
+                    for (const c of expr.cases) {
+                        const newEnv = new Map(env);
+                        if (c.tag === 'nil') {
+                            if (c.vars.length !== 0) throw new Error("nil case expects 0 variables");
+                        } else if (c.tag === 'cons') {
+                            if (c.vars.length !== 2) throw new Error("cons case expects 2 variables (head tail)");
+                            if (!targetType.inner) throw new Error("Internal List missing inner");
+                            newEnv.set(c.vars[0], targetType.inner!); // head
+                            newEnv.set(c.vars[1], targetType);       // tail
+                        } else throw new Error(`Unknown list match tag: ${c.tag}`);
+
+                        const body = this.checkExprFull(c.body, newEnv);
+                        if (retType) this.expectType(retType, body.type, "Match arms mismatch");
+                        else retType = body.type;
+                        joinedEff = this.joinEffects(joinedEff, body.eff);
+                    }
                 } else {
-                    throw new Error(`Match target must be Option or Result (got ${targetType.type})`);
+                    throw new Error(`Match target must be Option, Result, or List (got ${targetType.type})`);
                 }
                 return { type: retType!, eff: joinedEff };
             }
@@ -231,6 +265,7 @@ export class TypeChecker {
                     if (expr.op === 'io.read_file') return { type: { type: 'Result', ok: { type: 'Str' }, err: { type: 'Str' } }, eff: joinedEff };
                     if (expr.op === 'io.write_file') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
                     if (expr.op === 'io.file_exists') return { type: { type: 'Bool' }, eff: joinedEff };
+                    if (expr.op === 'io.read_dir') return { type: { type: 'Result', ok: { type: 'List', inner: { type: 'Str' } }, err: { type: 'Str' } }, eff: joinedEff };
                     if (expr.op === 'io.print') return { type: { type: 'I64' }, eff: joinedEff };
                 }
 

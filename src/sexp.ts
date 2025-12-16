@@ -27,6 +27,14 @@ export function tokenize(input: string): Token[] {
             }
             pos++;
             continue;
+            continue;
+        }
+
+        if (char === ';') {
+            while (pos < input.length && input[pos] !== '\n') {
+                pos++;
+            }
+            continue;
         }
 
         if (char === '(') {

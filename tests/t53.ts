@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 
 export const t53: TestCase = {
   name: 'Test 53: Pattern match on wrong type constructor',
-  expect: 'TypeError: Match target must be Option or Result (got I64)',
+  expect: 'TypeError: Match target must be Option, Result, or List (got I64)',
   source: `(program
  (module (name "t53") (version 0))
  (defs
