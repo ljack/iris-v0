@@ -1,3 +1,4 @@
+
 export { t01 } from './t01';
 export { t02 } from './t02';
 export { t03 } from './t03';
@@ -89,3 +90,21 @@ export { t111 } from './t111';
 export { t112 } from './t112';
 export { t113 } from './t113';
 export { t121 } from './t121';
+import { t01 } from './t01';
+import { t02 } from './t02';
+import { t03 } from './t03';
+import { t04 } from './t04';
+import { t05 } from './t05';
+import { t06 } from './t06';
+import { t07 } from './t07';
+import { t08 } from './t08';
+import { t09 } from './t09';
+import { t10 } from './t10';
+import { t121 } from './t121';
+import { T125 } from './t125';
+import { T126 } from './t126';
+
+export const TESTS = [
+    t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
+    t121, T125, T126
+];

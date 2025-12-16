@@ -1,8 +1,8 @@
 import { run } from '../src/main';
-import * as testCases from '../tests';
+import { TESTS } from '../tests';
 import { TestCase } from './test-types';
 
-const tests: TestCase[] = Object.values(testCases).map(t => t as TestCase).sort((a, b) => a.name.localeCompare(b.name));
+const tests: TestCase[] = TESTS.sort((a, b) => a.name.localeCompare(b.name));
 
 async function main() {
   let passed = 0;
@@ -28,11 +28,12 @@ async function main() {
       // Strict equality check for return value
       if (val === t.expect) {
         if (t.expectOutput) {
-          if (output.trim() === t.expectOutput.trim()) {
+          const expectedOut = t.expectOutput.join('\n').trim();
+          if (output.trim() === expectedOut) {
             console.log(`✅ PASS ${t.name}`);
             passed++;
           } else {
-            console.error(`❌ FAILED ${t.name}: Expected output:\n${t.expectOutput.trim()}\nGot:\n${output.trim()}`);
+            console.error(`❌ FAILED ${t.name}: Expected output:\n${expectedOut}\nGot:\n${output.trim()}`);
             failed++;
           }
         } else {

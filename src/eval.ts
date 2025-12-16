@@ -44,6 +44,21 @@ export class Interpreter {
     private net: INetwork;
     public pid: number;
 
+    private valueToKey(v: Value): string {
+        if (v.kind === 'I64') return `${v.value}n`;
+        if (v.kind === 'Bool') return `${v.value}`;
+        if (v.kind === 'Str') return JSON.stringify(v.value);
+        throw new Error(`Runtime: Invalid map key type: ${v.kind}`);
+    }
+
+    private keyToValue(k: string): Value {
+        if (k.endsWith('n')) return { kind: 'I64', value: BigInt(k.slice(0, -1)) };
+        if (k === 'true') return { kind: 'Bool', value: true };
+        if (k === 'false') return { kind: 'Bool', value: false };
+        if (k.startsWith('"')) return { kind: 'Str', value: JSON.parse(k) };
+        throw new Error(`Runtime: Invalid map key string: ${k}`);
+    }
+
     constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver, net?: INetwork) {
         this.program = program;
         // Backwards compatibility with tests passing Record
@@ -239,6 +254,22 @@ export class Interpreter {
                     fields[key] = await this.evalExpr(valExpr, env);
                 }
                 return { kind: 'Record', fields };
+            }
+
+            case 'Tuple': {
+                const items: Value[] = [];
+                for (const item of expr.items) {
+                    items.push(await this.evalExpr(item, env));
+                }
+                return { kind: 'Tuple', items };
+            }
+
+            case 'List': {
+                const items: Value[] = [];
+                for (const item of expr.items) {
+                    items.push(await this.evalExpr(item, env));
+                }
+                return { kind: 'List', items };
             }
 
             case 'Intrinsic': {
@@ -491,6 +522,64 @@ export class Interpreter {
             const s1 = args[0]; const s2 = args[1];
             if (s1.kind !== 'Str' || s2.kind !== 'Str') throw new Error("str.ends_with expects two strings");
             return { kind: 'Bool', value: s1.value.endsWith(s2.value) };
+        }
+
+        if (op === 'str.len') {
+            const s = args[0];
+            if (s.kind !== 'Str') throw new Error("str.len expects Str");
+            return { kind: 'I64', value: BigInt(s.value.length) };
+        }
+
+        if (op.startsWith('map.')) {
+            if (op === 'map.make') {
+                return { kind: 'Map', value: new Map() };
+            }
+            if (op === 'map.put') {
+                const m = args[0]; const k = args[1]; const v = args[2];
+                if (m.kind !== 'Map') throw new Error("map.put expects Map");
+                const keyStr = this.valueToKey(k);
+                const newMap = new Map(m.value);
+                newMap.set(keyStr, v);
+                return { kind: 'Map', value: newMap };
+            }
+            if (op === 'map.get') {
+                const m = args[0]; const k = args[1];
+                if (m.kind !== 'Map') throw new Error("map.get expects Map");
+                const keyStr = this.valueToKey(k);
+                const val = m.value.get(keyStr);
+                if (val) return { kind: 'Option', value: val };
+                return { kind: 'Option', value: null };
+            }
+            if (op === 'map.contains') {
+                const m = args[0]; const k = args[1];
+                if (m.kind !== 'Map') throw new Error("map.contains expects Map");
+                const keyStr = this.valueToKey(k);
+                return { kind: 'Bool', value: m.value.has(keyStr) };
+            }
+            if (op === 'map.keys') {
+                const m = args[0];
+                if (m.kind !== 'Map') throw new Error("map.keys expects Map");
+                const keys: Value[] = Array.from(m.value.keys()).map(k => this.keyToValue(k));
+                return { kind: 'List', items: keys };
+            }
+        }
+
+        if (op.startsWith('list.')) {
+            if (op === 'list.len') {
+                const l = args[0];
+                if (l.kind !== 'List') throw new Error("list.len expects List");
+                return { kind: 'I64', value: BigInt(l.items.length) };
+            }
+            if (op === 'list.get') {
+                const l = args[0]; const idx = args[1];
+                if (l.kind !== 'List') throw new Error("list.get expects List");
+                if (idx.kind !== 'I64') throw new Error("list.get expects I64 index");
+                const i = Number(idx.value);
+                if (i >= 0 && i < l.items.length) {
+                    return { kind: 'Option', value: l.items[i] };
+                }
+                return { kind: 'Option', value: null };
+            }
         }
 
         throw new Error(`Unknown intrinsic ${op}`);

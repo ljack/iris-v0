@@ -231,6 +231,38 @@ export class TypeChecker {
                 return { type: { type: 'Record', fields }, eff };
             }
 
+            case 'Tuple': {
+                const items: IrisType[] = [];
+                let eff: IrisEffect = '!Pure';
+                for (const item of expr.items) {
+                    const res = this.checkExprFull(item, env);
+                    items.push(res.type);
+                    eff = this.joinEffects(eff, res.eff);
+                }
+                return { type: { type: 'Tuple', items }, eff };
+            }
+
+            case 'List': {
+                // (list e1 e2 ...)
+                // inferred type is List<Union> or List<T> if all matches.
+                // For v0 let's enforce all elements match first element type.
+                let eff: IrisEffect = '!Pure';
+                let innerType: IrisType | null = null;
+                for (const item of expr.items) {
+                    const res = this.checkExprFull(item, env);
+                    eff = this.joinEffects(eff, res.eff);
+                    if (!innerType) innerType = res.type;
+                    else this.expectType(innerType, res.type, "List elements must have same type");
+                }
+                // If empty list, we don't know type! 
+                // (list) -> List<???>. 
+                // Problem: we can't infer without context.
+                // For now, if empty, default to List<I64> (hack) or error?
+                // Or return List<!Infer>.
+                if (!innerType) return { type: { type: 'List', inner: { type: 'I64' } }, eff }; // Default logic
+                return { type: { type: 'List', inner: innerType }, eff };
+            }
+
             case 'Intrinsic': {
                 let joinedEff: IrisEffect = '!Pure';
                 const argTypes: IrisType[] = [];
@@ -310,9 +342,64 @@ export class TypeChecker {
                 }
 
                 if (expr.op.startsWith('str.')) {
-                    // String operations are pure
+                    if (expr.op === 'str.len') {
+                        if (argTypes.length !== 1) throw new Error("str.len expects 1 arg");
+                        if (argTypes[0].type !== 'Str') throw new Error("str.len expects Str");
+                        return { type: { type: 'I64' }, eff: joinedEff };
+                    }
                     if (expr.op === 'str.concat') return { type: { type: 'Str' }, eff: joinedEff };
                     if (expr.op === 'str.contains' || expr.op === 'str.ends_with') return { type: { type: 'Bool' }, eff: joinedEff };
+                }
+
+                if (expr.op.startsWith('map.')) {
+                    if (expr.op === 'map.make') {
+                        if (argTypes.length !== 2) throw new Error("map.make expects 2 arguments (key_witness, value_witness)");
+                        // Pure
+                        return { type: { type: 'Map', key: argTypes[0], value: argTypes[1] }, eff: joinedEff };
+                    }
+                    if (expr.op === 'map.put') {
+                        if (argTypes.length !== 3) throw new Error("map.put expects 3 args (map, key, value)");
+                        const [m, k, v] = argTypes;
+                        if (m.type !== 'Map') throw new Error("map.put expects Map as first arg");
+                        this.expectType(m.key, k, "map.put key mismatch");
+                        this.expectType(m.value, v, "map.put value mismatch");
+                        return { type: m, eff: joinedEff };
+                    }
+                    if (expr.op === 'map.get') {
+                        if (argTypes.length !== 2) throw new Error("map.get expects 2 args (map, key)");
+                        const [m, k] = argTypes;
+                        if (m.type !== 'Map') throw new Error("map.get expects Map as first arg");
+                        this.expectType(m.key, k, "map.get key mismatch");
+                        return { type: { type: 'Option', inner: m.value }, eff: joinedEff };
+                    }
+                    if (expr.op === 'map.contains') {
+                        if (argTypes.length !== 2) throw new Error("map.contains expects 2 args (map, key)");
+                        const [m, k] = argTypes;
+                        if (m.type !== 'Map') throw new Error("map.contains expects Map as first arg");
+                        this.expectType(m.key, k, "map.contains key mismatch");
+                        return { type: { type: 'Bool' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'map.keys') {
+                        if (argTypes.length !== 1) throw new Error("map.keys expects 1 arg (map)");
+                        const m = argTypes[0];
+                        if (m.type !== 'Map') throw new Error("map.keys expects Map");
+                        return { type: { type: 'List', inner: m.key }, eff: joinedEff };
+                    }
+                }
+
+                if (expr.op.startsWith('list.')) {
+                    if (expr.op === 'list.len') {
+                        if (argTypes.length !== 1) throw new Error("list.len expects 1 arg (list)");
+                        if (argTypes[0].type !== 'List') throw new Error("list.len expects List");
+                        return { type: { type: 'I64' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'list.get') {
+                        if (argTypes.length !== 2) throw new Error("list.get expects 2 args (list, index)");
+                        const [l, idx] = argTypes;
+                        if (l.type !== 'List') throw new Error("list.get expects List");
+                        if (idx.type !== 'I64') throw new Error("list.get expects I64 index");
+                        return { type: { type: 'Option', inner: l.inner }, eff: joinedEff };
+                    }
                 }
 
                 if (expr.op === 'http.parse_request') {
@@ -417,6 +504,9 @@ export class TypeChecker {
         if (t1.type === 'List') {
             return this.typesEqual(t1.inner, (t2 as any).inner);
         }
+        if (t1.type === 'Map') {
+            return this.typesEqual(t1.key, (t2 as any).key) && this.typesEqual(t1.value, (t2 as any).value);
+        }
         return true;
     }
 
@@ -428,6 +518,7 @@ export class TypeChecker {
             case 'Option': return `(Option ${this.fmt(t.inner)})`;
             case 'Result': return `(Result ${this.fmt(t.ok)} ${this.fmt(t.err)})`;
             case 'List': return `(List ${this.fmt(t.inner)})`;
+            case 'Map': return `(Map ${this.fmt(t.key)} ${this.fmt(t.value)})`;
             case 'Record': return `(Record ${Object.keys(t.fields).map(k => `(${k} ${this.fmt(t.fields[k])})`).join(' ')})`;
             default: return 'Unknown';
         }

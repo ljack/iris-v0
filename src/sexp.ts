@@ -420,6 +420,46 @@ export class Parser {
                     return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
                 }
 
+                // Check for (map.* ...)
+                if (op.startsWith('map.')) {
+                    const args: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        args.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+                }
+
+                // Check for (list.* ...)
+                if (op.startsWith('list.')) {
+                    const args: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        args.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+                }
+
+                // (list e1 ...)
+                if (op === 'list') {
+                    const items: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        items.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'List', items };
+                }
+
+                // (tuple e1 ...)
+                if (op === 'tuple') {
+                    const items: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        items.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Tuple', items };
+                }
+
                 throw new Error(`Unknown operator or special form: ${op}`);
             }
 
@@ -474,6 +514,20 @@ export class Parser {
                 }
                 this.expect('RParen');
                 return { type: 'Record', fields };
+            }
+            if (tMap === 'Map') {
+                const key = this.parseType();
+                const value = this.parseType();
+                this.expect('RParen');
+                return { type: 'Map', key, value };
+            }
+            if (tMap === 'Tuple') {
+                const items: IrisType[] = [];
+                while (!this.check('RParen')) {
+                    items.push(this.parseType());
+                }
+                this.expect('RParen');
+                return { type: 'Tuple', items };
             }
 
             this.expect('RParen'); // Fallback
@@ -547,5 +601,24 @@ export function printValue(v: Value): string {
             if (keys.length === 0) return '(record)';
             const fields = keys.map(k => `(${k} ${printValue(v.fields[k])})`).join(' ');
             return `(record ${fields})`;
+        case 'Map':
+            const mapKeys = Array.from(v.value.keys()).sort();
+            if (mapKeys.length === 0) return '(map)';
+            // Internal map keys are strings, but we might want to try to unescape if they were JSON serialized?
+            // For now assume key is just string rep.
+            // Wait, we need to deserialize key to print it properly if strict?
+            // If we use JSON.stringify(key) as internal key, we should parse it back.
+            // Simplified: print (map (k v) ...)
+            const mapEntries = mapKeys.map(k => {
+                const val = v.value.get(k)!;
+                // We need to print the key. 
+                // Since we don't have the original Key Value object for the key (only string),
+                // we should probably store keys as Value in the internal Map if we want to print them correctly?
+                // OR we accept that internal representation is string.
+                // Let's rely on JSON.parse(k) if we used JSON.stringify for keys.
+                // Or just print k if it's simple.
+                return `(${k} ${printValue(val)})`;
+            }).join(' ');
+            return `(map ${mapEntries})`;
     }
 }

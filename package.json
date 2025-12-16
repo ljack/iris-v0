@@ -9,7 +9,7 @@
     "iris": "./bin/iris"
   },
   "scripts": {
-    "test": "ts-node tests/index.ts",
+    "test": "ts-node src/tests.ts",
     "test:web": "ts-node tests/test_web.ts",
     "test-cli": "ts-node src/tests_cli.ts",
     "update-raw": "ts-node generate_raw_links.ts",

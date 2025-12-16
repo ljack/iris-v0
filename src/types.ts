@@ -7,6 +7,7 @@ export type IrisType =
   | { type: 'List'; inner: IrisType }
   | { type: 'Tuple'; items: IrisType[] }
   | { type: 'Record'; fields: Record<string, IrisType> }
+  | { type: 'Map'; key: IrisType; value: IrisType }
   | { type: 'Fn'; args: IrisType[]; ret: IrisType; eff: IrisEffect };
 
 export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any' | '!Infer';
@@ -51,6 +52,7 @@ export type Expr =
     args: Expr[];
   }
   | { kind: 'List'; items: Expr[] } // List construction
+  | { kind: 'Tuple'; items: Expr[] }
   | { kind: 'Fold'; list: Expr; init: Expr; fn: Expr } // fn is likely a Lambda or Var
   | { kind: 'Lambda'; args: { name: string; type: IrisType }[]; ret: IrisType; eff: IrisEffect; body: Expr }
   | { kind: 'Record'; fields: Record<string, Expr> };
@@ -64,7 +66,9 @@ export type IntrinsicOp =
   | 'net.listen' | 'net.accept' | 'net.read' | 'net.write' | 'net.close'
   | 'sys.spawn' | 'sys.self' | 'sys.send' | 'sys.recv' | 'sys.sleep'
   | 'http.parse_request'
-  | 'str.concat' | 'str.contains' | 'str.ends_with';
+  | 'map.make' | 'map.put' | 'map.get' | 'map.contains' | 'map.keys'
+  | 'list.len' | 'list.get'
+  | 'str.len' | 'str.concat' | 'str.contains' | 'str.ends_with';
 
 export type MatchCase = {
   tag: string;
@@ -81,4 +85,5 @@ export type Value =
   | { kind: 'Result'; isOk: boolean; value: Value }
   | { kind: 'List'; items: Value[] }
   | { kind: 'Tuple'; items: Value[] }
-  | { kind: 'Record'; fields: Record<string, Value> };
+  | { kind: 'Record'; fields: Record<string, Value> }
+  | { kind: 'Map'; value: Map<string, Value> };

@@ -32,9 +32,9 @@ export const t121: TestCase = {
 )
   `,
   expect: "0",
-  expectOutput: `
-Main spawned worker
-Worker received: Ping
-Main received: Pong
-  `
+  expectOutput: [
+    "Main spawned worker",
+    "Worker received: Ping",
+    "Main received: Pong"
+  ]
 };
