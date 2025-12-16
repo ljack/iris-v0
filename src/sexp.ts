@@ -410,6 +410,16 @@ export class Parser {
                     return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
                 }
 
+                // Check for (sys.* ...)
+                if (op.startsWith('sys.')) {
+                    const args: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        args.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+                }
+
                 throw new Error(`Unknown operator or special form: ${op}`);
             }
 

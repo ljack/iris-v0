@@ -1,7 +1,8 @@
 import { Parser, printValue } from './sexp';
 import { TypeChecker } from './typecheck';
-import { Interpreter } from './eval';
+import { Interpreter, IFileSystem, INetwork } from './eval';
 import { ModuleResolver, Program } from './types';
+import { ProcessManager } from './runtime/process';
 
 // Helper to find imports without parsing everything?
 // We need to parse to find imports.
@@ -55,7 +56,6 @@ function checkCircularImports(entryPath: string, modules: Record<string, string>
     return; // logic moved to run()
 }
 
-import { IFileSystem, INetwork } from './eval';
 
 // Helper to encapsulate program + resolver for interpreter
 type CheckResult = { success: true, program: Program, resolver: ModuleResolver } | { success: false, error: string };
@@ -144,6 +144,7 @@ export function check(source: string, modules: Record<string, string> = {}): Che
 // ... other imports
 
 export async function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}, net?: INetwork): Promise<string> {
+    ProcessManager.instance.reset(); // Reset concurrency state for fresh run
     const checked = check(source, modules);
     if (!checked.success) return checked.error;
 

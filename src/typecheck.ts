@@ -269,6 +269,36 @@ export class TypeChecker {
                     if (expr.op === 'io.print') return { type: { type: 'I64' }, eff: joinedEff };
                 }
 
+                // Concurrency
+                if (expr.op.startsWith('sys.')) {
+                    joinedEff = this.joinEffects(joinedEff, '!IO'); // Sys ops are generally IO-effecting
+                    if (expr.op === 'sys.self') {
+                        if (argTypes.length !== 0) throw new Error("sys.self expects 0 arguments");
+                        return { type: { type: 'I64' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'sys.recv') {
+                        if (argTypes.length !== 0) throw new Error("sys.recv expects 0 arguments");
+                        return { type: { type: 'Str' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'sys.spawn') {
+                        if (argTypes.length !== 1) throw new Error("sys.spawn expects 1 argument");
+                        if (argTypes[0].type !== 'Str') throw new Error("sys.spawn expects Str function name");
+                        return { type: { type: 'I64' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'sys.sleep') {
+                        if (argTypes.length !== 1) throw new Error("sys.sleep expects 1 argument");
+                        if (argTypes[0].type !== 'I64') throw new Error("sys.sleep expects I64 ms");
+                        return { type: { type: 'Bool' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'sys.send') {
+                        if (argTypes.length !== 2) throw new Error("sys.send expects 2 arguments (pid, msg)");
+                        const [pid, msg] = argTypes;
+                        if (pid.type !== 'I64') throw new Error("sys.send expects I64 pid");
+                        if (msg.type !== 'Str') throw new Error("sys.send expects Str msg");
+                        return { type: { type: 'Bool' }, eff: joinedEff };
+                    }
+                }
+
                 if (expr.op.startsWith('net.')) {
                     joinedEff = this.joinEffects(joinedEff, '!Net');
                     // Mock types for now (using I64 as handles)

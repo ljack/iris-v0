@@ -1,4 +1,5 @@
 import { Program, Definition, Expr, Value, IntrinsicOp, MatchCase, ModuleResolver } from './types';
+import { ProcessManager } from './runtime/process';
 
 
 export interface IFileSystem {
@@ -41,6 +42,7 @@ export class Interpreter {
     private constants = new Map<string, Value>();
     private fs: IFileSystem;
     private net: INetwork;
+    public pid: number;
 
     constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver, net?: INetwork) {
         this.program = program;
@@ -51,6 +53,9 @@ export class Interpreter {
             this.fs = new MockFileSystem(fs as Record<string, string>);
         }
         this.net = net || new MockNetwork();
+
+        this.pid = ProcessManager.instance.getNextPid();
+        ProcessManager.instance.register(this.pid);
 
         for (const def of program.defs) {
             if (def.kind === 'DefFn') {
@@ -269,6 +274,53 @@ export class Interpreter {
                 case '<': return { kind: 'Bool', value: a < b };
                 case '=': return { kind: 'Bool', value: a === b };
             }
+        }
+
+        // Concurrency Intrinsics
+        if (op === 'sys.self') {
+            return { kind: 'I64', value: BigInt(this.pid) };
+        }
+
+        if (op === 'sys.spawn') {
+            const fnName = args[0];
+            if (fnName.kind !== 'Str') throw new Error("sys.spawn expects function name (Str)");
+
+            // Create detached interpreter
+            const child = new Interpreter(this.program, this.fs, this.resolver, this.net);
+            const childPid = child.pid;
+
+            // Fire and forget (detached)
+            Promise.resolve().then(async () => {
+                try {
+                    await child.callFunction(fnName.value, []);
+                } catch (e) {
+                    console.error(`Process ${childPid} crashed:`, e);
+                }
+            });
+
+            return { kind: 'I64', value: BigInt(childPid) };
+        }
+
+        if (op === 'sys.send') {
+            const pid = args[0];
+            const msg = args[1];
+            if (pid.kind !== 'I64') throw new Error("sys.send expects PID (I64)");
+            if (msg.kind !== 'Str') throw new Error("sys.send expects Msg (Str)");
+
+            const sent = ProcessManager.instance.send(Number(pid.value), msg.value);
+            return { kind: 'Bool', value: sent };
+        }
+
+        if (op === 'sys.recv') {
+            const msg = await ProcessManager.instance.recv(this.pid);
+            return { kind: 'Str', value: msg };
+        }
+
+        if (op === 'sys.sleep') {
+            const ms = args[0];
+            if (ms.kind !== 'I64') throw new Error("sys.sleep expects I64 ms");
+            await new Promise(resolve => setTimeout(resolve, Number(ms.value)));
+            return { kind: 'Bool', value: true };
         }
 
         if (op === 'Some') {

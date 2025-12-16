@@ -4,4 +4,5 @@ export interface TestCase {
     expect: string;
     fs?: Record<string, string>;
     modules?: Record<string, string>; // path -> source
+    expectOutput?: string;
 }
