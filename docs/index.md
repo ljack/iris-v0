@@ -2,6 +2,8 @@
 
 Welcome to the documentation for **IRIS**, a minimal, deterministic, AI-centric programming language.
 
+## 🌟 [Try the Online Playground](playground.html) 🌟
+
 ## 🚀 Getting Started
 
 ### 1. Download

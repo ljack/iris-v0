@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IRIS Playground</title>
+    <style>
+        body { font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; background: #222; color: #ddd; }
+        header { padding: 10px; background: #333; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; font-size: 1.2rem; }
+        button { padding: 8px 16px; background: #4CAF50; color: white; border: none; cursor: pointer; font-family: inherit; font-size: 1rem; }
+        button:hover { background: #45a049; }
+        main { flex: 1; display: flex; }
+        #editor { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 10px; resize: none; font-size: 14px; outline: none; }
+        #output { flex: 1; background: #111; color: #aaa; padding: 10px; overflow: auto; border-left: 1px solid #444; }
+        #loading { display: none; color: yellow; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>IRIS Playground (v0.5-dev)</h1>
+        <div>
+            <span id="loading">Running...</span>
+            <button id="runBtn">Run ▶</button>
+        </div>
+    </header>
+    <main>
+<textarea id="editor" spellcheck="false">
+(program
+  (module (name "playground") (version 0))
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body 
+        (let (_ (io.print "Hello from the Browser!"))
+        (let (_ (io.print "Welcome to IRIS."))
+        0))
+      )
+    )
+  )
+)
+</textarea>
+        <pre id="output">Output will appear here...</pre>
+    </main>
+
+    <script src="iris.js"></script>
+    <script>
+        const runBtn = document.getElementById('runBtn');
+        const editor = document.getElementById('editor');
+        const output = document.getElementById('output');
+        const loading = document.getElementById('loading');
+
+        runBtn.addEventListener('click', async () => {
+            const source = editor.value;
+            output.innerText = "";
+            loading.style.display = "inline";
+            
+            // Allow UI to update before blocking (if sync)
+            setTimeout(async () => {
+                try {
+                    if (window.runIris) {
+                        const start = performance.now();
+                        const result = await window.runIris(source);
+                        const time = (performance.now() - start).toFixed(2);
+                        output.innerText = result + `\n\n[Finished in ${time}ms]`;
+                    } else {
+                        output.innerText = "Error: IRIS runtime not loaded.";
+                    }
+                } catch (e) {
+                    output.innerText = "Runtime Error: " + e.message;
+                } finally {
+                    loading.style.display = "none";
+                }
+            }, 10);
+        });
+    </script>
+</body>
+</html>
