@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>IRIS Playground</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            background: #1e1e1e;
+            color: #ddd;
+        }
+
+        header {
+            padding: 10px 20px;
+            background: #252526;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #cccccc;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button {
+            padding: 6px 14px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            border-radius: 2px;
+        }
+
+        button:hover {
+            background: #1177bb;
+        }
+
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        #editor-container {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #output-container {
+            flex: 0.5;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            border-left: 1px solid #333;
+            min-width: 200px;
+        }
+
+        #output-header {
+            padding: 8px 15px;
+            background: #252526;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #aaa;
+            border-bottom: 1px solid #333;
+        }
+
+        #output {
+            flex: 1;
+            padding: 15px;
+            overflow: auto;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 0;
+            white-space: pre-wrap;
+            color: #d4d4d4;
+        }
+
+        #loading {
+            display: none;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            color: #89d185;
+        }
+
+        .error {
+            color: #f48771;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>IRIS Playground <span style="font-size: 0.8em; color: #666; margin-left: 10px;">v0.5-dev</span></h1>
+        <div class="controls">
+            <span id="loading">Running...</span>
+            <button id="runBtn">Run ▶</button>
+        </div>
+    </header>
+    <main>
+        <div id="editor-container"></div>
+        <div id="output-container">
+            <div id="output-header">Output Console</div>
+            <pre id="output">Ready.</pre>
+        </div>
+    </main>
+
+    <!-- IRIS Runtime Bundle -->
+    <script src="iris.js"></script>
+
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+
+    <script>
+        const INITIAL_CODE = `(program
+  (module (name "playground") (version 0))
+  (defs
+    ;; Define a factorial function
+    (deffn (name fact) (args (n I64)) (ret I64) (eff !Pure)
+      (body 
+        (if (< n 2)
+            1
+            (* n (call fact (- n 1))))
+      )
+    )
+
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body 
+        (let (_ (io.print "Calculating 10! ..."))
+        (let (result (call fact 10))
+        (let (_ (io.print result))
+        0)))
+      )
+    )
+  )
+)`;
+
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+
+        require(['vs/editor/editor.main'], function () {
+            // Register IRIS Language
+            monaco.languages.register({ id: 'iris' });
+
+            monaco.languages.setMonarchTokensProvider('iris', {
+                tokenizer: {
+                    root: [
+                        [/[a-z][\w\.]*/, {
+                            cases: {
+                                '@keywords': 'keyword',
+                                '@intrinsics': 'type.identifier', // Color intrinsics nicely
+                                '@default': 'identifier'
+                            }
+                        }],
+                        [/[0-9]+/, 'number'],
+                        [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }],
+                        [/[{}()\[\]]/, '@brackets'],
+                        [/;;.*$/, 'comment'],
+                    ],
+                    string: [
+                        [/[^\\"]+/, 'string'],
+                        [/"/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
+                    ]
+                },
+                keywords: [
+                    'program', 'module', 'imports', 'import', 'defs',
+                    'deffn', 'defconst', 'name', 'version', 'args', 'ret', 'eff', 'body',
+                    'let', 'if', 'call', 'match', 'case', 'tag'
+                ],
+                intrinsics: [
+                    'io.print', 'io.read_file', 'io.write_file', 'io.file_exists',
+                    'net.listen', 'net.accept', 'net.read', 'net.write', 'net.close',
+                    'Some', 'None', 'Ok', 'Err'
+                ]
+            });
+
+            // Define Theme
+            monaco.editor.defineTheme('iris-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'keyword', foreground: 'C586C0' },
+                    { token: 'type.identifier', foreground: '4EC9B0' },
+                    { token: 'comment', foreground: '6A9955' },
+                    { token: 'string', foreground: 'CE9178' },
+                ],
+                colors: {
+                    'editor.background': '#1e1e1e',
+                }
+            });
+
+            // Create Editor
+            const editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: INITIAL_CODE,
+                language: 'iris',
+                theme: 'iris-dark',
+                minimap: { enabled: false },
+                fontSize: 14,
+                automaticLayout: true
+            });
+
+            // Run Handler
+            const runBtn = document.getElementById('runBtn');
+            const output = document.getElementById('output');
+            const loading = document.getElementById('loading');
+
+            runBtn.addEventListener('click', async () => {
+                const source = editor.getValue();
+                output.innerText = "";
+                output.className = ""; // Reset colors
+                loading.style.display = "inline";
+
+                setTimeout(async () => {
+                    try {
+                        if (window.runIris) {
+                            const start = performance.now();
+                            const result = await window.runIris(source);
+                            const time = (performance.now() - start).toFixed(2);
+
+                            output.innerText = result + `\n\n[Finished in ${time}ms]`;
+
+                            if (result.includes("Error")) {
+                                output.classList.add("error");
+                            } else {
+                                output.classList.add("success");
+                            }
+                        } else {
+                            output.innerText = "Error: IRIS runtime bundle not loaded.";
+                            output.classList.add("error");
+                        }
+                    } catch (e) {
+                        output.innerText = "Runtime Exception: " + e.message;
+                        output.classList.add("error");
+                    } finally {
+                        loading.style.display = "none";
+                    }
+                }, 10);
+            });
+        });
+    </script>
+</body>
+
+</html>
