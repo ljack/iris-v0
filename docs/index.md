@@ -47,8 +47,7 @@ Create a file named `hello.iris`:
   (defs
     (deffn (name main) (args) (ret I64) (eff !IO)
       (body 
-        (let (res (io.print "Hello, world!"))
-        0)
+        (let (res (io.print "Hello, world!")) 0)
       )
     )
   )
@@ -69,17 +68,19 @@ Create `fib.iris`:
   (module (name "fib") (version 0))
   (defs
     (deffn (name fib) (args (n I64)) (ret I64) (eff !Pure)
-      (body
+      (body 
         (if (< n 2)
             n
             (+ (call fib (- n 1)) (call fib (- n 2))))
       )
     )
+    
     (deffn (name main) (args) (ret I64) (eff !IO)
-      (body
-        (let (x (call fib 10))
-        (let (_ (io.print x))
-        0))
+      (body 
+        (let (res (io.print "Calculating fib(10)..."))
+             (let (val (call fib 10))
+                  (let (res2 (io.print val))
+                       val)))
       )
     )
   )
@@ -91,7 +92,7 @@ Create `fib.iris`:
 iris run fib.iris
 ```
 
-### HTTP Server
+### HTTP Server (Minimal)
 
 Create `server.iris`:
 
@@ -100,18 +101,47 @@ Create `server.iris`:
   (module (name "server") (version 0))
   (imports (import "http"))
   (defs
-    ;; Define handle_client function...
-    ;; (See full example in examples/server.iris in the repo)
-    
-    (deffn (name main) (args) (ret I64) (eff !Net)
+    (deffn (name handle_client) (args (sock I64)) (ret I64) (eff !Net)
       (body
-        (let (port 8080)
-        (let (server (net.listen port))
-        (let (_ (io.print "Listening on port 8080..."))
-        (call loop server))))
+        (match (net.read sock)
+           (case (tag "Ok" (raw_req))
+              (let (response "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello from IRIS!")
+                 (let (_ (net.write sock response)) 
+                    (match (net.close sock) 
+                       (case (tag "Ok" (ok)) 0) 
+                       (case (tag "Err" (e)) 1))
+                 )
+              )
+           )
+           (case (tag "Err" (e)) (let (_ (net.close sock)) 1))
+        )
       )
     )
-    ;; ... loop definition ...
+
+    (deffn (name loop) (args (server_sock I64)) (ret I64) (eff !Net)
+      (body
+         (match (net.accept server_sock)
+            (case (tag "Ok" (client_sock))
+               (let (_ (call handle_client client_sock))
+                   (call loop server_sock))
+            )
+            (case (tag "Err" (e)) (call loop server_sock))
+         )
+      )
+    )
+
+    (deffn (name main) (args) (ret I64) (eff !Net)
+       (body
+          (match (net.listen 8080)
+             (case (tag "Ok" (server_sock))
+                (let (_ (io.print "Listening on http://localhost:8080"))
+                    (call loop server_sock)
+                )
+             )
+             (case (tag "Err" (e)) (io.print "Failed to listen"))
+          )
+       )
+    )
   )
 )
 ```
@@ -127,3 +157,31 @@ iris run server.iris
 ## 📚 Documentation
 - **[Specification (v0.4)](https://github.com/ljack/iris-v0/blob/master/IRIS-v0.4.md)**
 - **[GitHub Repository](https://github.com/ljack/iris-v0)**
+
+<script>
+document.querySelectorAll('pre').forEach(pre => {
+  const button = document.createElement('button');
+  button.innerText = 'Copy';
+  button.style.position = 'absolute';
+  button.style.right = '10px';
+  button.style.top = '10px';
+  button.style.zIndex = '10';
+  button.style.padding = '5px 10px';
+  button.style.background = '#444';
+  button.style.color = '#fff';
+  button.style.border = 'none';
+  button.style.cursor = 'pointer';
+  button.style.borderRadius = '4px';
+
+  // Ensure pre is relative position for verify button placement
+  pre.style.position = 'relative';
+
+  button.addEventListener('click', () => {
+    const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+    navigator.clipboard.writeText(code);
+    button.innerText = 'Copied!';
+    setTimeout(() => button.innerText = 'Copy', 2000);
+  });
+  pre.appendChild(button);
+});
+</script>
