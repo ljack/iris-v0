@@ -372,6 +372,36 @@ export class Parser {
                     return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
                 }
 
+                // Check for (net.* ...)
+                if (op.startsWith('net.')) {
+                    const args: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        args.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+                }
+
+                // Check for (http.* ...)
+                if (op.startsWith('http.')) {
+                    const args: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        args.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+                }
+
+                // Check for (str.* ...)
+                if (op.startsWith('str.')) {
+                    const args: Expr[] = [];
+                    while (!this.check('RParen')) {
+                        args.push(this.parseExpr());
+                    }
+                    this.expect('RParen');
+                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+                }
+
                 throw new Error(`Unknown operator or special form: ${op}`);
             }
 

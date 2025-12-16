@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+const path = require('path');
+const cli = require('../dist/src/cli');
+
+// Call the CLI entry point
+// Ensure dist/src/cli.js exists (requires build)
+cli.cli(process.argv.slice(2));

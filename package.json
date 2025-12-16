@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "license": "(MIT OR Apache-2.0)",
+  "type": "commonjs",
+  "bin": {
+    "iris": "./bin/iris"
+  },
   "scripts": {
     "test": "ts-node src/tests.ts",
-    "update-raw": "ts-node generate_raw_links.ts"
+    "test-cli": "ts-node src/tests_cli.ts",
+    "update-raw": "ts-node generate_raw_links.ts",
+    "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "@types/node": "^25.0.2",
     "ts-node": "^10.9.2",

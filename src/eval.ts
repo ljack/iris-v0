@@ -1,14 +1,33 @@
 import { Program, Definition, Expr, Value, IntrinsicOp, MatchCase, ModuleResolver } from './types';
 
+
+export interface IFileSystem {
+    readFile(path: string): string | null; // null if not found/error
+    writeFile(path: string, content: string): boolean;
+    exists(path: string): boolean;
+}
+
+class MockFileSystem implements IFileSystem {
+    constructor(private data: Record<string, string>) { }
+    readFile(path: string) { return this.data[path] ?? null; }
+    writeFile(path: string, content: string) { this.data[path] = content; return true; }
+    exists(path: string) { return path in this.data; }
+}
+
 export class Interpreter {
     private program: Program;
     private functions = new Map<string, Definition & { kind: 'DefFn' }>();
     private constants = new Map<string, Value>();
-    private fs: Record<string, string>;
+    private fs: IFileSystem;
 
-    constructor(program: Program, fs: Record<string, string> = {}, private resolver?: ModuleResolver) {
+    constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver) {
         this.program = program;
-        this.fs = fs;
+        // Backwards compatibility with tests passing Record
+        if (typeof fs.readFile === 'function') {
+            this.fs = fs as IFileSystem;
+        } else {
+            this.fs = new MockFileSystem(fs as Record<string, string>);
+        }
 
         for (const def of program.defs) {
             if (def.kind === 'DefFn') {
@@ -234,17 +253,122 @@ export class Interpreter {
         if (op === 'io.read_file') {
             const path = args[0];
             if (path.kind !== 'Str') throw new Error("path must be string");
-            if (Object.prototype.hasOwnProperty.call(this.fs, path.value)) {
-                return { kind: 'Result', isOk: true, value: { kind: 'Str', value: this.fs[path.value] } };
+            const content = this.fs.readFile(path.value);
+            if (content !== null) {
+                return { kind: 'Result', isOk: true, value: { kind: 'Str', value: content } };
             } else {
                 return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "ENOENT" } };
             }
         }
 
+        if (op === 'io.write_file') {
+            const path = args[0];
+            const content = args[1];
+            if (path.kind !== 'Str') throw new Error("path must be string");
+            if (content.kind !== 'Str') throw new Error("content must be string");
+            this.fs.writeFile(path.value, content.value);
+            return { kind: 'Result', isOk: true, value: { kind: 'I64', value: BigInt(content.value.length) } };
+        }
+
+        if (op === 'io.file_exists') {
+            const path = args[0];
+            if (path.kind !== 'Str') throw new Error("path must be string");
+            return { kind: 'Bool', value: this.fs.exists(path.value) };
+        }
+
         if (op === 'io.print') {
-            // Mock print
-            console.log("IO.PRINT:", args[0]);
-            return { kind: 'Bool', value: true }; // Unit? v0 doesn't have Unit, maybe Bool or I64
+            const val = args[0];
+            if (val.kind === 'Str') {
+                console.log(val.value);
+            } else if (val.kind === 'I64' || val.kind === 'Bool') {
+                console.log(val.value.toString());
+            } else {
+                console.log(JSON.stringify(val));
+            }
+            return { kind: 'I64', value: 0n }; // Return 0
+        }
+
+        if (op.startsWith('net.')) {
+            // Stub network operations for now
+            console.log(`[NET] Mock Executing ${op}`, args);
+            // Default success for stubs
+            if (op === 'net.listen' || op === 'net.accept' || op === 'net.write')
+                return { kind: 'Result', isOk: true, value: { kind: 'I64', value: 1n } }; // handle 1
+            if (op === 'net.read')
+                return { kind: 'Result', isOk: true, value: { kind: 'Str', value: "GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n" } };
+            if (op === 'net.close')
+                return { kind: 'Result', isOk: true, value: { kind: 'Bool', value: true } };
+        }
+
+        if (op === 'http.parse_request') {
+            const raw = args[0];
+            if (raw.kind !== 'Str') throw new Error("http.parse_request expects Str");
+            const text = raw.value;
+
+            try {
+                const parts = text.split(/\r?\n\r?\n/); // Split head and body
+                const head = parts[0];
+                const body = parts.slice(1).join('\n\n'); // Rejoin body if needed? usually one body.
+
+                const lines = head.split(/\r?\n/);
+                if (lines.length === 0) throw new Error("Empty request");
+
+                const reqLine = lines[0].split(' ');
+                if (reqLine.length < 3) throw new Error("Invalid request line");
+                const method = reqLine[0];
+                const path = reqLine[1];
+                // version is reqLine[2]
+
+                const headers: Value[] = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (!line.trim()) continue;
+                    const idx = line.indexOf(':');
+                    if (idx !== -1) {
+                        const key = line.substring(0, idx).trim();
+                        const val = line.substring(idx + 1).trim();
+                        headers.push({
+                            kind: 'Record',
+                            fields: {
+                                key: { kind: 'Str', value: key },
+                                val: { kind: 'Str', value: val }
+                            }
+                        });
+                    }
+                }
+
+                const reqRecord: Value = {
+                    kind: 'Record',
+                    fields: {
+                        method: { kind: 'Str', value: method },
+                        path: { kind: 'Str', value: path },
+                        headers: { kind: 'List', items: headers },
+                        body: { kind: 'Str', value: body }
+                    }
+                };
+
+                return { kind: 'Result', isOk: true, value: reqRecord };
+            } catch (e: any) {
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: e.message } };
+            }
+        }
+
+        if (op === 'str.concat') {
+            const s1 = args[0]; const s2 = args[1];
+            if (s1.kind !== 'Str' || s2.kind !== 'Str') throw new Error("str.concat expects two strings");
+            return { kind: 'Str', value: s1.value + s2.value };
+        }
+
+        if (op === 'str.contains') {
+            const s1 = args[0]; const s2 = args[1];
+            if (s1.kind !== 'Str' || s2.kind !== 'Str') throw new Error("str.contains expects two strings");
+            return { kind: 'Bool', value: s1.value.includes(s2.value) };
+        }
+
+        if (op === 'str.ends_with') {
+            const s1 = args[0]; const s2 = args[1];
+            if (s1.kind !== 'Str' || s2.kind !== 'Str') throw new Error("str.ends_with expects two strings");
+            return { kind: 'Bool', value: s1.value.endsWith(s2.value) };
         }
 
         throw new Error(`Unknown intrinsic ${op}`);

@@ -230,7 +230,50 @@ export class TypeChecker {
                     joinedEff = this.joinEffects(joinedEff, '!IO');
                     if (expr.op === 'io.read_file') return { type: { type: 'Result', ok: { type: 'Str' }, err: { type: 'Str' } }, eff: joinedEff };
                     if (expr.op === 'io.write_file') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
+                    if (expr.op === 'io.file_exists') return { type: { type: 'Bool' }, eff: joinedEff };
                     if (expr.op === 'io.print') return { type: { type: 'I64' }, eff: joinedEff };
+                }
+
+                if (expr.op.startsWith('net.')) {
+                    joinedEff = this.joinEffects(joinedEff, '!Net');
+                    // Mock types for now (using I64 as handles)
+                    if (expr.op === 'net.listen') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
+                    if (expr.op === 'net.accept') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
+                    if (expr.op === 'net.read') return { type: { type: 'Result', ok: { type: 'Str' }, err: { type: 'Str' } }, eff: joinedEff };
+                    if (expr.op === 'net.write') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
+                    if (expr.op === 'net.close') return { type: { type: 'Result', ok: { type: 'Bool' }, err: { type: 'Str' } }, eff: joinedEff };
+                }
+
+                if (expr.op.startsWith('str.')) {
+                    // String operations are pure
+                    if (expr.op === 'str.concat') return { type: { type: 'Str' }, eff: joinedEff };
+                    if (expr.op === 'str.contains' || expr.op === 'str.ends_with') return { type: { type: 'Bool' }, eff: joinedEff };
+                }
+
+                if (expr.op === 'http.parse_request') {
+                    // Result<HttpRequest, Str>
+                    // HttpRequest = { method: Str, path: Str, headers: List<(Record (key Str) (val Str))>, body: Str }
+                    joinedEff = this.joinEffects(joinedEff, '!Pure'); // Parsing is pure!
+
+                    const headerType: IrisType = {
+                        type: 'Record',
+                        fields: { key: { type: 'Str' }, val: { type: 'Str' } }
+                    };
+
+                    const httpReqType: IrisType = {
+                        type: 'Record',
+                        fields: {
+                            method: { type: 'Str' },
+                            path: { type: 'Str' },
+                            headers: { type: 'List', inner: headerType },
+                            body: { type: 'Str' }
+                        }
+                    };
+
+                    return {
+                        type: { type: 'Result', ok: httpReqType, err: { type: 'Str' } },
+                        eff: joinedEff
+                    };
                 }
 
                 throw new Error(`Unknown intrinsic: ${expr.op}`);
@@ -265,10 +308,9 @@ export class TypeChecker {
 
     private joinEffects(e1: IrisEffect, e2: IrisEffect): IrisEffect {
         if (e1 === '!Infer' || e2 === '!Infer') return '!Pure';
-        const ord1 = this.effectOrder(e1);
-        const ord2 = this.effectOrder(e2);
 
         if (e1 === '!Any' || e2 === '!Any') return '!Any';
+        if (e1 === '!Net' || e2 === '!Net') return '!Net';
         if (e1 === '!IO' || e2 === '!IO') return '!IO';
         return '!Pure';
     }

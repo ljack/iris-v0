@@ -55,11 +55,15 @@ export type Expr =
   | { kind: 'Lambda'; args: { name: string; type: IrisType }[]; ret: IrisType; eff: IrisEffect; body: Expr }
   | { kind: 'Record'; fields: Record<string, Expr> };
 
+// Pre-defined operators
 export type IntrinsicOp =
   | '+' | '-' | '*' | '/' | '<=' | '<' | '='
   | 'Some' | 'Ok' | 'Err'
   | 'cons'
-  | 'io.print' | 'io.read_file' | 'io.write_file';
+  | 'io.print' | 'io.read_file' | 'io.write_file' | 'io.file_exists'
+  | 'net.listen' | 'net.accept' | 'net.read' | 'net.write' | 'net.close'
+  | 'http.parse_request'
+  | 'str.concat' | 'str.contains' | 'str.ends_with';
 
 export type MatchCase = {
   tag: string;

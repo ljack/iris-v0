@@ -1,0 +1,210 @@
+# IRIS v0 - Dual License
+
+IRIS v0 is distributed under the terms of either of:
+
+- **MIT License** (LICENSE-MIT)
+- **Apache License 2.0** (LICENSE-APACHE)
+
+at your option.
+
+---
+
+## Quick Summary
+
+You may choose to use IRIS v0 under **either** of these licenses:
+
+### MIT License (LICENSE-MIT)
+- Simple and permissive
+- Minimal terms and conditions
+- Great for general use
+- No patent clause
+
+### Apache License 2.0 (LICENSE-APACHE)
+- Permissive with patent protections
+- Explicit patent grant and retaliation clause
+- Professional liability disclaimers
+- Trademark guidance
+- Great for enterprise use
+
+---
+
+## How to Choose
+
+### Choose MIT if:
+- You want the simplest possible terms
+- You prefer minimal legal overhead
+- You're building on top of IRIS for your own project
+- You want maximum compatibility
+
+### Choose Apache 2.0 if:
+- You need explicit patent protection
+- You want clear liability limitations
+- You're using IRIS in enterprise settings
+- You need professional legal clarity
+- You're concerned about patent claims
+
+### Still Unsure?
+- Both are free to use
+- Both allow commercial use
+- Both allow modifications
+- Both allow distribution
+- Neither requires you to open source your work
+- Pick whichever you're most comfortable with
+
+---
+
+## Dual License Comparison
+
+| Aspect | MIT | Apache 2.0 |
+|--------|-----|-----------|
+| **Simplicity** | ✅ Very simple (3 clauses) | ⚠️ More detailed (9 sections) |
+| **Commercial Use** | ✅ Yes | ✅ Yes |
+| **Patent Grant** | ❌ No | ✅ Yes |
+| **Patent Retaliation** | ❌ No | ✅ Yes |
+| **Liability Clause** | ⚠️ Basic | ✅ Clear |
+| **Trademark Info** | ❌ No | ✅ Yes |
+| **Enterprise Ready** | ⚠️ Limited | ✅ Yes |
+
+---
+
+## How to Use Both Licenses
+
+### In package.json:
+```json
+{
+  "license": "(MIT OR Apache-2.0)"
+}
+```
+
+### In source files:
+```typescript
+/**
+ * IRIS v0
+ *
+ * This file is distributed under the terms of either of:
+ * - MIT License (see LICENSE-MIT)
+ * - Apache License 2.0 (see LICENSE-APACHE)
+ *
+ * at your option.
+ */
+```
+
+### In README:
+```markdown
+## License
+
+This project is dual-licensed under either of:
+- MIT License ([LICENSE-MIT](./LICENSE-MIT))
+- Apache License 2.0 ([LICENSE-APACHE](./LICENSE-APACHE))
+
+Choose whichever works best for your use case.
+```
+
+---
+
+## Why Dual Licensing?
+
+Dual licensing provides:
+
+✅ **Maximum Flexibility**
+- Users choose the license that works for them
+- No one-size-fits-all restriction
+
+✅ **Broader Adoption**
+- MIT for those who prefer simplicity
+- Apache for those who need patent protection
+- Both for enterprises and open source projects
+
+✅ **Community-Friendly**
+- Encourages contributions from all types of projects
+- No license incompatibility issues
+- Compatible with other MIT and Apache projects
+
+✅ **Professional**
+- Used by Rust, Kubernetes, and other major projects
+- Shows commitment to open source
+- Clear licensing intent
+
+---
+
+## Compatibility
+
+### Dual License Compatibility with Other Projects
+
+IRIS v0 (MIT OR Apache 2.0) is compatible with:
+
+| License | Compatible? | Notes |
+|---------|-------------|-------|
+| MIT | ✅ Yes | Can use IRIS under MIT |
+| Apache 2.0 | ✅ Yes | Can use IRIS under Apache 2.0 |
+| GPL v3 | ✅ Yes | Can use IRIS under Apache 2.0 |
+| LGPL | ✅ Yes | Can use IRIS under Apache 2.0 |
+| BSD | ✅ Yes | Can use IRIS under either license |
+| ISC | ✅ Yes | Can use IRIS under either license |
+| Proprietary | ✅ Yes | Can use IRIS under either license |
+
+The dual license makes IRIS compatible with almost any other open source or proprietary project.
+
+---
+
+## FAQ
+
+**Q: Can I modify IRIS for my own use?**
+A: Yes, under either license.
+
+**Q: Can I distribute my modified version?**
+A: Yes, under either license, with appropriate attribution.
+
+**Q: Can I use IRIS in a commercial product?**
+A: Yes, under either license, without restriction.
+
+**Q: Can I use IRIS in a proprietary closed-source project?**
+A: Yes, under either license.
+
+**Q: Do I have to pick one license for my project?**
+A: No, you can use whichever works best for your use case. Different files can use different licenses if needed.
+
+**Q: Which license should I include in my project?**
+A: Include LICENSE-MIT if you want simplicity, LICENSE-APACHE if you want patent protection. Or include both and use `(MIT OR Apache-2.0)` in package.json.
+
+**Q: Can the IRIS maintainers change the licenses?**
+A: No, once dual-licensed, all historical and future versions remain dual-licensed.
+
+**Q: What if I contribute to IRIS?**
+A: By contributing, you agree to license your contributions under the same dual license (MIT OR Apache 2.0).
+
+---
+
+## Real-World Dual Licensed Projects
+
+IRIS follows the same licensing model as:
+
+- **Rust**: Dual-licensed MIT OR Apache 2.0
+- **Tokio**: Dual-licensed MIT OR Apache 2.0
+- **Serde**: Dual-licensed MIT OR Apache 2.0
+- **Hyperium**: Dual-licensed MIT OR Apache 2.0
+- **Kubernetes**: Multi-licensed (Apache 2.0 + others)
+
+This is the industry-standard approach for open source projects that want maximum compatibility.
+
+---
+
+## License Texts
+
+### MIT License
+See [LICENSE-MIT](./LICENSE-MIT)
+
+### Apache License 2.0
+See [LICENSE-APACHE](./LICENSE-APACHE)
+
+---
+
+## Questions About Licensing?
+
+See [docs/LICENSE-COMPARISON.md](./docs/LICENSE-COMPARISON.md) for detailed analysis of both licenses.
+
+---
+
+**Effective Date**: 2025-12-16
+**License Model**: Dual MIT OR Apache 2.0
+**SPDX Identifier**: (MIT OR Apache-2.0)

@@ -1,25 +1,124 @@
 import { Parser, printValue } from './sexp';
 import { TypeChecker } from './typecheck';
 import { Interpreter } from './eval';
-import { ModuleResolver } from './types';
+import { ModuleResolver, Program } from './types';
 
-export function run(source: string, fsMap: Record<string, string> = {}, modules: Record<string, string> = {}): string {
+// Helper to find imports without parsing everything?
+// We need to parse to find imports.
+function getImports(source: string): string[] {
+    try {
+        const parser = new Parser(source);
+        const prog = parser.parse();
+        return prog.imports.map(i => i.path);
+    } catch {
+        return [];
+    }
+}
+
+function checkCircularImports(entryPath: string, modules: Record<string, string>) {
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    function dfs(path: string) {
+        if (recursionStack.has(path)) {
+            // Found a cycle!
+            // We need to reconstruct the path for the error message?
+            // "Cycle detected: modB -> modA ..." (simplification)
+            // The path is implicit in recursionStack, but Set iteration order matches insertion in JS.
+            // Let's find the cycle start.
+            const stack = Array.from(recursionStack);
+            const cycleStart = stack.indexOf(path);
+            const cycle = stack.slice(cycleStart).concat(path).join(' -> ');
+            throw new Error(`Circular import detected: ${cycle}`);
+        }
+        if (visited.has(path)) return;
+
+        visited.add(path);
+        recursionStack.add(path);
+
+        const source = modules[path];
+        if (source) {
+            const imports = getImports(source);
+            for (const imp of imports) {
+                dfs(imp);
+            }
+        }
+
+        recursionStack.delete(path);
+    }
+
+    // We don't check entryPath itself usually if it's "source" argument (not in modules map),
+    // but the Source imports modules which might cycle.
+    // The entry source is passed separately.
+    // Let's assume entry imports X.
+    // But we need to parse entry too.
+    return; // logic moved to run()
+}
+
+import { IFileSystem } from './eval';
+
+// Helper to encapsulate program + resolver for interpreter
+type CheckResult = { success: true, program: Program, resolver: ModuleResolver } | { success: false, error: string };
+
+export function check(source: string, modules: Record<string, string> = {}): CheckResult {
     // 1. Parse
     const parser = new Parser(source);
     let program;
     try {
         program = parser.parse();
     } catch (e: any) {
-        return `ParseError: ${e.message}`;
+        return { success: false, error: `ParseError: ${e.message}` };
     }
 
-    // Create resolver
+    // 1b. Check Circular Imports starting from main program
+    try {
+        const visited = new Set<string>();
+        const recursionStack = new Set<string>();
+
+        const dfs = (path: string) => {
+            if (recursionStack.has(path)) {
+                // Construct nice message
+                const stack = Array.from(recursionStack);
+                const idx = stack.indexOf(path);
+                const cycle = stack.slice(idx).concat(path).join(' -> ');
+                throw new Error(`Circular import detected: ${cycle}`);
+            }
+            if (visited.has(path)) return;
+
+            visited.add(path);
+            recursionStack.add(path);
+
+            const src = modules[path];
+            if (src) {
+                const p = new Parser(src);
+                const pr = p.parse();
+                for (const i of pr.imports) {
+                    dfs(i.path);
+                }
+            }
+            recursionStack.delete(path);
+        };
+
+        for (const i of program.imports) {
+            dfs(i.path);
+        }
+
+    } catch (e: any) {
+        return { success: false, error: `RuntimeError: ${e.message}` };
+    }
+
+    // Create caching resolver
+    const cache = new Map<string, Program>();
     const resolver: ModuleResolver = (path: string) => {
+        if (cache.has(path)) return cache.get(path);
+
         const modSource = modules[path];
         if (!modSource) return undefined;
         try {
             const p = new Parser(modSource);
-            return p.parse();
+            const pr = p.parse();
+            cache.set(path, pr);
+            return pr;
         } catch (e) {
             console.error(`Failed to parse module ${path}:`, e);
             return undefined;
@@ -32,13 +131,20 @@ export function run(source: string, fsMap: Record<string, string> = {}, modules:
         checker.check(program);
     } catch (e: any) {
         if (e.message.startsWith('TypeError:')) {
-            return e.message;
+            return { success: false, error: e.message };
         }
-        return `TypeError: ${e.message}`;
+        return { success: false, error: `TypeError: ${e.message}` };
     }
 
+    return { success: true, program, resolver };
+}
+
+export function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}): string {
+    const checked = check(source, modules);
+    if (!checked.success) return checked.error;
+
     // 3. Interpret
-    const interpreter = new Interpreter(program, fsMap, resolver);
+    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver);
     let result;
     try {
         result = interpreter.evalMain();
