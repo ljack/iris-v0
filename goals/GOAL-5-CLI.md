@@ -5,20 +5,20 @@ The objective of this goal is to provide a developer-friendly Command Line Inter
 ## Roadmap
 
 ### Phase 1: Basic Structure & Entry Point
-- [ ] Create `bin/iris` executable.
-- [ ] Make `src/main.ts` (or `src/cli.ts`) the entry point for CLI args.
-- [ ] Parse arguments (minimal, no external deps if possible, or `minimist`/`commander` if allowed - sticking to minimal for now as per "no deps" preference unless needed).
+- [x] Create `bin/iris` executable.
+- [x] Make `src/main.ts` (or `src/cli.ts`) the entry point for CLI args.
+- [x] Parse arguments (minimal, no external deps).
 
 ### Phase 2: Core Commands
-- [ ] **`run <file>`**: Parse, type-check, and evaluate a file.
-    - Support shebang `#!/usr/bin/env iris`?
-- [ ] **`check <file>`**: Parse and type-check only (faster feedback loop).
-- [ ] **`eval "code"`**: Evaluate string directly (optional but useful).
+- [x] **`run <file>`**: Parse, type-check, and evaluate a file.
+    - Support shebang `#!/usr/bin/env iris`? (Supported via node shebang in bin/iris)
+- [x] **`check <file>`**: Parse and type-check only (faster feedback loop).
+- [ ] **`eval "code"`**: Evaluate string directly (Skipped for v0.4).
 
 ### Phase 3: Developer Experience (Polish)
-- [ ] **`version`**: Output current version.
-- [ ] **`help`**: Output usage instructions.
-- [ ] **Error Reporting**: Pretty print errors with file names and line numbers (already partially done, but ensure CLI formats it nicely).
+- [x] **`version`**: Output current version.
+- [x] **`help`**: Output usage instructions.
+- [x] **Error Reporting**: Pretty print errors with file names and line numbers.
 
 ## Detailed Specification
 
