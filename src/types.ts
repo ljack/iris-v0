@@ -8,7 +8,9 @@ export type IrisType =
   | { type: 'Tuple'; items: IrisType[] }
   | { type: 'Record'; fields: Record<string, IrisType> }
   | { type: 'Map'; key: IrisType; value: IrisType }
-  | { type: 'Fn'; args: IrisType[]; ret: IrisType; eff: IrisEffect };
+  | { type: 'Fn'; args: IrisType[]; ret: IrisType; eff: IrisEffect }
+  | { type: 'Named'; name: string }
+  | { type: 'Union'; variants: Record<string, IrisType> };
 
 export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any' | '!Infer';
 
@@ -37,7 +39,8 @@ export type Definition =
     ret: IrisType;
     eff: IrisEffect;
     body: Expr;
-  };
+  }
+  | { kind: 'TypeDef'; name: string; type: IrisType };
 
 export type Expr =
   | { kind: 'Literal'; value: Value }
@@ -51,24 +54,31 @@ export type Expr =
     op: IntrinsicOp;
     args: Expr[];
   }
-  | { kind: 'List'; items: Expr[] } // List construction
+  | { kind: 'List'; items: Expr[]; typeArg?: IrisType } // List construction
   | { kind: 'Tuple'; items: Expr[] }
   | { kind: 'Fold'; list: Expr; init: Expr; fn: Expr } // fn is likely a Lambda or Var
   | { kind: 'Lambda'; args: { name: string; type: IrisType }[]; ret: IrisType; eff: IrisEffect; body: Expr }
-  | { kind: 'Record'; fields: Record<string, Expr> };
+  | { kind: 'Record'; fields: Record<string, Expr> }
+  | { kind: 'Tagged'; tag: string; value: Expr };
 
 // Pre-defined operators
 export type IntrinsicOp =
-  | '+' | '-' | '*' | '/' | '<=' | '<' | '='
+  | '+' | '-' | '*' | '/' | '<=' | '<' | '=' | '>=' | '>'
+  | '&&' | '||' | '!'
   | 'Some' | 'Ok' | 'Err'
+
   | 'cons'
   | 'io.print' | 'io.read_file' | 'io.write_file' | 'io.file_exists' | 'io.read_dir'
-  | 'net.listen' | 'net.accept' | 'net.read' | 'net.write' | 'net.close'
+  | 'net.listen' | 'net.accept' | 'net.read' | 'net.write' | 'net.close' | 'net.connect'
   | 'sys.spawn' | 'sys.self' | 'sys.send' | 'sys.recv' | 'sys.sleep'
-  | 'http.parse_request'
+  | 'http.parse_request' | 'http.parse_response'
+  | 'http.get' | 'http.post'
   | 'map.make' | 'map.put' | 'map.get' | 'map.contains' | 'map.keys'
   | 'list.len' | 'list.get'
-  | 'str.len' | 'str.concat' | 'str.contains' | 'str.ends_with';
+  | 'tuple.get' | 'record.get'
+  | 'str.len' | 'str.concat' | 'str.contains' | 'str.ends_with'
+  | 'str.get' | 'str.substring' | 'str.from_code' | 'str.index_of'
+  | 'i64.from_string';
 
 export type MatchCase = {
   tag: string;
@@ -86,4 +96,5 @@ export type Value =
   | { kind: 'List'; items: Value[] }
   | { kind: 'Tuple'; items: Value[] }
   | { kind: 'Record'; fields: Record<string, Value> }
+  | { kind: 'Tagged'; tag: string; value: Value }
   | { kind: 'Map'; value: Map<string, Value> };

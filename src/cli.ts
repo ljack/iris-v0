@@ -130,14 +130,36 @@ class NodeNetwork implements INetwork {
         });
 
         sock.on('close', () => {
-            // connection close logic?
-            // Maybe notify read with null/empty?
-            // For now, next read returns null? or hangs?
-            // If socket gone, read returns null?
-            // We should cleanup.
+            // Notify all waiters with null to signal connection closed
+            const waiters = this.readWaiters.get(id) || [];
+            for (const waiter of waiters) {
+                waiter(null as any); // cast to any because signature expects string
+            }
+            this.readWaiters.delete(id);
+            this.sockets.delete(id);
         });
 
         sock.on('error', () => { });
+    }
+
+    async connect(host: string, port: number): Promise<number | null> {
+        return new Promise((resolve) => {
+            const sock = net.createConnection(port, host);
+
+            const onConnect = () => {
+                const id = this.nextId++;
+                this.sockets.set(id, sock);
+                this.setupSocket(id, sock);
+                resolve(id);
+            };
+
+            const onError = (_err: any) => {
+                resolve(null);
+            };
+
+            sock.once('connect', onConnect);
+            sock.once('error', onError);
+        });
     }
 
     /*

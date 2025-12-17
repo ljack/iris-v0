@@ -1,8 +1,8 @@
 # IRIS v0 Roadmap & Task Tracking
 
 **Project**: IRIS v0 - AI-Centric Deterministic Programming Language
-**Current Status**: v0.3 Stabilization - All 82 Tests Passing ✅
-**Last Updated**: 2025-12-15
+**Current Status**: v0.5 Development - 99 Tests Passing ✅
+**Last Updated**: 2025-12-16
 
 ---
 
@@ -26,22 +26,28 @@
   - Add: Left/right shift operators
   - Tests: 8-10 new tests for bitwise operations
 
-- [ ] **String Manipulation**
-  - Add: `string.length`, `string.concat`, `string.substring`
-  - Add: `string.contains`, `string.split`, `string.trim`
-  - Add: Character/code point operations
-  - Tests: 10-12 new tests for string operations
+- [x] **String Manipulation**
+  - [x] Add: `str.len`, `str.concat`, `str.contains`, `str.ends_with`
+  - [ ] Add: `string.substring`, `string.split`, `string.trim`
+  - [ ] Add: Character/code point operations
+  - [x] Tests: Verified in T126
 
-- [ ] **List Operations**
-  - Add: `list.length`, `list.head`, `list.tail`
-  - Add: `list.map`, `list.filter`, `list.fold`
-  - Add: `list.reverse`, `list.sort`
-  - Tests: 12-15 new tests for list operations
+- [x] **List Operations**
+  - [x] Add: `list.len`, `list.get`
+  - [ ] Add: `list.head`, `list.tail`
+  - [ ] Add: `list.map`, `list.filter`, `list.fold`
+  - [ ] Add: `list.reverse`, `list.sort`
+  - [x] Tests: Verified in T126
+
+- [x] **Map Operations** (New)
+  - [x] Add: `Map<K,V>` type
+  - [x] Add: `map.make`, `map.put`, `map.get`, `map.contains`, `map.keys`
+  - [x] Tests: Verified in T125
 
 - [ ] **Math Functions**
-  - Add: `math.abs`, `math.max`, `math.min`
-  - Add: `math.pow`, `math.sqrt`, `math.floor`, `math.ceil`
-  - Tests: 6-8 new tests for math functions
+  - [ ] Add: `math.abs`, `math.max`, `math.min`
+  - [ ] Add: `math.pow`, `math.sqrt`, `math.floor`, `math.ceil`
+  - [ ] Tests: 6-8 new tests for math functions
 
 ### 1.2 Pattern Matching Enhancements
 - [ ] **Tuple Destructuring**
@@ -403,22 +409,22 @@
   - Web-based syntax highlighter
 
 ### 6.4 Playground/Web Interpreter
-- [ ] **Web Frontend**
-  - Interactive code editor
-  - Real-time evaluation
-  - Error reporting display
-  - Output console
+- [x] **Web Frontend**
+  - [x] Interactive code editor (Monaco)
+  - [x] Real-time evaluation
+  - [x] Error reporting display
+  - [x] Output console
 
-- [ ] **Features**
-  - Share code via URL
-  - Save/load programs
-  - Example programs library
-  - Documentation in sidebar
+- [x] **Features**
+  - [ ] Share code via URL
+  - [ ] Save/load programs
+  - [x] Example programs library (basic)
+  - [ ] Documentation in sidebar
 
-- [ ] **Deployment**
-  - WASM compilation support
-  - Serverless function deployment
-  - GitHub Pages hosting
+- [x] **Deployment**
+  - [x] Browser Bundle (esbuild)
+  - [ ] Serverless function deployment
+  - [x] GitHub Pages hosting
 
 ---
 
@@ -581,7 +587,7 @@
 | Metric | Value |
 |--------|-------|
 | Lines of Code (Core) | 1,108 |
-| Test Count | 82 |
+| Test Count | 99 |
 | Test Pass Rate | 100% |
 | Git Commits | 13 |
 | Language Features | ~15 |
@@ -615,7 +621,8 @@
 - **v0.1**: Core language foundation (10 tests)
 - **v0.2**: Effect lattice system (20 tests)
 - **v0.3**: Adversarial test suite (82 tests)
-- **v0.4**: TBD (next major version)
+- **v0.4**: HTTP Server & Modular System (96 tests)
+- **v0.5**: Web Playground, Concurrency (Actors), StdLib Expansion, Self-Hosted Lexer (99 tests)
 
 ---
 
@@ -629,6 +636,6 @@ For questions about this roadmap or to contribute:
 
 ---
 
-**Last Updated**: 2025-12-15
+**Last Updated**: 2025-12-16
 **Maintained By**: IRIS Development Team
 **License**: MIT

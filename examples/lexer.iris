@@ -1,0 +1,185 @@
+(program
+  (module (name "lexer") (version 1))
+  (imports
+    (import "io" (as "io"))
+    (import "str" (as "str"))
+    (import "list" (as "list"))
+  )
+  (defs
+    ;; Token Structure: (record (kind Str) (value Str))
+    ;; Kinds: "LPAREN", "RPAREN", "INT", "STR", "IDENT", "KEYWORD", "EOF"
+
+    (deffn (name mk_token) (args (kind Str) (value Str)) (ret (Record (kind Str) (value Str))) (eff !Pure)
+      (body (record (kind kind) (value value)))
+    )
+
+    (deffn (name is_digit) (args (c I64)) (ret Bool) (eff !Pure)
+      (body (&& (>= c 48) (<= c 57)))
+    )
+
+    (deffn (name is_alpha) (args (c I64)) (ret Bool) (eff !Pure)
+      (body (|| (&& (>= c 97) (<= c 122)) ;; a-z
+                (&& (>= c 65) (<= c 90)))) ;; A-Z
+    )
+
+    (deffn (name is_whitespace) (args (c I64)) (ret Bool) (eff !Pure)
+      (body (|| (= c 32) (|| (= c 10) (|| (= c 9) (= c 13))))) ;; space, \n, \t, \r
+    )
+
+    ;; Scan an integer starting at pos
+    (deffn (name scan_int_loop) (args (input Str) (len I64) (start I64) (curr I64)) (ret (Tuple I64 Str)) (eff !Pure)
+      (body 
+        (if (>= curr len)
+            (tuple curr (str.substring input start curr))
+            (match (str.get input curr)
+                    (case (tag "Some" (c))
+                        (if (call is_digit c)
+                            (call scan_int_loop input len start (+ curr 1))
+                            (tuple curr (str.substring input start curr))
+                        )
+                    )
+                    (case (tag "None") (tuple curr (str.substring input start curr)))
+            )
+        )
+      )
+    )
+
+    (deffn (name scan_int) (args (input Str) (len I64) (start I64)) (ret (Tuple I64 Str)) (eff !Pure)
+      (body (call scan_int_loop input len start (+ start 1)))
+    )
+
+    ;; Scan a string literal starting at pos (after quote)
+    (deffn (name scan_string_loop) (args (input Str) (len I64) (start I64) (curr I64)) (ret (Tuple I64 Str)) (eff !Pure)
+      (body
+        (if (>= curr len)
+            (tuple curr (str.substring input start curr))
+            (match (str.get input curr)
+                (case (tag "Some" (c))
+                    (if (= c 34) ;; Quote "
+                        (tuple (+ curr 1) (str.substring input (+ start 1) curr))
+                        (call scan_string_loop input len start (+ curr 1))
+                    )
+                )
+                (case (tag "None") (tuple curr ""))
+            )
+        )
+      )
+    )
+
+    (deffn (name scan_string) (args (input Str) (len I64) (start I64)) (ret (Tuple I64 Str)) (eff !Pure)
+      (body (call scan_string_loop input len start (+ start 1)))
+    )
+
+    ;; Scan identifier or keyword
+    (deffn (name scan_ident_loop) (args (input Str) (len I64) (start I64) (curr I64)) (ret (Tuple I64 Str)) (eff !Pure)
+      (body
+        (if (>= curr len)
+            (tuple curr (str.substring input start curr))
+            (match (str.get input curr)
+                (case (tag "Some" (c))
+                    (if (|| (call is_alpha c) (|| (call is_digit c) (|| (= c 95) (= c 45)))) ;; alpha, digit, _, -
+                        (call scan_ident_loop input len start (+ curr 1))
+                        (tuple curr (str.substring input start curr))
+                    )
+                )
+                (case (tag "None") (tuple curr ""))
+            )
+        )
+      )
+    )
+
+    (deffn (name scan_ident) (args (input Str) (len I64) (start I64)) (ret (Tuple I64 Str)) (eff !Pure)
+      (body (call scan_ident_loop input len start (+ start 1)))
+    )
+
+    (deffn (name tokenize_rec) (args (input Str) (len I64) (pos I64) (tokens (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
+      (body
+        (if (>= pos len)
+            (cons (call mk_token "EOF" "") tokens)
+            (match (str.get input pos)
+                (case (tag "Some" (c))
+                    (if (call is_whitespace c)
+                        (call tokenize_rec input len (+ pos 1) tokens)
+                        (if (= c 40) ;; (
+                            (call tokenize_rec input len (+ pos 1) (cons (call mk_token "LPAREN" "(") tokens))
+                            (if (= c 41) ;; )
+                                (call tokenize_rec input len (+ pos 1) (cons (call mk_token "RPAREN" ")") tokens))
+                                (if (= c 34) ;; "
+                                    (let (res (call scan_string input len pos))
+                                        (let (new_pos (tuple.get res 0))
+                                            (let (val (tuple.get res 1))
+                                                (call tokenize_rec input len new_pos (cons (call mk_token "STR" val) tokens))
+                                            )
+                                        )
+                                    )
+                                    (if (call is_digit c)
+                                        (let (res (call scan_int input len pos))
+                                            (let (new_pos (tuple.get res 0))
+                                                (let (val (tuple.get res 1))
+                                                    (call tokenize_rec input len new_pos (cons (call mk_token "INT" val) tokens))
+                                                )
+                                            )
+                                        )
+                                        ;; Identifier / Keyword
+                                        (let (res (call scan_ident input len pos))
+                                            (let (new_pos (tuple.get res 0))
+                                                (let (val (tuple.get res 1))
+                                                    (let (kind (if (|| (= val "let") (|| (= val "fn") (|| (= val "if") (= val "match")))) "KEYWORD" "IDENT"))
+                                                        (call tokenize_rec input len new_pos (cons (call mk_token kind val) tokens))
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+                (case (tag "None") tokens)
+            )
+        )
+      )
+    )
+
+    (deffn (name reverse_loop) (args (rem (List (Record (kind Str) (value Str)))) (acc (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
+      (body
+        (match rem
+            (case (tag "nil") acc)
+            (case (tag "cons" (h t)) (call reverse_loop t (cons h acc)))
+        )
+      )
+    )
+
+    (deffn (name reverse) (args (l (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
+      (body (call reverse_loop l (list-of (Record (kind Str) (value Str)))))
+    )
+
+    (deffn (name tokenize) (args (input Str)) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
+      (body (call reverse (call tokenize_rec input (str.len input) 0 (list-of (Record (kind Str) (value Str))))))
+    )
+
+    (deffn (name print_token_list) (args (l (List (Record (kind Str) (value Str))))) (ret I64) (eff !IO)
+      (body
+        (match l
+            (case (tag "nil") 0)
+            (case (tag "cons" (h t))
+                (let (_ (io.print (str.concat (str.concat h.kind ": ") h.value)))
+                    (call print_token_list t)
+                )
+            )
+        )
+      )
+    )
+
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body
+        (let (code "(let x 123 \"hello\")")
+            (let (tokens (call tokenize code))
+                (call print_token_list tokens)
+            )
+        )
+      )
+    )
+  )
+)

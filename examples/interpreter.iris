@@ -1,0 +1,176 @@
+(program
+  (module (name "interpreter") (version 1))
+  (imports
+    (import "list" (as "list"))
+    (import "map" (as "map"))
+    (import "str" (as "str"))
+  )
+  (defs
+    ;; --- AST Definitions (Mirrors parser.iris) ---
+
+    (type Value
+      (union
+        (tag "I64" (I64))
+        (tag "Bool" (Bool))
+        (tag "Str" (Str))
+        (tag "Option" ((Record (value Value)))) 
+        (tag "None" ((Record))) 
+        (tag "Some" (Value)) 
+        (tag "Result" ((Record (isOk Bool) (value Value))))
+        (tag "List" ((Record (items (List Value)))))
+        (tag "Tuple" ((Record (items (List Value)))))
+        (tag "Record" ((Record (fields (List (Tuple Str Value))))))
+        (tag "Map" ((Record (entries (List (Tuple Str Value)))))) 
+      )
+    )
+
+    (type IrisType
+        (union
+            (tag "I64" ((Record)))
+            (tag "Bool" ((Record)))
+            (tag "Str" ((Record)))
+            (tag "Option" ((Record (inner IrisType))))
+            (tag "Result" ((Record (ok IrisType) (err IrisType))))
+            (tag "List" ((Record (inner IrisType))))
+            (tag "Tuple" ((Record (items (List IrisType)))))
+            (tag "Record" ((Record (fields (List (Tuple Str IrisType))))))
+            (tag "Map" ((Record (key IrisType) (value IrisType))))
+            (tag "Fn" ((Record (args (List IrisType)) (ret IrisType) (eff Str))))
+            (tag "Named" ((Record (name Str))))
+            (tag "Union" ((Record (variants (List (Tuple Str IrisType))))))
+        )
+    )
+
+    (type Arg (Record (name Str) (type IrisType)))
+
+    (type Expr
+      (union
+        (tag "Literal" (Value))
+        (tag "Var" ((Record (name Str))))
+        (tag "Let" ((Record (name Str) (value Expr) (body Expr))))
+        (tag "If" ((Record (cond Expr) (then Expr) (else Expr))))
+        (tag "Match" ((Record (target Expr) 
+                             (cases (List (Record (tag Str) (vars (List Str)) (body Expr)))))))
+        (tag "Call" (Str (List Expr)))
+        (tag "Intrinsic" (Str (List Expr)))
+        (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
+        (tag "Tuple" ((Record (items (List Expr)))))
+        (tag "Lambda" ((Record (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
+        (tag "Record" ((Record (fields (List (Tuple Str Expr))))))
+      )
+    )
+
+    ;; --- Evaluator ---
+
+    ;; Environment: For now, a simple Map from Name to Value. 
+    ;; Scoping: We can shadow by creating a new map or using a list of maps.
+    ;; Simplest: Linked list of maps/records for scopes?
+    ;; Or just pass Map and use immutable updates? Shadowing works fine with immutable map put.
+    ;; But `Let` scope is local.
+    ;; Let's use `Map Str Value` as Env. using `map.put` creates a new version for the inner scope.
+    (type Env (Record (bindings (Map Str Value))))
+
+    (deffn (name env_new) (args) (ret Env) (eff !Pure)
+        (body (record (bindings (map.make "k" (tag "I64" 0))))) ;; dummy witness
+    )
+
+    (deffn (name env_get) (args (env Env) (key Str)) (ret (Option Value)) (eff !Pure)
+        (body (map.get env.bindings key))
+    )
+
+    (deffn (name env_put) (args (env Env) (key Str) (val Value)) (ret Env) (eff !Pure)
+        (body (record (bindings (map.put env.bindings key val))))
+    )
+
+    (deffn (name eval) (args (e Expr) (env Env)) (ret Value) (eff !Pure)
+        (body
+            (match e
+                (case (tag "Literal" (v)) v)
+                (case (tag "Var" (v)) 
+                    (let (found (env_get env v.name))
+                        (match found
+                            (case (tag "Some" (val)) val)
+                            (case (tag "None") 
+                                ;; For now, validation error or crash?
+                                (tag "I64" 0) ;; Hack: Undefined var
+                            )
+                        )
+                    )
+                )
+                (case (tag "Let" (l))
+                    (let (val (eval l.value env))
+                        (let (new_env (env_put env l.name val))
+                            (eval l.body new_env)
+                        )
+                    )
+                )
+                (case (tag "If" (i))
+                    (let (c (eval i.cond env))
+                        (match c
+                            (case (tag "Bool" (b))
+                                (if b 
+                                    (eval i.then env)
+                                    (eval i.else env)
+                                )
+                            )
+                            (case (tag "I64" (_)) (tag "I64" 0)) ;; Type error
+                            (case (tag "Str" (_)) (tag "I64" 0)) ;; Type error
+                            (case (tag "Option" (_)) (tag "I64" 0))
+                             (case (tag "None" (_)) (tag "I64" 0))
+                             (case (tag "Some" (_)) (tag "I64" 0))
+                             (case (tag "Result" (_)) (tag "I64" 0))
+                             (case (tag "List" (_)) (tag "I64" 0))
+                             (case (tag "Tuple" (_)) (tag "I64" 0))
+                             (case (tag "Record" (_)) (tag "I64" 0))
+                             (case (tag "Map" (_)) (tag "I64" 0))
+                        )
+                    )
+                )
+                (case (tag "Intrinsic" (i))
+                     (let (op i.0)
+                        (let (args i.1)
+                            (eval_intrinsic op args env)
+                        )
+                     )
+                )
+                 ;; Fallback for other exprs
+                 (case (tag "Call" (_)) (tag "I64" 0))
+                 (case (tag "Match" (_)) (tag "I64" 0))
+                 (case (tag "List" (_)) (tag "I64" 0))
+                 (case (tag "Tuple" (_)) (tag "I64" 0))
+                 (case (tag "Lambda" (_)) (tag "I64" 0))
+                 (case (tag "Record" (_)) (tag "I64" 0))
+            )
+        )
+    )
+
+    (deffn (name eval_intrinsic) (args (op Str) (args (List Expr)) (env Env)) (ret Value) (eff !Pure)
+        (body
+            (if (= op "+")
+                (let (a (list.get args 0))
+                (let (b (list.get args 1))
+                    (match a (case (tag "Some" (av)) 
+                      (match b (case (tag "Some" (bv))
+                        (let (va (eval av env))
+                        (let (vb (eval bv env))
+                            (match va (case (tag "I64" (ia))
+                                (match vb (case (tag "I64" (ib))
+                                    (tag "I64" (+ ia ib))
+                                ) (case (tag "Bool" (_)) (tag "I64" 0)) (case (tag "Str" (_)) (tag "I64" 0)) (case (tag "Option" (_)) (tag "I64" 0)) (case (tag "None") (tag "I64" 0)) (case (tag "Some" (_)) (tag "I64" 0)) (case (tag "Result" (_)) (tag "I64" 0)) (case (tag "List" (_)) (tag "I64" 0)) (case (tag "Tuple" (_)) (tag "I64" 0)) (case (tag "Record" (_)) (tag "I64" 0)) (case (tag "Map" (_)) (tag "I64" 0))
+                                )
+                            ) (case (tag "Bool" (_)) (tag "I64" 0)) (case (tag "Str" (_)) (tag "I64" 0)) (case (tag "Option" (_)) (tag "I64" 0)) (case (tag "None") (tag "I64" 0)) (case (tag "Some" (_)) (tag "I64" 0)) (case (tag "Result" (_)) (tag "I64" 0)) (case (tag "List" (_)) (tag "I64" 0)) (case (tag "Tuple" (_)) (tag "I64" 0)) (case (tag "Record" (_)) (tag "I64" 0)) (case (tag "Map" (_)) (tag "I64" 0))
+                            )
+                        )))
+                        (case (tag "None") (tag "I64" 0))
+                      ))
+                    (case (tag "None") (tag "I64" 0))
+                    )
+                ))
+                (tag "I64" 0)
+            )
+        )
+    )
+
+  )
+)
+)

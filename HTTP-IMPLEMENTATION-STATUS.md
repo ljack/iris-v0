@@ -20,6 +20,7 @@ The HTTP server implementation is **further along than the GOAL-4-ROADMAP sugges
 ✅ **File Serving Logic** (Phase 4.1) - Test t113 passing
 
 **All 14 tests passing** with full type checking and effect system validation.
+**Basic HTTP Client** functionality verified with `examples/http_client.iris`.
 
 ---
 
@@ -50,12 +51,12 @@ The HTTP server implementation is **further along than the GOAL-4-ROADMAP sugges
 | **t102** | IO file does not exist | ✅ PASS | `io.file_exists` negative case |
 
 **I/O Operations Status**: ✅ **PARTIALLY COMPLETE** - Implemented:
-- ✅ `io.write_file(path, content)` → `Result<I64, Str>`
-- ✅ `io.file_exists(path)` → `Bool`
-- ✅ `io.read_file(path)` → `Result<Str, Str>` (from earlier)
-- ❌ `io.delete_file` - NOT YET
-- ❌ `io.list_dir` - NOT YET
-- ❌ `io.get_file_size` - NOT YET
+- [x] `io.read_file`
+- [x] `io.write_file`
+- [x] `io.file_exists`
+- [x] `io.read_dir` (Implemented in eval.ts)
+- [ ] `io.delete_file` (NOT YET)
+- [ ] `io.get_file_size` (NOT YET)
 
 ### Network Effects Tests (Phase 2.1)
 
@@ -97,20 +98,20 @@ The HTTP server implementation is **further along than the GOAL-4-ROADMAP sugges
 | **t111** | Server Request Cycle | ✅ PASS | Full TCP connection flow |
 | **t112** | Modular HTTP Server | ✅ PASS | Modular response building |
 
-**Network I/O Status**: ✅ **COMPLETE (STUBBED)** - Implemented:
+**Network I/O Status**: ✅ **COMPLETE (REAL)** - Implemented:
 ```
-- net.listen(port) → Result<I64, Str>           [stub, returns handle 1]
-- net.accept(listener) → Result<I64, Str>       [stub, returns handle 1]
-- net.read(stream) → Result<Str, Str>           [stub, returns mock HTTP request]
-- net.write(stream, data) → Result<I64, Str>    [stub, returns length]
-- net.close(stream) → Result<Bool, Str>         [stub, returns true]
+- net.listen(port) → Result<I64, Str>           [Real TCP server via Node.js net]
+- net.accept(listener) → Result<I64, Str>       [Real socket connection acceptance]
+- net.read(stream) → Result<Str, Str>           [Real async socket reading]
+- net.write(stream, data) → Result<I64, Str>    [Real socket writing]
+- net.close(stream) → Result<Bool, Str>         [Real socket/server closure]
 ```
 
 **Current Behavior**:
-- Mock implementations allow testing HTTP logic without real sockets
-- Prints `[NET] Mock Executing {operation}` to console
-- t111 demonstrates full server flow: `accept → read → parse → write → close`
-- t112 demonstrates modular HTTP response building with imports
+- CLI (`src/cli.ts`) injects `NodeNetwork` which wraps Node.js `net` module
+- `src/eval.ts` uses the injected `INetwork` interface
+- Full TCP connection flow works with real clients (curl, browser)
+- t111 demonstrates flow; `iris run examples/server.iris` runs real server
 
 ### File Serving Logic Tests (Phase 4.1)
 
@@ -188,15 +189,16 @@ Output: (Ok "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>")
 
 | Item | Planned | Status | Notes |
 |------|---------|--------|-------|
-| `net.listen` | [ ] Implement | ✅ Stubbed | Returns mock handle |
-| `net.accept` | [ ] Implement | ✅ Stubbed | Returns mock handle |
-| `net.read_bytes` | [ ] Implement | ✅ As net.read | Returns mock HTTP data |
-| `net.write_bytes` | [ ] Implement | ✅ As net.write | Accepts data |
-| `net.close_stream` | [ ] Implement | ✅ As net.close | Accepts stream |
+| `net.listen` | [ ] Implement | ✅ Implemented | Real Node.js TCP server |
+| `net.accept` | [ ] Implement | ✅ Implemented | Real connection acceptance |
+| `net.read_bytes` | [ ] Implement | ✅ As net.read | Real async socket read |
+| `net.write_bytes` | [ ] Implement | ✅ As net.write | Real socket write |
+| `net.close_stream` | [ ] Implement | ✅ As net.close | Real socket/server close |
 
-**Verdict**: 🟡 **STUBBED** - All defined, none truly implemented
-- Current stubs allow testing logic without real TCP
-- Real socket implementation needed for production
+**Verdict**: ✅ **COMPLETE** - Real implementation active
+- Uses Node.js `net` module in CLI
+- `NodeNetwork` class manages real sockets and servers
+- Fully integrated with Interpreter via dependency injection
 
 ### Phase 3.1: HTTP Parsing
 
@@ -230,6 +232,18 @@ Output: (Ok "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>")
 | 404 handling | [ ] Implement | ✅ Works | Returns error string |
 
 **Verdict**: ✅ **COMPLETE** - Better than planned
+
+### Phase 5: HTTP Client Foundation
+
+| Item | Planned | Status | Notes |
+|------|---------|--------|-------|
+| `net.connect` | [ ] Implement | ✅ Implemented | Real TCP client connection |
+| `http.parse_response` | [ ] Implement | ✅ Implemented | Parses Status, Headers, Body |
+| `record.get` | [ ] Implement | ✅ Implemented | Intrinsics for record access |
+| Client Example | [ ] Create | ✅ Created | `examples/http_client.iris` works |
+
+**Verdict**: ✅ **COMPLETE** - Foundation ready
+
 
 ---
 
@@ -376,29 +390,14 @@ if (op.startsWith('net.')) {
 
 ## What's Still Needed for Production
 
-### 1. Real Network Implementation
-
-Current: **Stub/Mock**
-```typescript
-if (op === 'net.listen') return success with handle 1;  // Hardcoded
-if (op === 'net.accept') return success with handle 1;  // Always same handle
-if (op === 'net.read') return mocked HTTP request;      // Same data always
-```
-
-Needed: **Real TCP Sockets**
-- Use Node.js `net` module or equivalent
-- Track real socket connections
-- Read actual client data
-- Handle socket errors properly
-
-### 2. Missing I/O Operations
+### 1. Missing I/O Operations
 
 Not yet implemented:
 - `io.delete_file(path)` → `Result<Bool, Str>`
 - `io.list_dir(path)` → `Result<List<Str>, Str>`
 - `io.get_file_size(path)` → `Result<I64, Str>`
 
-### 3. Advanced HTTP Features
+### 2. Advanced HTTP Features
 
 Not implemented:
 - POST request body handling
@@ -408,7 +407,7 @@ Not implemented:
 - Keep-Alive support
 - HTTP compression (gzip, deflate)
 
-### 4. Async/Concurrent Requests
+### 3. Async/Concurrent Requests
 
 Current: **Synchronous only**
 
@@ -424,10 +423,10 @@ Needed for production:
 ### IMMEDIATE (1-2 days)
 1. ✅ Update GOAL-4-ROADMAP.md with actual progress
 2. ✅ Document current test coverage
-3. Real network implementation (replace stubs in eval.ts:285-295)
-   - Use Node.js `net` module
-   - Create actual TCP server
-   - Handle client connections properly
+3. ✅ Real network implementation (Done)
+   - Using Node.js `net` module
+   - Actual TCP server working
+   - Connection handling implemented
 
 ### SHORT TERM (1 week)
 4. Implement missing I/O operations
@@ -562,12 +561,11 @@ The HTTP server implementation is **well-established** with a solid foundation:
 | Network effects | ✅ Complete | HIGH |
 | HTTP parsing | ✅ Complete | HIGH |
 | File serving | ✅ Complete | HIGH |
-| Network I/O | 🟡 Stubbed | MEDIUM |
-| Production readiness | ⚠️ Needs work | - |
+| Network I/O | ✅ Complete | HIGH |
+| Production readiness | ⚠️ Needs I/O ops | - |
 
 **Blockers for production**:
-1. Real TCP socket implementation (currently stubbed)
-2. Missing I/O operations (3 functions)
+1. Missing I/O operations (3 functions)
 3. Advanced HTTP features
 
 **What's ready**:

@@ -12,6 +12,13 @@ async function main() {
     try {
       console.log(`Running ${t.name}...`);
 
+      if ('fn' in t) {
+        await t.fn();
+        passed++;
+        // Assuming custom tests verify themselves or throw
+        continue;
+      }
+
       const outputBuffer: string[] = [];
       const originalLog = console.log;
       console.log = (msg: string) => outputBuffer.push(msg);

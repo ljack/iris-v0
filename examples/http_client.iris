@@ -1,0 +1,33 @@
+(program
+  (module (name "http_client_example") (version 0))
+  (imports
+    (import "../stdlib/http" (as "Client"))
+  )
+  (defs
+    (deffn (name main) 
+      (args)
+      (ret (Result Str Str))
+      (eff !Net)
+      (body 
+        (let (res (Client.get "google.com"))
+          (match res
+            (case (tag "Ok" (p)) 
+              (let (_ (io.print "--- Response Status ---"))
+                (let (_ (io.print (record.get p "status")))
+                  (let (_ (io.print "--- Response Version ---"))
+                    (let (_ (io.print (record.get p "version")))
+                      (Ok "Success")
+                    )
+                  )
+                )
+              )
+            )
+            (case (tag "Err" (e)) 
+              (Err (str.concat "Request Failed: " e))
+            )
+          )
+        )
+      )
+    )
+  )
+)

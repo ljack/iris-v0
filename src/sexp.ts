@@ -259,12 +259,18 @@ export class Parser {
             this.expect('RParen');
 
             return { kind: 'DefFn', name, args, ret, eff, body };
+        } else if (kind === 'type') {
+            // (type ID TYPE)
+            const name = this.expectSymbol();
+            const type = this.parseType();
+            this.expect('RParen');
+            return { kind: 'TypeDef', name, type };
         } else {
             throw new Error(`Unknown definition kind: ${kind}`);
         }
     }
 
-    private parseExpr(): Expr {
+    public parseExpr(): Expr {
         const token = this.peek();
 
         if (token.kind === 'Int') { this.consume(); return { kind: 'Literal', value: { kind: 'I64', value: token.value } }; }
@@ -281,189 +287,238 @@ export class Parser {
             this.consume();
             const head = this.peek();
 
-            if (head.kind === 'Symbol') {
-                const op = head.value;
-                this.consume();
-
-                // Special forms
-                if (op === 'let') {
-                    // (let (x EXPR) BODY)
-                    this.expect('LParen');
-                    const name = this.expectSymbol();
-                    const val = this.parseExpr();
-                    this.expect('RParen');
-                    const body = this.parseExpr();
-                    this.expect('RParen');
-                    return { kind: 'Let', name, value: val, body };
+            if (head.kind !== 'Symbol') {
+                // (expr ...) -> Group or Tuple
+                const items: Expr[] = [];
+                while (!this.check('RParen')) {
+                    items.push(this.parseExpr());
                 }
-                if (op === 'record') {
-                    // (record (k v) ...)
-                    const fields: { [k: string]: Expr } = {};
-                    while (!this.check('RParen')) {
-                        this.expect('LParen');
-                        const key = this.expectSymbol();
-                        const val = this.parseExpr();
-                        this.expect('RParen');
-                        fields[key] = val; // checking duplicates?
-                    }
-                    this.expect('RParen');
-                    // We need 'Record' in Expr? types.ts defined Expr with Intrinsic, etc.
-                    // Let's see types.ts... "kind: 'Record' matches structural?"
-                    // types.ts Expr definition doesn't have Record value construction yet in the provided view?
-                    // Wait, I need to check types.ts.
-                    // The previous view of types.ts (Step 223) shows:
-                    // export type Expr = ... | { kind: 'List' ... } | { kind: 'Fold' ... } | { kind: 'Lambda' ... } 
-                    // It DOES NOT have 'Record' kind in Expr. I need to simple-return a special Intrinsic or add it to Expr.
-                    // Let's add it to Expr in types.ts too.
-                    return { kind: 'Record', fields };
-                }
-                if (op === 'if') {
-                    const cond = this.parseExpr();
-                    const thenBr = this.parseExpr();
-                    const elseBr = this.parseExpr();
-                    this.expect('RParen');
-                    return { kind: 'If', cond, then: thenBr, else: elseBr };
-                }
-                if (op === 'match') {
-                    const target = this.parseExpr();
-                    const cases: MatchCase[] = [];
-                    while (!this.check('RParen')) {
-                        this.expect('LParen');
-                        this.expectSymbol('case');
-                        this.expect('LParen');
-                        this.expectSymbol('tag');
-                        const tag = this.expectString();
-                        const vars: string[] = [];
-                        // Optional args (v) or nothing
-                        if (this.check('LParen')) {
-                            this.expect('LParen');
-                            while (!this.check('RParen')) {
-                                vars.push(this.expectSymbol());
-                            }
-                            this.expect('RParen');
-                        }
-                        this.expect('RParen'); // close tag
-                        const body = this.parseExpr();
-                        this.expect('RParen'); // close case
-                        cases.push({ tag, vars, body });
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Match', target, cases };
-                }
-                if (op === 'call') {
-                    const fn = this.expectSymbol();
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Call', fn, args };
-                }
-
-                // Constructors / Intrinsics
-                if (['+', '-', '*', '/', '<=', '<', '=', 'Some', 'Ok', 'Err', 'cons', 'io.print', 'io.read_file', 'io.write_file'].includes(op)) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (io.* ...)
-                if (op.startsWith('io.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (net.* ...)
-                if (op.startsWith('net.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (http.* ...)
-                if (op.startsWith('http.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (str.* ...)
-                if (op.startsWith('str.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (sys.* ...)
-                if (op.startsWith('sys.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (map.* ...)
-                if (op.startsWith('map.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // Check for (list.* ...)
-                if (op.startsWith('list.')) {
-                    const args: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        args.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
-                }
-
-                // (list e1 ...)
-                if (op === 'list') {
-                    const items: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        items.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'List', items };
-                }
-
-                // (tuple e1 ...)
-                if (op === 'tuple') {
-                    const items: Expr[] = [];
-                    while (!this.check('RParen')) {
-                        items.push(this.parseExpr());
-                    }
-                    this.expect('RParen');
-                    return { kind: 'Tuple', items };
-                }
-
-                throw new Error(`Unknown operator or special form: ${op}`);
+                this.expect('RParen');
+                if (items.length === 1) return items[0];
+                return { kind: 'Tuple', items };
             }
 
-            throw new Error("Expected symbol after '('");
+            const op = head.value;
+            this.consume();
+
+            // Special forms
+            if (op === 'let') {
+                // (let (x EXPR) BODY)
+                this.expect('LParen');
+                const name = this.expectSymbol();
+                const val = this.parseExpr();
+                this.expect('RParen');
+                const body = this.parseExpr();
+                this.expect('RParen');
+                return { kind: 'Let', name, value: val, body };
+            }
+            if (op === 'record') {
+                // (record (k v) ...)
+                const fields: { [k: string]: Expr } = {};
+                while (!this.check('RParen')) {
+                    this.expect('LParen');
+                    const key = this.expectSymbol();
+                    const val = this.parseExpr();
+                    this.expect('RParen');
+                    fields[key] = val; // checking duplicates?
+                }
+                this.expect('RParen');
+                return { kind: 'Record', fields };
+            }
+            if (op === 'if') {
+                const cond = this.parseExpr();
+                const thenBr = this.parseExpr();
+                const elseBr = this.parseExpr();
+                this.expect('RParen');
+                return { kind: 'If', cond, then: thenBr, else: elseBr };
+            }
+            if (op === 'match') {
+                const target = this.parseExpr();
+                const cases: MatchCase[] = [];
+                while (!this.check('RParen')) {
+                    this.expect('LParen');
+                    this.expectSymbol('case');
+                    this.expect('LParen');
+                    this.expectSymbol('tag');
+                    const tag = this.expectString();
+                    const vars: string[] = [];
+                    // Optional args (v) or nothing
+                    if (this.check('LParen')) {
+                        this.expect('LParen');
+                        while (!this.check('RParen')) {
+                            vars.push(this.expectSymbol());
+                        }
+                        this.expect('RParen');
+                    }
+                    this.expect('RParen'); // close tag
+                    const body = this.parseExpr();
+                    this.expect('RParen'); // close case
+                    cases.push({ tag, vars, body });
+                }
+                this.expect('RParen');
+                return { kind: 'Match', target, cases };
+            }
+            if (op === 'call') {
+                const fn = this.expectSymbol();
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Call', fn, args };
+            }
+
+            // Constructors / Intrinsics
+            if (['+', '-', '*', '/', '<=', '<', '=', '>=', '>', '&&', '||', '!', 'Some', 'Ok', 'Err', 'cons', 'tuple.get', 'record.get', 'io.print', 'io.read_file', 'io.write_file', 'i64.from_string'].includes(op)) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (io.* ...)
+            if (op.startsWith('io.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (net.* ...)
+            if (op.startsWith('net.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (http.* ...)
+            if (op.startsWith('http.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (str.* ...)
+            if (op.startsWith('str.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (sys.* ...)
+            if (op.startsWith('sys.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (map.* ...)
+            if (op.startsWith('map.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (list.* ...)
+            if (op.startsWith('list.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // (list e1 ...)
+            if (op === 'list') {
+                const items: Expr[] = [];
+                while (!this.check('RParen')) {
+                    items.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'List', items };
+            }
+
+            // (list-of Type e1 ...)
+            if (op === 'list-of') {
+                const typeArg = this.parseType();
+                const items: Expr[] = [];
+                while (!this.check('RParen')) {
+                    items.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'List', items, typeArg };
+            }
+
+            // (tuple e1 ...)
+            if (op === 'tuple') {
+                const items: Expr[] = [];
+                while (!this.check('RParen')) {
+                    items.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Tuple', items };
+            }
+
+            if (op === 'union') {
+                // (union (tag "Name" (ArgType ...)) ...)
+                // Not a real expression, but might be used in type defs?
+                // Actually (type ...) uses parseType, which handles valid type syntax.
+                // This parseExpr is for VALUES. 
+                // To construct a union value, we use (tag "Name" (args...)).
+                const tagName = this.expectString();
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                // We need a TaggedUnion value construction. 
+                // kind: 'Tagged', tag: tagName, args: args
+                // But our Expr type only has 'Tuple', 'Record'.
+                // Let's model it as a Tuple: [tag, ...args] where tag is a string literal?
+                // Or add 'Tagged' to Expr.
+                // For now, let's use Tuple with first element string.
+                return { kind: 'Tuple', items: [{ kind: 'Literal', value: { kind: 'Str', value: tagName } }, ...args] };
+            }
+
+            if (op === 'tag') {
+                const tagName = this.expectString();
+                let value: Expr;
+                if (this.check('RParen')) {
+                    // Empty tag payload -> Unit/Empty Tuple?
+                    value = { kind: 'Tuple', items: [] };
+                } else {
+                    value = this.parseExpr();
+                }
+                this.expect('RParen');
+                return { kind: 'Tagged', tag: tagName, value };
+            }
+            const args: Expr[] = [];
+            while (!this.check('RParen')) {
+                args.push(this.parseExpr());
+            }
+            this.expect('RParen');
+            console.log("Fallback Call for op:", op);
+            return { kind: 'Call', fn: op, args };
         }
 
         throw new Error(`Unexpected token for expression: ${token.kind}`);
@@ -477,6 +532,37 @@ export class Parser {
             if (w === 'I64') return { type: 'I64' };
             if (w === 'Bool') return { type: 'Bool' };
             if (w === 'Str') return { type: 'Str' };
+            // Allow user-defined named types
+
+            if (w === 'Union') {
+                const variants: Record<string, IrisType> = {};
+                while (!this.check('RParen')) {
+                    // console.error("Union variant start, peek:", this.peek().kind);
+                    this.expect('LParen');
+                    this.expectSymbol('tag');
+                    const tagName = this.expectString();
+                    // console.error("Union tag:", tagName);
+                    const content = this.parseType();
+                    // console.error("Parsed content done. Next token kind:", this.peek().kind, "Value:", (this.peek() as any).value);
+                    this.expect('RParen');
+                    variants[tagName] = content;
+                }
+                this.expect('RParen');
+                return { type: 'Union', variants };
+            }
+            if (w === 'Record') {
+                const fields: Record<string, IrisType> = {};
+                while (!this.check('RParen')) {
+                    this.expect('LParen');
+                    const key = this.expectSymbol();
+                    const val = this.parseType();
+                    this.expect('RParen');
+                    fields[key] = val;
+                }
+                this.expect('RParen');
+                return { type: 'Record', fields };
+            }
+            return { type: 'Named', name: w };
         }
 
         if (token.kind === 'LParen') {
@@ -530,6 +616,39 @@ export class Parser {
                 return { type: 'Tuple', items };
             }
 
+            if (tMap === 'union') {
+                const variants: Record<string, IrisType> = {};
+                while (!this.check('RParen')) {
+                    // (tag "Name" (args...))
+                    this.expect('LParen');
+                    this.expectSymbol('tag');
+                    const tagName = this.expectString();
+
+
+                    // Parse content typetional or list?
+                    // Spec usually: (tag "Name" (T1 T2...))
+                    // Let's assume (tag "Name" (T)) for matching t129.
+                    let args: IrisType[] = [];
+                    if (this.check('LParen')) {
+                        this.expect('LParen');
+                        while (!this.check('RParen')) {
+                            args.push(this.parseType());
+                        }
+                        this.expect('RParen');
+                    }
+                    this.expect('RParen');
+
+                    // Store strict as tuple for now, unless single arg
+                    if (args.length === 1) {
+                        variants[tagName] = args[0];
+                    } else {
+                        variants[tagName] = { type: 'Tuple', items: args };
+                    }
+                }
+                this.expect('RParen');
+                return { type: 'Union', variants };
+            }
+
             this.expect('RParen'); // Fallback
             throw new Error(`Unknown type constructor: ${tMap}`);
         }
@@ -564,18 +683,52 @@ export class Parser {
         }
     }
 
-    private peek() { if (this.pos >= this.tokens.length) return { kind: 'EOF', line: 0, col: 0 } as Token; return this.tokens[this.pos]; }
-    private consume() { this.pos++; }
-    private check(kind: string) { return this.peek().kind === kind; }
-    private expect(kind: string) { if (!this.check(kind)) throw new Error(`Expected ${kind} at ${this.peek().line}:${this.peek().col}`); this.consume(); }
-    private expectSymbol(val?: string) {
+    private check(kind: Token['kind']): boolean {
         const t = this.peek();
-        if (t.kind !== 'Symbol' || (val && t.value !== val)) throw new Error(`Expected Symbol ${val || ''} at ${t.line}:${t.col}`);
+        return t.kind === kind;
+    }
+
+    private expect(kind: Token['kind']) {
+        const t = this.peek();
+        if (t.kind !== kind) {
+            throw new Error(`Expected ${kind} at ${t.line}:${t.col}, got ${t.kind}`);
+        }
+        this.consume();
+    }
+
+    private expectSymbol(val?: string): string {
+        const t = this.peek();
+        if (t.kind !== 'Symbol') {
+            throw new Error(`Expected Symbol at ${t.line}:${t.col}, got ${t.kind}`);
+        }
+        if (val && t.value !== val) {
+            throw new Error(`Expected symbol '${val}' at ${t.line}:${t.col}, got '${t.value}'`);
+        }
         this.consume();
         return t.value;
     }
-    private expectString() { const t = this.peek(); if (t.kind !== 'Str') throw new Error(`Expected String`); this.consume(); return t.value; }
-    private expectInt() { const t = this.peek(); if (t.kind !== 'Int') throw new Error(`Expected Int`); this.consume(); return t.value; }
+
+    private expectString(): string {
+        const t = this.peek();
+        if (t.kind !== 'Str') {
+            throw new Error(`Expected String at ${t.line}:${t.col}, got ${t.kind}`);
+        }
+        this.consume();
+        return t.value;
+    }
+
+    private expectInt(): bigint {
+        const t = this.peek();
+        if (t.kind !== 'Int') {
+            throw new Error(`Expected Int at ${t.line}:${t.col}, got ${t.kind}`);
+        }
+        this.consume();
+        return t.value;
+    }
+
+    private peek() { if (this.pos >= this.tokens.length) return { kind: 'EOF', line: 0, col: 0 } as Token; return this.tokens[this.pos]; }
+    private consume() { this.pos++; }
+
 }
 
 function escapeStr(s: string): string {
@@ -595,30 +748,10 @@ export function printValue(v: Value): string {
         case 'Result': return v.isOk ? `(Ok ${printValue(v.value)})` : `(Err ${printValue(v.value)})`;
         case 'List': return `(list ${v.items.map(printValue).join(' ')})`;
         case 'Tuple': return `(tuple ${v.items.map(printValue).join(' ')})`;
-        case 'Record':
-            // Sorted keys
-            const keys = Object.keys(v.fields).sort();
-            if (keys.length === 0) return '(record)';
-            const fields = keys.map(k => `(${k} ${printValue(v.fields[k])})`).join(' ');
-            return `(record ${fields})`;
-        case 'Map':
-            const mapKeys = Array.from(v.value.keys()).sort();
-            if (mapKeys.length === 0) return '(map)';
-            // Internal map keys are strings, but we might want to try to unescape if they were JSON serialized?
-            // For now assume key is just string rep.
-            // Wait, we need to deserialize key to print it properly if strict?
-            // If we use JSON.stringify(key) as internal key, we should parse it back.
-            // Simplified: print (map (k v) ...)
-            const mapEntries = mapKeys.map(k => {
-                const val = v.value.get(k)!;
-                // We need to print the key. 
-                // Since we don't have the original Key Value object for the key (only string),
-                // we should probably store keys as Value in the internal Map if we want to print them correctly?
-                // OR we accept that internal representation is string.
-                // Let's rely on JSON.parse(k) if we used JSON.stringify for keys.
-                // Or just print k if it's simple.
-                return `(${k} ${printValue(val)})`;
-            }).join(' ');
-            return `(map ${mapEntries})`;
+        case 'Record': return `(record ${Object.entries(v.fields).map(([k, val]) => `${k}=${printValue(val)}`).join(' ')})`;
+        case 'Map': return `(map)`; // Simplified for now
+        case 'Tagged': return `(tag "${v.tag}" ${printValue(v.value)})`;
     }
+    return `UnknownValue(${(v as any).kind})`;
+
 }

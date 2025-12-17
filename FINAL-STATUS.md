@@ -1,8 +1,8 @@
 # IRIS v0 - Final Status Report
 
 **Date**: 2025-12-16
-**Status**: ✅ **v0.4.0 RELEASED** (Production Ready)
-**URL**: https://github.com/ljack/iris-v0/releases/tag/v0.4.0
+**Status**: ✅ **v0.5.0-dev** (Self-Hosting Phase 1 Complete)
+**URL**: https://github.com/ljack/iris-v0
 
 ---
 
@@ -25,7 +25,13 @@ npm install -g iris-v0  # (if published to npm)
 
 ---
 
-## ✅ Features in v0.4.0
+## ✅ Features in v0.5.0 (Dev)
+
+### Major Additions
+- ✅ **Self-Hosting Lexer**: First non-trivial IRIS program (`examples/lexer.iris`)
+- ✅ **Concurrency**: Actor model with `sys.spawn`, `sys.send`, `sys.recv`
+- ✅ **Expanded StdLib**: `Map`, `List` utilities, `Str` manipulation
+- ✅ **Web Playground**: Interactive Monaco-based editor on GitHub Pages
 
 ### Language Features
 - ✅ Complete S-expression syntax parser
@@ -58,7 +64,7 @@ npm install -g iris-v0  # (if published to npm)
 - ✅ **server.iris** - Full HTTP server
 
 ### Quality Metrics
-- ✅ 96 tests (100% passing)
+- ✅ 99 tests (100% passing)
 - ✅ 82% code coverage
 - ✅ Comprehensive type checking
 - ✅ Effect inference & validation

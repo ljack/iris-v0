@@ -54,6 +54,11 @@ export class BrowserNetwork implements INetwork {
         return true;
     }
 
+    async connect(host: string, port: number): Promise<number | null> {
+        console.warn("net.connect not supported in browser");
+        return null;
+    }
+
     async close(handle: number): Promise<boolean> {
         console.log(`[BrowserNet] Closed handle ${handle}`);
         return true;

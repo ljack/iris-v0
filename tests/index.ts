@@ -90,6 +90,7 @@ export { t111 } from './t111';
 export { t112 } from './t112';
 export { t113 } from './t113';
 export { t121 } from './t121';
+export { t129 } from './t129_recursive_types';
 import { t01 } from './t01';
 import { t02 } from './t02';
 import { t03 } from './t03';
@@ -103,8 +104,13 @@ import { t10 } from './t10';
 import { t121 } from './t121';
 import { T125 } from './t125';
 import { T126 } from './t126';
+import { t129 } from './t129_recursive_types';
+export { t128 } from './t128';
+import { t128 } from './t128';
+import { t130 } from './t130';
+import { t131 } from './t131';
 
 export const TESTS = [
     t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
-    t121, T125, T126
+    t121, T125, T126, t129, t128, t130, t131
 ];

@@ -15,6 +15,7 @@ export interface INetwork {
     read(handle: number): Promise<string | null>;
     write(handle: number, data: string): Promise<boolean>;
     close(handle: number): Promise<boolean>;
+    connect(host: string, port: number): Promise<number | null>;
 }
 
 class MockFileSystem implements IFileSystem {
@@ -34,6 +35,7 @@ class MockNetwork implements INetwork {
     async read(h: number) { return "GET / HTTP/1.1\r\n\r\n"; }
     async write(h: number, d: string) { return true; }
     async close(h: number) { return true; }
+    async connect(host: string, port: number) { return 3; }
 }
 
 export class Interpreter {
@@ -45,17 +47,69 @@ export class Interpreter {
     public pid: number;
 
     private valueToKey(v: Value): string {
-        if (v.kind === 'I64') return `${v.value}n`;
-        if (v.kind === 'Bool') return `${v.value}`;
-        if (v.kind === 'Str') return JSON.stringify(v.value);
+        if (v.kind === 'I64') return `I64:${v.value}`;
+        if (v.kind === 'Str') return `Str:${v.value}`;
+        if (v.kind === 'Tagged') {
+            if (v.tag === 'Str') {
+                // Determine if payload is simple Str or wrapped
+                // Iris Value: (tag "Str" (Str)). Payload is Str value.
+                if (v.value.kind === 'Str') return `Str:${v.value.value}`;
+                // If payload is literal/expression wrapper in some cases?
+                // Should only happen for Value types.
+                // Fallback attempt to extract value
+                if ((v.value as any).value && typeof (v.value as any).value === 'string') return `Str:${(v.value as any).value}`;
+                return `Str:${JSON.stringify(v.value)}`;
+            }
+            if (v.tag === 'I64') {
+                if (v.value.kind === 'I64') return `I64:${v.value.value}`;
+                return `I64:${JSON.stringify(v.value)}`;
+            }
+            // For other tags, maybe use JSON stringify of the whole thing?
+            return `Tagged:${v.tag}:${JSON.stringify(v.value, (_, val) => typeof val === 'bigint' ? val.toString() : val)}`;
+        }
         throw new Error(`Runtime: Invalid map key type: ${v.kind}`);
     }
 
     private keyToValue(k: string): Value {
-        if (k.endsWith('n')) return { kind: 'I64', value: BigInt(k.slice(0, -1)) };
-        if (k === 'true') return { kind: 'Bool', value: true };
-        if (k === 'false') return { kind: 'Bool', value: false };
-        if (k.startsWith('"')) return { kind: 'Str', value: JSON.parse(k) };
+        if (k.startsWith('I64:')) {
+            return { kind: 'I64', value: BigInt(k.substring(4)) };
+        }
+        if (k.startsWith('Str:')) {
+            return { kind: 'Str', value: k.substring(4) };
+        }
+        if (k.startsWith('Tagged:')) {
+            // Tagged:TAG:JSON
+            const firstColon = k.indexOf(':');
+            const secondColon = k.indexOf(':', firstColon + 1);
+            if (secondColon === -1) throw new Error(`Runtime: Invalid tagged key format: ${k}`);
+            const tag = k.substring(firstColon + 1, secondColon);
+            const json = k.substring(secondColon + 1);
+            const val = JSON.parse(json, (_, v) => {
+                if (typeof v === 'string' && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
+                return v;
+            });
+            // We need to reconstruct Value from JSON? 
+            // valueToKey used JSON.stringify(v.value).
+            // But v.value might be I64 which becomes string "123n" or just number?
+            // BigInt stringification usually fails or needs custom replacer.
+            // valueToKey used: JSON.stringify(v.value, (_, val) => typeof val === 'bigint' ? val.toString() : val)
+            // So we need to handle that.
+            // But for simple cases in T125 (literals), we don't use Tagged keys.
+            // Just handling I64 and Str is enough for T125.
+            // But let's be safe.
+            // Reconstructing Value from generic JSON is hard without type info.
+            // But Map keys must be immutable/simple?
+            // For now, let's implement basic Tagged support or throw.
+            throw new Error("Tagged keys not fully supported in keyToValue yet");
+        }
+
+        // Fallback or legacy check?
+        // Maybe it's a legacy key?
+        // if (k.endsWith('n')) return { kind: 'I64', value: BigInt(k.slice(0, -1)) };
+        // if (k === 'true') return { kind: 'Bool', value: true };
+        // if (k === 'false') return { kind: 'Bool', value: false };
+        // if (k.startsWith('"')) return { kind: 'Str', value: JSON.parse(k) };
+
         throw new Error(`Runtime: Invalid map key string: ${k}`);
     }
 
@@ -129,10 +183,19 @@ export class Interpreter {
                     let currentVal = env.get(parts[0]) || this.constants.get(parts[0]);
                     if (currentVal) {
                         for (let i = 1; i < parts.length; i++) {
-                            if (currentVal!.kind !== 'Record') throw new Error(`Runtime: Cannot access field ${parts[i]} of non-record`);
-                            const fieldVal: Value = (currentVal as any).fields[parts[i]];
-                            if (!fieldVal) throw new Error(`Runtime: Unknown field ${parts[i]}`);
-                            currentVal = fieldVal;
+                            const part = parts[i];
+                            if (currentVal!.kind === 'Record') {
+                                const fieldVal: Value = (currentVal as any).fields[part];
+                                if (!fieldVal) throw new Error(`Runtime: Unknown field ${part}`);
+                                currentVal = fieldVal;
+                            } else if (currentVal!.kind === 'Tuple') {
+                                const index = parseInt(part);
+                                if (isNaN(index)) throw new Error(`Runtime: Tuple index must be number, got ${part}`);
+                                if (index < 0 || index >= (currentVal as any).items.length) throw new Error(`Runtime: Tuple index out of bounds ${index}`);
+                                currentVal = (currentVal as any).items[index];
+                            } else {
+                                throw new Error(`Runtime: Cannot access field ${part} of ${currentVal!.kind}`);
+                            }
                         }
                         return currentVal!;
                     }
@@ -239,13 +302,46 @@ export class Interpreter {
                                 newBindings.set(c.vars[1], { kind: 'List', items: target.items.slice(1) });
                             }
                         }
+                    } else if (target.kind === 'Tagged') {
+                        if (c.tag === target.tag) {
+                            match = true;
+                            if (c.vars.length > 0) {
+                                // If target.value is a Tuple and we have multiple vars, destructure?
+                                // Iris spec implies (tag "Name" (v1 v2)) binds to (v1 v2).
+                                // But current parser makes value a single Expr (Tuple if multiple).
+                                // If target.value IS a Tuple and vars > 1, bind items.
+                                if (target.value.kind === 'Tuple' && c.vars.length > 1) {
+                                    for (let i = 0; i < c.vars.length; i++) {
+                                        if (i < target.value.items.length) {
+                                            newBindings.set(c.vars[i], target.value.items[i]);
+                                        }
+                                    }
+                                } else {
+                                    // Bind single value to first var
+                                    newBindings.set(c.vars[0], target.value);
+                                }
+                            }
+                        }
+                    } else if (target.kind === 'Tuple' && target.items.length > 0 && target.items[0].kind === 'Str') {
+                        // Generic Tagged Union (represented as Tuple ["Tag", ...args])
+                        const tagName = target.items[0].value;
+                        if (c.tag === tagName) {
+                            match = true;
+                            // Bind variables to remaining tuple items
+                            for (let i = 0; i < c.vars.length; i++) {
+                                if (i + 1 < target.items.length) {
+                                    newBindings.set(c.vars[i], target.items[i + 1]);
+                                }
+                            }
+                        }
                     }
 
                     if (match) {
                         return this.evalExpr(c.body, newBindings);
                     }
                 }
-                throw new Error(`No matching case for value ${JSON.stringify(target)}`);
+                const replacer = (_: string, v: any) => typeof v === 'bigint' ? v.toString() + 'n' : v;
+                throw new Error(`No matching case for value ${JSON.stringify(target, replacer)}`);
             }
 
             case 'Record': {
@@ -254,6 +350,11 @@ export class Interpreter {
                     fields[key] = await this.evalExpr(valExpr, env);
                 }
                 return { kind: 'Record', fields };
+            }
+
+            case 'Tagged': {
+                const val = await this.evalExpr(expr.value, env);
+                return { kind: 'Tagged', tag: expr.tag, value: val };
             }
 
             case 'Tuple': {
@@ -286,10 +387,18 @@ export class Interpreter {
     }
 
     private async evalIntrinsic(op: IntrinsicOp, args: Value[]): Promise<Value> {
-        if (['+', '-', '*', '/', '<=', '<', '='].includes(op)) {
+        if (op === '=') {
+            const v1 = args[0]; const v2 = args[1];
+            if (v1.kind === 'I64' && v2.kind === 'I64') return { kind: 'Bool', value: v1.value === v2.value };
+            if (v1.kind === 'Str' && v2.kind === 'Str') return { kind: 'Bool', value: v1.value === v2.value };
+            if (v1.kind === 'Bool' && v2.kind === 'Bool') return { kind: 'Bool', value: v1.value === v2.value };
+            return { kind: 'Bool', value: false }; // structural equality? or false if types differ?
+        }
+
+        if (['+', '-', '*', '/', '<=', '<', '>=', '>'].includes(op)) {
             const v1 = args[0];
             const v2 = args[1];
-            if (v1.kind !== 'I64' || v2.kind !== 'I64') throw new Error("Math expects I64");
+            if (v1.kind !== 'I64' || v2.kind !== 'I64') throw new Error(`Math expects I64 for ${op}, got ${v1.kind} and ${v2.kind}`);
             const a = v1.value;
             const b = v2.value;
 
@@ -303,8 +412,25 @@ export class Interpreter {
                 }
                 case '<=': return { kind: 'Bool', value: a <= b };
                 case '<': return { kind: 'Bool', value: a < b };
-                case '=': return { kind: 'Bool', value: a === b };
+                case '>=': return { kind: 'Bool', value: a >= b };
+                case '>': return { kind: 'Bool', value: a > b };
             }
+        }
+
+        if (op === '&&') {
+            const v1 = args[0]; const v2 = args[1];
+            if (v1.kind !== 'Bool' || v2.kind !== 'Bool') throw new Error("&& expects Bool");
+            return { kind: 'Bool', value: v1.value && v2.value };
+        }
+        if (op === '||') {
+            const v1 = args[0]; const v2 = args[1];
+            if (v1.kind !== 'Bool' || v2.kind !== 'Bool') throw new Error("|| expects Bool");
+            return { kind: 'Bool', value: v1.value || v2.value };
+        }
+        if (op === '!') {
+            const v1 = args[0];
+            if (v1.kind !== 'Bool') throw new Error("! expects Bool");
+            return { kind: 'Bool', value: !v1.value };
         }
 
         // Concurrency Intrinsics
@@ -414,6 +540,13 @@ export class Interpreter {
             return { kind: 'I64', value: 0n };
         }
 
+        if (op === 'i64.from_string') {
+            const val = args[0];
+            if (val.kind !== 'Str') throw new Error("i64.from_string expects Str");
+            if (val.value === "") throw new Error("i64.from_string: empty string");
+            return { kind: 'I64', value: BigInt(val.value) };
+        }
+
         if (op.startsWith('net.')) {
             if (op === 'net.listen') {
                 const port = args[0];
@@ -451,6 +584,15 @@ export class Interpreter {
                 const s = await this.net.close(Number(sock.value));
                 if (s) return { kind: 'Result', isOk: true, value: { kind: 'Bool', value: true } };
                 return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Close failed" } };
+            }
+            if (op === 'net.connect') {
+                const host = args[0];
+                const port = args[1];
+                if (host.kind !== 'Str') throw new Error("net.connect expects Str host");
+                if (port.kind !== 'I64') throw new Error("net.connect expects I64 port");
+                const h = await this.net.connect(host.value, Number(port.value));
+                if (h !== null) return { kind: 'Result', isOk: true, value: { kind: 'I64', value: BigInt(h) } };
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Connect failed" } };
             }
         }
 
@@ -506,6 +648,115 @@ export class Interpreter {
             }
         }
 
+        if (op === 'http.parse_response') {
+            const raw = args[0];
+            if (raw.kind !== 'Str') throw new Error("http.parse_response expects Str");
+            const text = raw.value;
+
+            try {
+                const parts = text.split(/\r?\n\r?\n/);
+                const head = parts[0];
+                const body = parts.slice(1).join('\n\n');
+
+                const lines = head.split(/\r?\n/);
+                if (lines.length === 0) throw new Error("Empty response");
+
+                const statusLine = lines[0].split(' ');
+                if (statusLine.length < 2) throw new Error("Invalid status line");
+                const version = statusLine[0];
+                // Handle status code, possibly with text following
+                const statusCode = BigInt(parseInt(statusLine[1]));
+                // The rest is status text (optional)
+
+                const headers: Value[] = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (!line.trim()) continue;
+                    const idx = line.indexOf(':');
+                    if (idx !== -1) {
+                        const key = line.substring(0, idx).trim();
+                        const val = line.substring(idx + 1).trim();
+                        headers.push({
+                            kind: 'Record',
+                            fields: {
+                                key: { kind: 'Str', value: key },
+                                val: { kind: 'Str', value: val }
+                            }
+                        });
+                    }
+                }
+
+                const resRecord: Value = {
+                    kind: 'Record',
+                    fields: {
+                        version: { kind: 'Str', value: version },
+                        status: { kind: 'I64', value: statusCode },
+                        headers: { kind: 'List', items: headers },
+                        body: { kind: 'Str', value: body }
+                    }
+                };
+
+                return { kind: 'Result', isOk: true, value: resRecord };
+            } catch (e: any) {
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: e.message } };
+            }
+        }
+
+        if (op === 'http.get' || op === 'http.post') {
+            const url = args[0];
+            if (url.kind !== 'Str') throw new Error(`${op} expects Str url`);
+
+            let method = 'GET';
+            let bodyStr: string | undefined = undefined;
+            const headers: Record<string, string> = {};
+
+            if (op === 'http.post') {
+                method = 'POST';
+                const bodyArg = args[1];
+                if (bodyArg && bodyArg.kind === 'Str') {
+                    bodyStr = bodyArg.value;
+                }
+                // Optional headers arg?
+                // For now, simple implementation
+            }
+
+            try {
+                // Use global fetch (available in Node 18+)
+                const resp = await fetch(url.value, {
+                    method,
+                    body: bodyStr,
+                    headers
+                });
+
+                const respBody = await resp.text();
+                const respHeaders: Value[] = [];
+                resp.headers.forEach((val, key) => {
+                    respHeaders.push({
+                        kind: 'Record',
+                        fields: {
+                            key: { kind: 'Str', value: key },
+                            val: { kind: 'Str', value: val }
+                        }
+                    });
+                });
+
+                const resRecord: Value = {
+                    kind: 'Record',
+                    fields: {
+                        version: { kind: 'Str', value: "HTTP/1.1" }, // fetch doesn't expose version
+                        status: { kind: 'I64', value: BigInt(resp.status) },
+                        headers: { kind: 'List', items: respHeaders },
+                        body: { kind: 'Str', value: respBody }
+                    }
+                };
+
+                return { kind: 'Result', isOk: true, value: resRecord };
+
+            } catch (e: any) {
+                return { kind: 'Result', isOk: false, value: { kind: 'Str', value: e.message || "Request Failed" } };
+            }
+        }
+
         if (op === 'str.concat') {
             const s1 = args[0]; const s2 = args[1];
             if (s1.kind !== 'Str' || s2.kind !== 'Str') throw new Error("str.concat expects two strings");
@@ -528,6 +779,39 @@ export class Interpreter {
             const s = args[0];
             if (s.kind !== 'Str') throw new Error("str.len expects Str");
             return { kind: 'I64', value: BigInt(s.value.length) };
+        }
+
+        if (op === 'str.get') {
+            const s = args[0]; const idx = args[1];
+            if (s.kind !== 'Str') throw new Error("str.get expects Str");
+            if (idx.kind !== 'I64') throw new Error("str.get expects I64 index");
+            const i = Number(idx.value);
+            if (i >= 0 && i < s.value.length) {
+                return { kind: 'Option', value: { kind: 'I64', value: BigInt(s.value.charCodeAt(i)) } };
+            }
+            return { kind: 'Option', value: null };
+        }
+
+        if (op === 'str.substring') {
+            const s = args[0]; const start = args[1]; const end = args[2];
+            if (s.kind !== 'Str') throw new Error("str.substring expects Str");
+            if (start.kind !== 'I64' || end.kind !== 'I64') throw new Error("str.substring expects I64 range");
+            const sVal = s.value;
+            return { kind: 'Str', value: sVal.substring(Number(start.value), Number(end.value)) };
+        }
+
+        if (op === 'str.from_code') {
+            const code = args[0];
+            if (code.kind !== 'I64') throw new Error("str.from_code expects I64");
+            return { kind: 'Str', value: String.fromCharCode(Number(code.value)) };
+        }
+
+        if (op === 'str.index_of') {
+            const s = args[0]; const sub = args[1];
+            if (s.kind !== 'Str' || sub.kind !== 'Str') throw new Error("str.index_of expects Str");
+            const idx = s.value.indexOf(sub.value);
+            if (idx === -1) return { kind: 'Option', value: null };
+            return { kind: 'Option', value: { kind: 'I64', value: BigInt(idx) } };
         }
 
         if (op.startsWith('map.')) {
@@ -564,6 +848,14 @@ export class Interpreter {
             }
         }
 
+        if (op === 'cons') {
+            const h = args[0];
+            const t = args[1];
+            if (t.kind !== 'List') throw new Error("cons arguments must be (head, tail-list)");
+            // cons adds to front
+            return { kind: 'List', items: [h, ...t.items] };
+        }
+
         if (op.startsWith('list.')) {
             if (op === 'list.len') {
                 const l = args[0];
@@ -580,6 +872,29 @@ export class Interpreter {
                 }
                 return { kind: 'Option', value: null };
             }
+        }
+
+
+        if (op === 'record.get') {
+            const r = args[0]; const field = args[1];
+            if (r.kind !== 'Record') throw new Error("record.get expects Record");
+            if (field.kind !== 'Str') throw new Error("record.get expects Str field name");
+            const val = r.fields[field.value];
+            if (val === undefined) {
+                throw new Error(`Record has no field ${field.value}`);
+            }
+            return val;
+        }
+
+
+
+        if (op === 'tuple.get') {
+            const t = args[0]; const idx = args[1];
+            if (t.kind !== 'Tuple') throw new Error("tuple.get expects Tuple");
+            if (idx.kind !== 'I64') throw new Error("tuple.get expects I64");
+            const i = Number(idx.value);
+            if (i < 0 || i >= t.items.length) throw new Error("tuple.get index out of bounds");
+            return t.items[i];
         }
 
         throw new Error(`Unknown intrinsic ${op}`);

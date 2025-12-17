@@ -3,6 +3,7 @@ import { Program, Definition, Expr, IrisType, IrisEffect, IntrinsicOp, ModuleRes
 export class TypeChecker {
     private functions = new Map<string, { args: IrisType[], ret: IrisType, eff: IrisEffect }>();
     private constants = new Map<string, IrisType>();
+    private types = new Map<string, IrisType>();
     private currentProgram?: Program;
 
     constructor(private resolver?: ModuleResolver) { }
@@ -24,6 +25,8 @@ export class TypeChecker {
                     ret: def.ret,
                     eff: def.eff
                 });
+            } else if (def.kind === 'TypeDef') {
+                this.types.set(def.name, def.type);
             }
         }
 
@@ -40,7 +43,7 @@ export class TypeChecker {
                     env.set(def.args[i].name, def.args[i].type);
                 }
 
-                const { type: bodyType, eff: bodyEff } = this.checkExprFull(def.body, env);
+                const { type: bodyType, eff: bodyEff } = this.checkExprFull(def.body, env, def.ret);
 
                 this.expectType(def.ret, bodyType, `Function ${def.name} return type mismatch`);
 
@@ -53,12 +56,14 @@ export class TypeChecker {
                 } else {
                     this.checkEffectSubtype(bodyEff, def.eff, `Function ${def.name}`);
                 }
+            } else if (def.kind === 'TypeDef') {
+                // Nothing to check for body
             }
         }
     }
 
     // Returns Type AND Inferred Effect
-    private checkExprFull(expr: Expr, env: Map<string, IrisType>): { type: IrisType, eff: IrisEffect } {
+    private checkExprFull(expr: Expr, env: Map<string, IrisType>, expectedType?: IrisType): { type: IrisType, eff: IrisEffect } {
         switch (expr.kind) {
             case 'Literal': {
                 const val = expr.value;
@@ -91,11 +96,21 @@ export class TypeChecker {
                     let currentType = env.get(parts[0]) || this.constants.get(parts[0]);
                     if (currentType) {
                         for (let i = 1; i < parts.length; i++) {
-                            if (currentType!.type !== 'Record') throw new Error(`TypeError: Cannot access field ${parts[i]} of non-record ${parts.slice(0, i).join('.')}`);
-                            const fields: Record<string, IrisType> = currentType!.fields!;
-                            const fieldType: IrisType = fields[parts[i]];
-                            if (!fieldType) throw new Error(`TypeError: Unknown field ${parts[i]} in record`);
-                            currentType = fieldType;
+                            currentType = this.resolve(currentType!);
+                            if (currentType.type === 'Tuple') {
+                                const index = parseInt(parts[i]);
+                                if (isNaN(index)) throw new Error(`TypeError: Tuple index must be number: ${parts[i]}`);
+                                if (!currentType.items) throw new Error("Internal: Tuple missing items");
+                                if (index < 0 || index >= currentType.items.length) throw new Error(`TypeError: Tuple index out of bounds: ${index}`);
+                                currentType = currentType.items[index];
+                            } else {
+                                if (currentType.type !== 'Record') throw new Error(`TypeError: Cannot access field ${parts[i]} of non-record ${parts.slice(0, i).join('.')}`);
+                                if (!currentType.fields) throw new Error("Internal: Record missing fields");
+                                const fields: Record<string, IrisType> = currentType.fields;
+                                const fieldType: IrisType = fields[parts[i]];
+                                if (!fieldType) throw new Error(`TypeError: Unknown field ${parts[i]} in record`);
+                                currentType = fieldType;
+                            }
                         }
                         return { type: currentType!, eff: '!Pure' };
                     }
@@ -105,19 +120,29 @@ export class TypeChecker {
             }
 
             case 'Let': {
-                const val = this.checkExprFull(expr.value, env);
-                const newEnv = new Map(env).set(expr.name, val.type);
-                const body = this.checkExprFull(expr.body, newEnv);
-                return { type: body.type, eff: this.joinEffects(val.eff, body.eff) };
+                const letExpr = expr as any;
+                if (!letExpr.value) console.log("Let expr missing value:", JSON.stringify(letExpr));
+                const valRes = this.checkExprFull(letExpr.value, env); // No expected type for let binding value usually (unless annotated?)
+                const newEnv = new Map(env);
+                newEnv.set(letExpr.name, valRes.type);
+                const bodyRes = this.checkExprFull(letExpr.body, newEnv, expectedType);
+                return { type: bodyRes.type, eff: this.joinEffects(valRes.eff, bodyRes.eff) };
             }
 
             case 'If': {
-                const cond = this.checkExprFull(expr.cond, env);
-                if (cond.type.type !== 'Bool') throw new Error(`TypeError: Type Error in If condition: Expected Bool, got ${this.fmt(cond.type)}`);
-                const t = this.checkExprFull(expr.then, env);
-                const e = this.checkExprFull(expr.else, env);
-                this.expectType(t.type, e.type, "If branches mismatch");
-                return { type: t.type, eff: this.joinEffects(cond.eff, this.joinEffects(t.eff, e.eff)) };
+                const condRes = this.checkExprFull(expr.cond, env);
+                if (condRes.type.type !== 'Bool') throw new Error("If condition must be Bool");
+                const thenRes = this.checkExprFull(expr.then, env, expectedType);
+                const elseRes = this.checkExprFull(expr.else, env, expectedType);
+
+                if (expectedType) {
+                    this.expectType(expectedType, thenRes.type, "If then branch mismatch");
+                    this.expectType(expectedType, elseRes.type, "If else branch mismatch");
+                    return { type: expectedType, eff: this.joinEffects(condRes.eff, this.joinEffects(thenRes.eff, elseRes.eff)) };
+                }
+
+                this.expectType(thenRes.type, elseRes.type, "If branches mismatch");
+                return { type: thenRes.type, eff: this.joinEffects(condRes.eff, this.joinEffects(thenRes.eff, elseRes.eff)) };
             }
 
             case 'Match': {
@@ -125,51 +150,53 @@ export class TypeChecker {
                 let retType: IrisType | null = null;
                 let joinedEff: IrisEffect = target.eff;
 
-                const targetType = target.type;
-                if (targetType.type === 'Option') {
+                let resolvedTarget = arguments[2] as IrisType | undefined;
+                resolvedTarget = this.resolve(target.type);
+
+                if (resolvedTarget.type === 'Option') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
                         if (c.tag === 'Some') {
                             if (c.vars.length !== 1) throw new Error("Some case expects 1 variable");
-                            if (!targetType.inner) throw new Error("Internal error: Option type missing inner type");
-                            newEnv.set(c.vars[0], targetType.inner);
+                            if (!resolvedTarget.inner) throw new Error("Internal error: Option type missing inner type");
+                            newEnv.set(c.vars[0], resolvedTarget.inner);
                         } else if (c.tag === 'None') {
                             if (c.vars.length !== 0) throw new Error("None case expects 0 variables");
                         } else throw new Error(`Unknown option match tag: ${c.tag}`);
 
-                        const body = this.checkExprFull(c.body, newEnv);
+                        const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
                         if (retType) this.expectType(retType, body.type, "Match arms mismatch");
                         else retType = body.type;
                         joinedEff = this.joinEffects(joinedEff, body.eff);
                     }
-                } else if (targetType.type === 'Result') {
+                } else if (resolvedTarget.type === 'Result') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
                         if (c.tag === 'Ok') {
                             if (c.vars.length !== 1) throw new Error("Ok case expects 1 variable");
-                            if (!targetType.ok) throw new Error("Internal error: Result type missing ok type");
-                            newEnv.set(c.vars[0], targetType.ok);
+                            if (!resolvedTarget.ok) throw new Error("Internal error: Result type missing ok type");
+                            newEnv.set(c.vars[0], resolvedTarget.ok);
                         } else if (c.tag === 'Err') {
                             if (c.vars.length !== 1) throw new Error("Err case expects 1 variable");
-                            if (!targetType.err) throw new Error("Internal error: Result type missing err type");
-                            newEnv.set(c.vars[0], targetType.err);
+                            if (!resolvedTarget.err) throw new Error("Internal error: Result type missing err type");
+                            newEnv.set(c.vars[0], resolvedTarget.err);
                         } else throw new Error(`Unknown result match tag: ${c.tag}`);
 
-                        const body = this.checkExprFull(c.body, newEnv);
+                        const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
                         if (retType) this.expectType(retType, body.type, "Match arms mismatch");
                         else retType = body.type;
                         joinedEff = this.joinEffects(joinedEff, body.eff);
                     }
-                } else if (targetType.type === 'List') {
+                } else if (resolvedTarget.type === 'List') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
                         if (c.tag === 'nil') {
                             if (c.vars.length !== 0) throw new Error("nil case expects 0 variables");
                         } else if (c.tag === 'cons') {
                             if (c.vars.length !== 2) throw new Error("cons case expects 2 variables (head tail)");
-                            if (!targetType.inner) throw new Error("Internal List missing inner");
-                            newEnv.set(c.vars[0], targetType.inner!); // head
-                            newEnv.set(c.vars[1], targetType);       // tail
+                            if (!resolvedTarget.inner) throw new Error("Internal List missing inner");
+                            newEnv.set(c.vars[0], resolvedTarget.inner!); // head
+                            newEnv.set(c.vars[1], resolvedTarget);       // tail
                         } else throw new Error(`Unknown list match tag: ${c.tag}`);
 
                         const body = this.checkExprFull(c.body, newEnv);
@@ -177,8 +204,35 @@ export class TypeChecker {
                         else retType = body.type;
                         joinedEff = this.joinEffects(joinedEff, body.eff);
                     }
+                } else if (resolvedTarget.type === 'Union') {
+                    for (const c of expr.cases) {
+                        const newEnv = new Map(env);
+                        const variantType = resolvedTarget.variants[c.tag];
+                        if (!variantType) throw new Error(`TypeError: Union ${this.fmt(resolvedTarget)} has no variant ${c.tag}`);
+
+                        // For v0, assume 1 var binds to payload.
+                        // If payload is implicitly unit or not present?
+                        // Iris Union variant types ALWAYS have a type. Unit is Record w/o fields.
+
+                        if (c.vars.length === 1) {
+                            newEnv.set(c.vars[0], variantType);
+                        } else if (c.vars.length === 0) {
+                            // Allow 0 vars if payload is Unit? Or ignoring payload?
+                            // Strictly, if user wrote `(case (tag "Foo" ()) body)`, vars is [].
+                            // If they wrote `(case (tag "Foo" x) body)`, vars is [x].
+                            // If variants[tag] is Unit, and they bind it, it's Unit.
+                        } else {
+                            // Destructuring not supported generically yet unless specific Tuple case added.
+                            throw new Error(`Match case ${c.tag} expects 1 variable (payload binding)`);
+                        }
+
+                        const body = this.checkExprFull(c.body, newEnv);
+                        if (retType) this.expectType(retType, body.type, "Match arms mismatch");
+                        else retType = body.type;
+                        joinedEff = this.joinEffects(joinedEff, body.eff);
+                    }
                 } else {
-                    throw new Error(`Match target must be Option, Result, or List (got ${targetType.type})`);
+                    throw new Error(`Match target must be Option, Result, List, or Union (got ${resolvedTarget.type})`);
                 }
                 return { type: retType!, eff: joinedEff };
             }
@@ -223,49 +277,116 @@ export class TypeChecker {
             case 'Record': {
                 const fields: Record<string, IrisType> = {};
                 let eff: IrisEffect = '!Pure';
+
+                let expectedFields: Record<string, IrisType> | undefined;
+                if (expectedType) {
+                    const resolved = this.resolve(expectedType);
+                    if (resolved.type === 'Record') {
+                        expectedFields = resolved.fields;
+                    }
+                }
+
                 for (const [key, valExpr] of Object.entries(expr.fields)) {
-                    const res = this.checkExprFull(valExpr, env);
+                    const expectedFieldType = expectedFields ? expectedFields[key] : undefined;
+                    const res = this.checkExprFull(valExpr, env, expectedFieldType);
                     fields[key] = res.type;
                     eff = this.joinEffects(eff, res.eff);
                 }
                 return { type: { type: 'Record', fields }, eff };
             }
 
+            case 'Tagged': {
+                // (tag "Name" (val))
+                let expectHint: IrisType | undefined;
+                let resolvedExpect: IrisType | undefined;
+
+                if (expectedType) {
+                    resolvedExpect = this.resolve(expectedType);
+                    if (resolvedExpect.type === 'Union') {
+                        const variantType = resolvedExpect.variants[expr.tag];
+                        if (!variantType) {
+                            throw new Error(`TypeError: Union ${this.fmt(resolvedExpect)} has no variant ${expr.tag}`);
+                        }
+                        expectHint = variantType;
+                    }
+                }
+
+                const valRes = this.checkExprFull(expr.value, env, expectHint);
+
+                if (resolvedExpect && resolvedExpect.type === 'Union') {
+                    this.expectType(expectHint!, valRes.type, `Union variant ${expr.tag} mismatch`);
+                    return { type: expectedType!, eff: valRes.eff };
+                }
+
+                const retType: IrisType = { type: 'Union', variants: { [expr.tag]: valRes.type } };
+                return { type: retType, eff: valRes.eff };
+            }
+
             case 'Tuple': {
                 const items: IrisType[] = [];
                 let eff: IrisEffect = '!Pure';
-                for (const item of expr.items) {
-                    const res = this.checkExprFull(item, env);
+
+                let expectedItems: IrisType[] | undefined;
+                if (expectedType) {
+                    const resolved = this.resolve(expectedType);
+                    if (resolved.type === 'Tuple') {
+                        expectedItems = resolved.items;
+                    }
+                }
+
+                for (let i = 0; i < expr.items.length; i++) {
+                    const item = expr.items[i];
+                    const expect = expectedItems ? expectedItems[i] : undefined;
+                    const res = this.checkExprFull(item, env, expect);
                     items.push(res.type);
                     eff = this.joinEffects(eff, res.eff);
                 }
+
+                // If we had expected items, we validated against them (recursively via expectedType passed to checkExprFull).
+                // But if the returned type from item check is distinct (e.g. strict supertype?), we might need strict check?
+                // checkExprFull returns inferred type or expected type if coerced.
+
                 return { type: { type: 'Tuple', items }, eff };
             }
 
             case 'List': {
-                // (list e1 e2 ...)
-                // inferred type is List<Union> or List<T> if all matches.
-                // For v0 let's enforce all elements match first element type.
+                const items: IrisType[] = [];
                 let eff: IrisEffect = '!Pure';
-                let innerType: IrisType | null = null;
-                for (const item of expr.items) {
-                    const res = this.checkExprFull(item, env);
-                    eff = this.joinEffects(eff, res.eff);
-                    if (!innerType) innerType = res.type;
-                    else this.expectType(innerType, res.type, "List elements must have same type");
+
+                let expectedInner: IrisType | undefined;
+                if (expectedType) {
+                    const resolved = this.resolve(expectedType);
+                    if (resolved.type === 'List') {
+                        expectedInner = resolved.inner;
+                    }
                 }
-                // If empty list, we don't know type! 
-                // (list) -> List<???>. 
-                // Problem: we can't infer without context.
-                // For now, if empty, default to List<I64> (hack) or error?
-                // Or return List<!Infer>.
-                if (!innerType) return { type: { type: 'List', inner: { type: 'I64' } }, eff }; // Default logic
-                return { type: { type: 'List', inner: innerType }, eff };
+
+                if (expr.items.length === 0) {
+                    if (expectedInner) {
+                        return { type: { type: 'List', inner: expectedInner }, eff: '!Pure' };
+                    }
+                    if (expr.typeArg) {
+                        return { type: { type: 'List', inner: expr.typeArg }, eff: '!Pure' };
+                    }
+                    return { type: { type: 'List', inner: { type: 'I64' } }, eff: '!Pure' };
+                }
+
+                // If items exist, infer from first or expected
+                let innerType = expectedInner;
+
+                for (const item of expr.items) {
+                    const res = this.checkExprFull(item, env, innerType);
+                    if (!innerType) innerType = res.type;
+                    else this.expectType(innerType, res.type, "List item type mismatch");
+                    eff = this.joinEffects(eff, res.eff);
+                }
+
+                return { type: { type: 'List', inner: innerType! }, eff };
             }
 
             case 'Intrinsic': {
-                let joinedEff: IrisEffect = '!Pure';
                 const argTypes: IrisType[] = [];
+                let joinedEff: IrisEffect = '!Pure';
                 for (const arg of expr.args) {
                     const res = this.checkExprFull(arg, env);
                     argTypes.push(res.type);
@@ -286,10 +407,35 @@ export class TypeChecker {
                     return { type: ['<=', '<', '=', '>=', '>'].includes(expr.op) ? { type: 'Bool' } : { type: 'I64' }, eff: joinedEff };
                 }
 
+                if (['&&', '||'].includes(expr.op)) {
+                    for (let i = 0; i < argTypes.length; i++) {
+                        if (argTypes[i].type !== 'Bool') throw new Error(`TypeError: Expected Bool for ${expr.op}`);
+                    }
+                    return { type: { type: 'Bool' }, eff: joinedEff };
+                }
+                if (expr.op === '!') {
+                    if (argTypes.length !== 1 || argTypes[0].type !== 'Bool') throw new Error("TypeError: ! expects 1 Bool");
+                    return { type: { type: 'Bool' }, eff: joinedEff };
+                }
+
                 if (expr.op === 'Some') return { type: { type: 'Option', inner: argTypes[0] }, eff: joinedEff };
 
-                if (expr.op === 'Ok') return { type: { type: 'Result', ok: argTypes[0], err: { type: 'Str' } }, eff: joinedEff };
-                if (expr.op === 'Err') return { type: { type: 'Result', ok: { type: 'I64' }, err: argTypes[0] }, eff: joinedEff };
+                if (expr.op === 'Ok') {
+                    let errType: IrisType = { type: 'Str' };
+                    if (expectedType) {
+                        const resolved = this.resolve(expectedType);
+                        if (resolved.type === 'Result') errType = resolved.err;
+                    }
+                    return { type: { type: 'Result', ok: argTypes[0], err: errType }, eff: joinedEff };
+                }
+                if (expr.op === 'Err') {
+                    let okType: IrisType = { type: 'I64' };
+                    if (expectedType) {
+                        const resolved = this.resolve(expectedType);
+                        if (resolved.type === 'Result') okType = resolved.ok;
+                    }
+                    return { type: { type: 'Result', ok: okType, err: argTypes[0] }, eff: joinedEff };
+                }
                 if (expr.op === 'cons') return { type: { type: 'List', inner: argTypes[0] }, eff: joinedEff }; // Simplified
 
                 if (expr.op.startsWith('io.')) {
@@ -339,6 +485,7 @@ export class TypeChecker {
                     if (expr.op === 'net.read') return { type: { type: 'Result', ok: { type: 'Str' }, err: { type: 'Str' } }, eff: joinedEff };
                     if (expr.op === 'net.write') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
                     if (expr.op === 'net.close') return { type: { type: 'Result', ok: { type: 'Bool' }, err: { type: 'Str' } }, eff: joinedEff };
+                    if (expr.op === 'net.connect') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
                 }
 
                 if (expr.op.startsWith('str.')) {
@@ -349,11 +496,42 @@ export class TypeChecker {
                     }
                     if (expr.op === 'str.concat') return { type: { type: 'Str' }, eff: joinedEff };
                     if (expr.op === 'str.contains' || expr.op === 'str.ends_with') return { type: { type: 'Bool' }, eff: joinedEff };
+                    if (expr.op === 'str.get') {
+                        if (argTypes.length !== 2) throw new Error("str.get expects 2 args (str, index)");
+                        if (argTypes[0].type !== 'Str') throw new Error("str.get expects Str");
+                        if (argTypes[1].type !== 'I64') throw new Error("str.get expects I64 index");
+                        return { type: { type: 'Option', inner: { type: 'I64' } }, eff: joinedEff };
+                    }
+                    if (expr.op === 'str.substring') {
+                        if (argTypes.length !== 3) throw new Error("str.substring expects 3 args (str, start, end)");
+                        if (argTypes[0].type !== 'Str') throw new Error("str.substring expects Str");
+                        if (argTypes[1].type !== 'I64') throw new Error("str.substring expects I64 start");
+                        if (argTypes[2].type !== 'I64') throw new Error("str.substring expects I64 end");
+                        return { type: { type: 'Str' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'str.from_code') {
+                        if (argTypes.length !== 1) throw new Error("str.from_code expects 1 arg (code)");
+                        if (argTypes[0].type !== 'I64') throw new Error("str.from_code expects I64");
+                        if (argTypes[0].type !== 'I64') throw new Error("str.from_code expects I64");
+                        return { type: { type: 'Str' }, eff: joinedEff };
+                    }
+                    if (expr.op === 'str.index_of') {
+                        if (argTypes.length !== 2) throw new Error("str.index_of expects 2 args (str, substr)");
+                        if (argTypes[0].type !== 'Str') throw new Error("str.index_of expects Str");
+                        if (argTypes[1].type !== 'Str') throw new Error("str.index_of expects Str substring");
+                        return { type: { type: 'Option', inner: { type: 'I64' } }, eff: joinedEff };
+                    }
                 }
 
                 if (expr.op.startsWith('map.')) {
                     if (expr.op === 'map.make') {
                         if (argTypes.length !== 2) throw new Error("map.make expects 2 arguments (key_witness, value_witness)");
+
+                        if (expectedType) {
+                            const resolved = this.resolve(expectedType);
+                            if (resolved.type === 'Map') return { type: expectedType, eff: joinedEff };
+                        }
+
                         // Pure
                         return { type: { type: 'Map', key: argTypes[0], value: argTypes[1] }, eff: joinedEff };
                     }
@@ -402,6 +580,56 @@ export class TypeChecker {
                     }
                 }
 
+                if (expr.op === 'i64.from_string') {
+                    if (argTypes.length !== 1) throw new Error("i64.from_string expects 1 arg (Str)");
+                    if (argTypes[0].type !== 'Str') throw new Error("i64.from_string expects Str");
+                    return { type: { type: 'I64' }, eff: joinedEff };
+                }
+
+                if (expr.op === 'tuple.get') {
+                    if (argTypes.length !== 2) throw new Error("tuple.get expects 2 args (tuple, index)");
+                    const [t, idx] = argTypes;
+                    if (t.type !== 'Tuple') throw new Error("tuple.get expects Tuple");
+                    if (idx.type !== 'I64') throw new Error("tuple.get expects I64 index");
+                    // We can't know the type of element at runtime index during static analysis unless index is literal.
+                    // But here index is likely I64 runtime value.
+                    // Limitation of simple type system with heterogenous tuples accessed by runtime index.
+                    // For now, assume Tuple is homogenous? No, definition says items: IrisType[].
+                    // If we access with literal, we could know.
+                    // If we access with variable, we return !Any or Union?
+                    // For v0, let's just return !Any or assume user knows (Effect !Infer?).
+                    // Actually, let's treat it as returning the Union of all item types?
+                    // Or, simpler: Require literal index? 
+                    // Let's check `lexer.iris`. We will access 0 and 1.
+                    // Can we check if the argument is a Literal?
+                    // In `checkExprFull`, we resolved `idx` expr. If it was literal, we have it? 
+                    // No, `val` in checkExprFull is not passed to typechecker logic directly unless we store it.
+                    // But `expr.args[1]` is accessible.
+                    if (expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'I64') {
+                        const i = Number(expr.args[1].value.value);
+                        if (i < 0 || i >= t.items.length) throw new Error("tuple.get index out of bounds");
+                        return { type: t.items[i], eff: joinedEff };
+                    }
+                    // Fallback if not literal: Error or unsafe?
+                    // Let's throw Error "tuple.get requires literal index" for now to be safe.
+                    throw new Error("tuple.get requires literal index for type safety");
+                }
+
+                if (expr.op === 'record.get') {
+                    if (argTypes.length !== 2) throw new Error("record.get expects 2 args");
+                    const [rec, k] = argTypes;
+                    if (rec.type !== 'Record') throw new Error("record.get expects Record");
+                    if (k.type !== 'Str') throw new Error("record.get expects Str key");
+
+                    if (expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'Str') {
+                        const keyVal = expr.args[1].value.value;
+                        const fieldType = rec.fields[keyVal];
+                        if (!fieldType) throw new Error(`Record has no field '${keyVal}'`);
+                        return { type: fieldType, eff: joinedEff };
+                    }
+                    throw new Error("record.get requires literal string key");
+                }
+
                 if (expr.op === 'http.parse_request') {
                     // Result<HttpRequest, Str>
                     // HttpRequest = { method: Str, path: Str, headers: List<(Record (key Str) (val Str))>, body: Str }
@@ -424,6 +652,32 @@ export class TypeChecker {
 
                     return {
                         type: { type: 'Result', ok: httpReqType, err: { type: 'Str' } },
+                        eff: joinedEff
+                    };
+                }
+
+                if (expr.op === 'http.parse_response') {
+                    // Result<HttpResponse, Str>
+                    // HttpResponse = { version: Str, status: I64, headers: List<(Record (key Str) (val Str))>, body: Str }
+                    joinedEff = this.joinEffects(joinedEff, '!Pure');
+
+                    const headerType: IrisType = {
+                        type: 'Record',
+                        fields: { key: { type: 'Str' }, val: { type: 'Str' } }
+                    };
+
+                    const httpResType: IrisType = {
+                        type: 'Record',
+                        fields: {
+                            version: { type: 'Str' },
+                            status: { type: 'I64' },
+                            headers: { type: 'List', inner: headerType },
+                            body: { type: 'Str' }
+                        }
+                    };
+
+                    return {
+                        type: { type: 'Result', ok: httpResType, err: { type: 'Str' } },
                         eff: joinedEff
                     };
                 }
@@ -479,38 +733,152 @@ export class TypeChecker {
         }
     }
 
+    private resolve(t: IrisType): IrisType {
+        if (t.type === 'Named') {
+            if (this.types.has(t.name)) {
+                return this.resolve(this.types.get(t.name)!);
+            }
+            // If unknown, return as is (will likely fail equality check later or fmt as Unknown)
+            return t;
+        }
+        return t;
+    }
+
     private typesEqual(t1: IrisType, t2: IrisType): boolean {
-        if (t1.type !== t2.type) return false;
-        if (t1.type === 'Option') {
-            if (!t1.inner || !(t2 as any).inner) return false;
-            return this.typesEqual(t1.inner, (t2 as any).inner);
+        const origT1 = t1;
+        const origT2 = t2;
+        t1 = this.resolve(t1);
+        t2 = this.resolve(t2);
+
+        t2 = this.resolve(t2);
+
+        if (t1 === t2) return true;
+
+        if (t1.type !== t2.type) {
+            // Check Union ~ Tuple compatibility mismatch
+            if (t1.type === 'Union' && t2.type === 'Tuple') {
+                // New logic: If t2 is a single-element tuple, and its inner type matches a variant of t1 (Union)
+                if (t2.items.length === 1) {
+                    const content = t2.items[0];
+                    for (const variantType of Object.values(t1.variants)) {
+                        if (this.typesEqual(variantType, content)) return true;
+                    }
+                }
+                // Existing logic: Union vs Tagged Tuple
+                if (t2.items.length === 2 && t2.items[0].type === 'Str') {
+                    const content = t2.items[1];
+                    for (const variantType of Object.values(t1.variants)) {
+                        if (this.typesEqual(variantType, content)) return true;
+                    }
+                }
+            }
+            return false;
         }
-        if (t1.type === 'Result') {
-            if (!t1.ok || !t1.err || !(t2 as any).ok || !(t2 as any).err) return false;
-            return this.typesEqual(t1.ok, (t2 as any).ok) && this.typesEqual(t1.err, (t2 as any).err);
-        }
-        if (t1.type === 'Record') {
-            const f1 = t1.fields;
-            const f2 = (t2 as any).fields;
-            const k1 = Object.keys(f1).sort();
-            const k2 = Object.keys(f2).sort();
-            if (k1.length !== k2.length) return false;
-            for (let i = 0; i < k1.length; i++) {
-                if (k1[i] !== k2[i]) return false;
-                if (!this.typesEqual(f1[k1[i]], f2[k1[i]])) return false;
+
+        if (t1.type === 'Union' && t2.type === 'Union') {
+            // Subtyping: t1 expected, t2 actual. t2 must be subset of t1?
+            // Or t1 subset of t2?
+            // Usually expectation is wider. So t2 variants must be subset of t1.
+            // Every variant in t2 must exist in t1 and be compatible.
+            const t1Vars = (t1 as any).variants;
+            const t2Vars = (t2 as any).variants;
+            for (const [tag, type] of Object.entries(t2Vars)) {
+                if (!t1Vars[tag]) return false;
+                if (!this.typesEqual(t1Vars[tag], type as IrisType)) return false;
             }
             return true;
         }
+
+        if (t1.type === 'Record' && t2.type === 'Record') {
+            // Record subtyping? Or strict equality?
+            // Iris v0 implies strict equality usually, but structural.
+            const k1 = Object.keys((t1 as any).fields).sort();
+            const k2 = Object.keys((t2 as any).fields).sort();
+            if (k1.length !== k2.length) return false;
+            for (let i = 0; i < k1.length; i++) {
+                if (k1[i] !== k2[i]) return false;
+                if (!this.typesEqual((t1 as any).fields[k1[i]], (t2 as any).fields[k2[i]])) return false;
+            }
+            return true;
+        }
+
+        // ... tuple, list checks ...
+        // Existing logic fallback logic might handle structural equality implicitly?
+        // Ah, default return false.
+
+        if (t1.type === 'Option') {
+            if (!(t1 as any).inner || !(t2 as any).inner) return false;
+            return this.typesEqual((t1 as any).inner, (t2 as any).inner);
+        }
+        if (t1.type === 'Result') {
+            if (!(t1 as any).ok || !(t1 as any).err || !(t2 as any).ok || !(t2 as any).err) return false;
+            return this.typesEqual((t1 as any).ok, (t2 as any).ok) && this.typesEqual((t1 as any).err, (t2 as any).err);
+        }
+        if (t1.type === 'Record') { // Handled above? Duplicate check? No, Record handled merged.
+            // If merged above, this block is unreachable or specific for strict record?
+            // My previous edit merged Record logic. 
+            // But existing logic had Record logic too?
+            // Let's keep consistent.
+            const f1 = (t1 as any).fields;
+            const f2 = (t2 as any).fields;
+            if (!f1 || !f2) return false;
+            // ... logic same as above ...
+            // Let's assume handled.
+        }
+
         if (t1.type === 'List') {
-            return this.typesEqual(t1.inner, (t2 as any).inner);
+            if (!(t1 as any).inner || !(t2 as any).inner) return false;
+            return this.typesEqual((t1 as any).inner, (t2 as any).inner);
         }
         if (t1.type === 'Map') {
-            return this.typesEqual(t1.key, (t2 as any).key) && this.typesEqual(t1.value, (t2 as any).value);
+            if (!(t1 as any).key || !(t1 as any).value || !(t2 as any).key || !(t2 as any).value) return false;
+            return this.typesEqual((t1 as any).key, (t2 as any).key) && this.typesEqual((t1 as any).value, (t2 as any).value);
         }
-        return true;
+        if (t1.type === 'Tuple') {
+            const i1 = (t1 as any).items;
+            const i2 = (t2 as any).items;
+            if (!i1 || !i2 || i1.length !== i2.length) return false;
+            for (let i = 0; i < i1.length; i++) {
+                if (!this.typesEqual(i1[i], i2[i])) return false;
+            }
+            return true;
+        }
+
+        // Union vs Tagged Tuple legacy check
+        if (t1.type === 'Union') {
+            // New Check for Tuple vs Union (Tagged Tuple)
+            if (t2.type === 'Tuple' && (t2 as any).items.length === 2 && (t2 as any).items[0].type === 'Str') {
+                const content = (t2 as any).items[1];
+                for (const variantType of Object.values((t1 as any).variants)) {
+                    // console.log("Checking variant", this.fmt(variantType), "vs", this.fmt(content));
+                    if (this.typesEqual(variantType as IrisType, content)) return true;
+                }
+            }
+            // Strict Union check
+            if (t2.type === 'Union') {
+                const v1 = (t1 as any).variants;
+                const v2 = (t2 as any).variants;
+                for (const [tag, type] of Object.entries(v2)) {
+                    if (!v1[tag]) return false;
+                    if (!this.typesEqual(v1[tag] as IrisType, type as IrisType)) return false;
+                }
+                return true;
+            }
+        }
+
+        if (t1.type === 'I64' && t2.type === 'I64') return true;
+        if (t1.type === 'Bool' && t2.type === 'Bool') return true;
+        if (t1.type === 'Str' && t2.type === 'Str') return true;
+
+        return false;
     }
 
     private fmt(t: IrisType): string {
+        if (t.type === 'Named') return t.name;
+
+        const resolved = this.resolve(t);
+        if (resolved !== t && resolved.type !== 'Named') return this.fmt(resolved);
+
         switch (t.type) {
             case 'I64': return 'I64';
             case 'Bool': return 'Bool';
@@ -518,8 +886,10 @@ export class TypeChecker {
             case 'Option': return `(Option ${this.fmt(t.inner)})`;
             case 'Result': return `(Result ${this.fmt(t.ok)} ${this.fmt(t.err)})`;
             case 'List': return `(List ${this.fmt(t.inner)})`;
+            case 'Tuple': return `(Tuple ${t.items.map(i => this.fmt(i)).join(' ')})`;
             case 'Map': return `(Map ${this.fmt(t.key)} ${this.fmt(t.value)})`;
             case 'Record': return `(Record ${Object.keys(t.fields).map(k => `(${k} ${this.fmt(t.fields[k])})`).join(' ')})`;
+            case 'Union': return `(Union ${Object.keys(t.variants).map(k => `(tag "${k}" ${this.fmt(t.variants[k])})`).join(' ')})`;
             default: return 'Unknown';
         }
     }

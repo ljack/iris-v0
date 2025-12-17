@@ -10,24 +10,21 @@
 ## 📊 Current State Assessment
 
 ### Completed Work ✅
-- ✅ Core language implementation (IRIS v0.1-v0.4)
-- ✅ Type system with effect inference
-- ✅ Module system with cross-module validation
-- ✅ 96 tests (100% passing)
-- ✅ HTTP parsing and file serving logic
-- ✅ Code coverage analysis (82%)
-- ✅ Documentation and roadmaps
+- ✅ Core language implementation (IRIS v0.1-v0.5)
+- ✅ Web Playground with syntax highlighting & Monaco Editor
+- ✅ Concurrency (Actors, `sys.spawn`, `sys.send`)
+- ✅ Expanded StdLib (Map, List, Str extensions)
+- ✅ 99 tests (100% passing)
+- ✅ Docs/Playground deployed to GitHub Pages
 
 ### In Progress 🔨
-- 🔨 **Antigravity**: Building new features (Goal 6 Examples, Async refactoring, NodeNetwork)
-- 🔨 **HTTP Server**: Tests t110-t113 passing, real networking not yet implemented
+- 🔨 **Planning Phase**: Deciding on v0.6 focus
 
 ### Known Gaps ⚠️
-- ⚠️ Code coverage: 82% (target 92%)
-- ⚠️ Real network operations (currently stubbed)
-- ⚠️ Parser error messages (vague)
-- ⚠️ Some I/O operations incomplete
-- ⚠️ Tuple types untested
+- [x] Real network operations (Implemented via Node.js net/http)
+- [/] Self-hosting compiler (Phase 1 Verified: Lexer, Parser, Evaluator working in tests)
+- ⚠️ Tuple types implemented but need more exhaustive tests
+- ⚠️ Module system needs circular import detection polish
 
 ---
 
@@ -214,208 +211,54 @@ Do a mix of all three to get comprehensive value
 
 ---
 
-## 🎲 **My Recommendation**
+### OPTION 4: Self-Hosting Compiler Phase 1 (IN PROGRESS)
 
-Given the current state:
-
-### **I recommend: OPTION 1 + OPTION 3 (Coverage + Documentation)**
-
-**Why?**
-1. **Coverage path** is low-hanging fruit (tests already planned)
-2. **Documentation** unblocks users and contributors
-3. **Together** they take ~24 hours (1 week focused work)
-4. **Parallel**: You do tests, Antigravity does features
-5. **Release-ready**: Gets you to v0.1 release quality
-
-### **Execution Plan**
-
-**Week 1 (Coverage)**
-- Monday: Critical tests (4 tests, 2 hours)
-- Tuesday: High-priority tests (8 tests, 5 hours)
-- Total: 7 hours → Coverage: 82% → 88%
-
-**Week 2 (Documentation)**
-- Monday-Tuesday: IRIS language tutorial (4 hours)
-- Wednesday: 3 example programs (3 hours)
-- Thursday: API documentation (3 hours)
-- Total: 10 hours → Release-quality docs
-
-**Week 3 (Finishing)**
-- Polish any remaining issues
-- Review with Antigravity
-- Prepare v0.1 release
-
-### **Parallel Work**
-While you're doing this, Antigravity can:
-- Finish real network implementation
-- Add advanced features
-- Create additional examples
-- Improve eval.ts
-
-### **Result After This Plan**
-✅ 88% code coverage
-✅ Professional documentation
-✅ 5+ example programs
-✅ Ready for v0.1 release
-✅ Attracts users and contributors
-
----
-
-## 🚀 **Alternative: Aggressive Path (Maximum Impact)**
-
-If you want to be more aggressive:
-
-**Option 2 (Real Networking)** + **Option 3 (Documentation)**
+**Goal**: Implement `lexer.iris`, `parser.iris`, and `eval.iris` in Iris itself.
+**Status**:
+- `lexer.iris`: Implemented & Tested (T126?)
+- `parser.iris`: Implemented & Tested (T128)
+- `eval.iris` (interpreter): Implemented & Tested (T130)
+- **Next**: Type checker and code generation.list handling
+3. Fix language gaps discovered during dogfooding
 
 ### Timeline
-- Real network impl: 14-18 hours (week 1-2)
-- Documentation: 13-16 hours (week 2-3)
-- Total: 27-34 hours (3-4 weeks)
+- 3 days to write Lexer in IRIS
 
 ### Outcome
-- Production-ready HTTP server ⭐
-- Professional documentation
-- Ready for real-world use
-- Impressive demo
+- First non-trivial IRIS program
+- Proven capability for complex logic
 
-### Risk
-- Higher complexity
-- Async handling tricky
-- More bugs likely
+### Pros
+✅ "Dogfooding" - proves language is usable
+✅ Finds stdlib gaps immediately
+✅ Extremely cool milestone
 
 ---
 
-## 📋 **Decision Matrix**
+## 🎲 **My Recommendation**
 
-Choose based on priorities:
+Given the current state (Playground & StdLib ready):
 
-| Priority | Choose |
-|----------|--------|
-| **Speed to release** | Option 1 (Coverage) |
-| **Production ready** | Option 2 (Networking) |
-| **User adoption** | Option 3 (Documentation) |
-| **Balanced** | Option 4 (Hybrid) |
-| **My recommendation** | Option 1 + 3 |
+### **I recommend: OPTION 4 (Self-Hosting Compiler Phase 1)**
 
----
+**Why?**
+1. We just improved Maps, Lists, and Strings (Goal 11).
+2. Writing a Lexer immediately verifies these new features.
+3. It's distinct from "just adding features" -> uses what we have.
 
-## ✅ **Recommended Next Steps**
-
-### Immediate (Today)
-1. **Decide**: Which option interests you most?
-2. **Read**: TEST-RECOMMENDATIONS.md (if choosing Option 1)
-3. **Read**: Documentation examples (if choosing Option 3)
-4. **Discuss**: With Antigravity what they're working on
-
-### This Week
-1. **Start**: First phase of chosen option
-2. **Check in**: See Antigravity's progress
-3. **Adjust**: If needed based on blockers
-
-### Next Week
-1. **Finish**: First phase
-2. **Start**: Second phase
-3. **Measure**: Progress and coverage
-
----
-
-## 🤔 **Questions to Ask Yourself**
-
-1. **What's your constraint?** (Time, skills, interest)
-2. **What matters most?** (Quality, features, users)
-3. **What excites you?** (Testing, networking, documentation)
-4. **What's blocking others?** (Need to coordinate with Antigravity)
-5. **What's the deadline?** (When do you want to release?)
-
----
-
-## 📞 **Quick Decision Guide**
-
-**"I want to release soon"** → Option 1 (Coverage, 3-4 days)
-
-**"I want users"** → Option 3 (Docs, 2-3 days) + Option 1
-
-**"I want production ready"** → Option 2 (Networking, 3-4 days)
-
-**"I want everything"** → Option 4 (Hybrid, 2-3 weeks)
-
-**"I want my recommendation"** → Option 1 + Option 3 (1 week each)
+**Next Best**: Option 2 (Real Networking) if you prefer systems programming over compilers.
 
 ---
 
 ## 🎯 **Final Answer: What's Next?**
 
-**Three immediate actions:**
+**Your move**:
+- **Option 1**: Polish (Tests/Coverage)
+- **Option 2**: Real Networking (HTTP Server)
+- **Option 3**: Documentation (Adoption)
+- **Option 4**: Self-Hosting Compiler (Validation/Dogfooding)
 
-1. **Read TEST-RECOMMENDATIONS.md** (20 minutes)
-   - See what tests are needed
-   - Assess difficulty
-   - Estimate effort
-
-2. **Check with Antigravity** (10 minutes)
-   - What are they building?
-   - What do they need from you?
-   - Any blockers?
-
-3. **Make a decision** (5 minutes)
-   - Which option excites you?
-   - Pick one and commit
-   - Tell me your choice
-
----
-
-## 💬 **My Hot Take**
-
-The IRIS v0 codebase is in great shape:
-- ✅ 82% coverage (good)
-- ✅ Core features solid
-- ✅ Tests comprehensive
-- ✅ Ready to release
-
-**What it needs now:**
-1. **A release** (v0.1 with what you have)
-2. **Documentation** (to attract users)
-3. **Incremental improvements** (tests → 92%, features)
-
-**Don't wait for perfection.** Release v0.1, gather feedback, improve in v0.2.
-
-The best time to release is when users can try it and give feedback. That's ~1 week away if you:
-- Add critical coverage tests (2 hours)
-- Write tutorial + examples (7 hours)
-- Polish docs (2 hours)
-
-**Total: 11 hours (3 days focused work)**
-
-Then: `npm run build && npm publish` 🚀
-
----
-
-## 📊 **Summary Table**
-
-| Option | Effort | Impact | Timeline | Risk |
-|--------|--------|--------|----------|------|
-| **1: Coverage** | 12-16h | Medium | 3-4 days | Low |
-| **2: Networking** | 14-18h | High | 3-4 days | High |
-| **3: Docs** | 13-16h | High | 2-3 days | Low |
-| **4: Hybrid** | 19h | High | 1-2 wks | Medium |
-| **My Pick: 1+3** | 25-32h | Very High | 1-2 wks | Low |
-
----
-
-## 🚀 **The Challenge**
-
-I've given you 4 options and a recommendation.
-
-**Your move**: Which one excites you most?
-
-Once you choose, I can create a detailed task list with:
-- Specific steps
-- Time estimates
-- Success criteria
-- Progress tracking
-- Completion checklist
-
-**What's it going to be?** 🎯
+**Decision**: ____________________
 
 ---
 

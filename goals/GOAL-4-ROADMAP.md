@@ -29,13 +29,13 @@
 **Duration**: 2-3 weeks | **Priority**: CRITICAL | **Blockers**: None
 
 ### 1.1 Module Syntax & Parsing
-- [ ] **Design Module Syntax**
+- [x] **Design Module Syntax**
   - Finalize module declaration: `(module (name "...") (version N))`
   - Finalize import syntax: `(import (module "...") (items (func1 func2)))`
   - Plan namespace resolution rules
   - **Spec Document**: Create `MODULE-SYSTEM-SPEC.md`
 
-- [ ] **Parser Extensions**
+- [x] **Parser Extensions**
   - Add module declaration parsing
   - Add import statement parsing
   - Add namespace-qualified function calls: `module.function`
@@ -92,13 +92,13 @@
 **Duration**: 1-2 weeks | **Priority**: CRITICAL | **Blocks**: HTTP module
 
 ### 2.1 `!Net` Effect Implementation
-- [ ] **Effect Definition**
+- [x] **Effect Definition**
   - Define `!Net` effect for network operations
   - Update effect lattice: `!Pure < !IO < !Net < !Any`
   - Document effect ordering semantics
   - **Tests**: 4-6 `!Net` effect tests
 
-- [ ] **Effect Inference Rules**
+- [x] **Effect Inference Rules**
   - Implement `!Net` inference rules
   - Update effect subtyping rules
   - Handle `!Infer` with `!Net`
@@ -120,21 +120,21 @@
   - **Tests**: 8-10 I/O operation tests
 
 ### 2.3 Network I/O Foundation
-- [ ] **Network Types**
+- [x] **Network Types**
   - Define `TcpListener` type
   - Define `TcpStream` type
   - Define `HttpRequest` type (parsing)
   - Define `HttpResponse` type (building)
   - Define `HttpError` type
 
-- [ ] **Network Intrinsics**
+- [x] **Network Intrinsics**
   - `net.create_listener(port)`: Create TCP listener
   - `net.accept_connection(listener)`: Accept incoming connection
   - `net.read_bytes(stream, size)`: Read from stream
   - `net.write_bytes(stream, data)`: Write to stream
   - `net.close_stream(stream)`: Close connection
 
-- [ ] **Network Tests** (10-12 tests)
+- [x] **Network Tests** (10-12 tests)
   - Basic listener creation
   - Connection acceptance
   - Data reading/writing
@@ -148,14 +148,14 @@
 **Duration**: 2-3 weeks | **Priority**: HIGH | **Blocks**: Example program
 
 ### 3.1 HTTP Parsing
-- [ ] **HTTP Request Parser**
+- [x] **HTTP Request Parser**
   - Parse HTTP request line (method, path, version)
   - Parse HTTP headers (key: value)
   - Parse request body
   - Handle different content-types
   - Error handling for malformed requests
 
-- [ ] **HTTP Parser Tests** (10-12 tests)
+- [x] **HTTP Parser Tests** (10-12 tests)
   - Valid GET requests
   - Valid POST requests
   - Requests with headers
@@ -179,7 +179,7 @@
   - Large responses
 
 ### 3.3 Core HTTP Module
-- [ ] **HTTP Module Functions**
+- [x] **HTTP Module Functions**
   - `http.start_server(port)`: Main entry point
     - Binds to port
     - Accepts connections
@@ -224,7 +224,7 @@
 **Duration**: 1-2 weeks | **Priority**: HIGH | **Blocks**: Example program
 
 ### 4.1 Static File Server
-- [ ] **File Serving Logic**
+- [x] **File Serving Logic**
   - Resolve file paths safely (prevent directory traversal)
   - Read file content
   - Determine MIME type
@@ -232,13 +232,13 @@
   - Handle file not found (404)
   - Handle permission errors (403)
 
-- [ ] **Path Safety**
+- [x] **Path Safety**
   - Validate path doesn't escape root directory
   - Normalize paths (remove `..`, `.`)
   - Case handling on different filesystems
   - Symbolic link handling
 
-- [ ] **File Serving Tests** (10-12 tests)
+- [x] **File Serving Tests** (10-12 tests)
   - Serve text files
   - Serve binary files (images)
   - Serve with correct MIME types
@@ -300,19 +300,19 @@
 ```
 
 ### 5.2 Implementation Tasks
-- [ ] Create example program file: `examples/file_server.iris`
-- [ ] Document example program
-- [ ] Add example to README
+- [x] Create example program file: `examples/file_server.iris`
+- [x] Document example program
+- [x] Add example to README
 - [ ] Create test data directory with sample files
-- [ ] **Verification**: Server runs and serves files correctly
+- [x] **Verification**: Server runs and serves files correctly
 
 ### 5.3 Integration Tests (10-15 tests)
-- [ ] Full server start/stop cycle
-- [ ] Request/response round-trip
+- [x] Full server start/stop cycle
+- [x] Request/response round-trip
 - [ ] Multiple concurrent requests (if async)
-- [ ] Error conditions
+- [x] Error conditions
 - [ ] Performance (load testing)
-- [ ] Real HTTP client compatibility (curl, browser)
+- [x] Real HTTP client compatibility (curl, browser)
 
 ---
 

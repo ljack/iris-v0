@@ -1,0 +1,182 @@
+(program
+  (module (name "parser") (version 1))
+  (imports
+    (import "io" (as "io"))
+    (import "str" (as "str"))
+    (import "list" (as "list"))
+  )
+  (defs
+    ;; --- Token Definitions (from Lexer) ---
+    (type Token (Record (kind Str) (value Str)))
+
+    ;; --- AST Type Definitions ---
+
+    ;; Represents a runtime value (for Literal Expr)
+    ;; Note: Recursive types verified in t129!
+    (type Value
+      (union
+        (tag "I64" (I64))
+        (tag "Bool" (Bool))
+        (tag "Str" (Str))
+        (tag "Option" ((Record (value Value)))) 
+        (tag "None" ((Record))) 
+        (tag "Some" (Value)) 
+        (tag "Result" ((Record (isOk Bool) (value Value))))
+        (tag "List" ((Record (items (List Value)))))
+        (tag "Tuple" ((Record (items (List Value)))))
+        (tag "Record" ((Record (fields (List (Tuple Str Value))))))
+        (tag "Map" ((Record (entries (List (Tuple Str Value)))))) 
+      )
+    )
+
+    (type IrisType
+        (union
+            (tag "I64" ((Record)))
+            (tag "Bool" ((Record)))
+            (tag "Str" ((Record)))
+            (tag "Option" ((Record (inner IrisType))))
+            (tag "Result" ((Record (ok IrisType) (err IrisType))))
+            (tag "List" ((Record (inner IrisType))))
+            (tag "Tuple" ((Record (items (List IrisType)))))
+            (tag "Record" ((Record (fields (List (Tuple Str IrisType))))))
+            (tag "Map" ((Record (key IrisType) (value IrisType))))
+            (tag "Fn" ((Record (args (List IrisType)) (ret IrisType) (eff Str))))
+            (tag "Named" ((Record (name Str))))
+            (tag "Union" ((Record (variants (List (Tuple Str IrisType))))))
+        )
+    )
+
+    (type Arg (Record (name Str) (type IrisType)))
+
+    (type MatchCase 
+        (Record 
+            (tag Str) 
+            (vars (List Str)) 
+        )
+    )
+
+    (type Expr
+      (union
+        (tag "Literal" (Value))
+        (tag "Var" ((Record (name Str))))
+        (tag "Let" ((Record (name Str) (value Expr) (body Expr))))
+        (tag "If" ((Record (cond Expr) (then Expr) (else Expr))))
+        (tag "Match" ((Record (target Expr) 
+                             (cases (List (Record (tag Str) (vars (List Str)) (body Expr)))))))
+        (tag "Call" (Str (List Expr)))
+        (tag "Intrinsic" (Str (List Expr)))
+        (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
+        (tag "Tuple" ((Record (items (List Expr)))))
+        (tag "Lambda" ((Record (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
+        (tag "Record" ((Record (fields (List (Tuple Str Expr))))))
+      )
+    )
+
+    ;; --- Parser State ---
+    (type Parser (Record (tokens (List Token))))
+
+    (deffn (name parser_new) (args (tokens (List Token))) (ret Parser) (eff !Pure)
+        (body (record (tokens tokens)))
+    )
+
+    (deffn (name parser_peek) (args (p Parser)) (ret Token) (eff !Pure)
+        (body 
+            (match p.tokens
+                (case (tag "cons" (h t)) h)
+                (case (tag "nil") (record (kind "EOF") (value "")))
+            )
+        )
+    )
+
+    (deffn (name parser_consume) (args (p Parser)) (ret Parser) (eff !Pure)
+        (body 
+            (match p.tokens
+                (case (tag "cons" (h t)) (record (tokens t)))
+                (case (tag "nil") p)
+            )
+        )
+    )
+
+    (deffn (name parse) (args (tokens (List Token))) (ret Expr) (eff !Pure)
+      (body 
+        (let (p (call parser_new tokens))
+            (let (res (call parse_expr p))
+                (tuple.get res 1)
+            )
+        )
+      )
+    )
+    
+    (deffn (name parse_expr) (args (p Parser)) (ret (Tuple Parser Expr)) (eff !Pure)
+         (body 
+            (let (t (call parser_peek p))
+                (let (p2 (call parser_consume p))
+                    (if (= t.kind "INT")
+                        (tuple p2 (tag "Literal" (tag "I64" (i64.from_string t.value))))
+                        (if (= t.kind "STR")
+                            (tuple p2 (tag "Literal" (tag "Str" t.value)))
+                            (if (= t.kind "IDENT")
+                                (tuple p2 (tag "Var" (record (name t.value))))
+                                (if (= t.kind "LPAREN")
+                                    (call parse_compound p2)
+                                    ;; Fallback
+                                    (tuple p2 (tag "Literal" ((tag "I64" (999))))) 
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+         )
+    )
+
+    (deffn (name parse_compound) (args (p Parser)) (ret (Tuple Parser Expr)) (eff !Pure)
+        (body
+            (let (t (call parser_peek p))
+                (if (= t.kind "IDENT")
+                   (let (p2 (call parser_consume p))
+                       ;; Dispatch special forms here (let, if, match)
+                       ;; For now, treat everything as Call
+                       (call parse_call p2 t.value)
+                   )
+                   ;; Parsing error: Expected function name or special form after '('
+                   (tuple p (tag "Literal" ((tag "I64" (999)))))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_call) (args (p Parser) (name Str)) (ret (Tuple Parser Expr)) (eff !Pure)
+        (body
+            (let (res (call parse_args p))
+                 (let (p2 (tuple.get res 0))
+                 (let (args (tuple.get res 1))
+                      (tuple p2 (tag "Call" (tuple name args)))
+                 ))
+            )
+        )
+    )
+
+    (deffn (name parse_args) (args (p Parser)) (ret (Tuple Parser (List Expr))) (eff !Pure)
+        (body
+            (let (t (call parser_peek p))
+                (if (= t.kind "RPAREN")
+                    (let (p2 (call parser_consume p))
+                         (tuple p2 (list))  
+                    )
+                    (let (res (call parse_expr p))
+                         (let (p2 (tuple.get res 0))
+                         (let (e (tuple.get res 1))
+                         (let (res2 (call parse_args p2))
+                              (let (p3 (tuple.get res2 0))
+                              (let (tail (tuple.get res2 1))
+                                   (tuple p3 (cons e tail)) ;; cons or list.cons? SExp intrinsics has 'cons'
+                              ))
+                         )))
+                    )
+                )
+            )
+        )
+    )
+  )
+)
