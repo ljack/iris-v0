@@ -9,7 +9,7 @@
       (ret (Result Str Str))
       (eff !Net)
       (body 
-        (let (res (Client.get "google.com"))
+        (let (res (Client.get "https://google.com"))
           (match res
             (case (tag "Ok" (p)) 
               (let (_ (io.print "--- Response Status ---"))
