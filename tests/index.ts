@@ -108,9 +108,22 @@ import { t129 } from './t129_recursive_types';
 export { t128 } from './t128';
 import { t128 } from './t128';
 import { t130 } from './t130';
+
 import { t131 } from './t131';
+import { t132 } from './t132';
+import { t133 } from './t133';
+
+import { t134 } from './t134';
+import { t135 } from './t135';
+import { t136 } from './t136';
+import { t137 } from './t137';
+import { t138 } from './t138';
+import { t140 } from './t140';
+import { t141 } from './t141';
+import { t142 } from './t142';
 
 export const TESTS = [
-    t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
-    t121, T125, T126, t129, t128, t130, t131
+    // t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
+    // t121, T125, T126, t129, t128, 
+    t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142
 ];

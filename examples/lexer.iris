@@ -77,7 +77,7 @@
             (tuple curr (str.substring input start curr))
             (match (str.get input curr)
                 (case (tag "Some" (c))
-                    (if (|| (call is_alpha c) (|| (call is_digit c) (|| (= c 95) (= c 45)))) ;; alpha, digit, _, -
+                    (if (|| (call is_alpha c) (|| (call is_digit c) (|| (= c 95) (|| (= c 45) (|| (= c 43) (|| (= c 42) (|| (= c 47) (|| (= c 60) (|| (= c 62) (= c 61)))))))))) ;; alpha, digit, _, -, +, *, /, <, >, =
                         (call scan_ident_loop input len start (+ curr 1))
                         (tuple curr (str.substring input start curr))
                     )

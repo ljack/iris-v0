@@ -1,2 +1,10 @@
 https://raw.githubusercontent.com/ljack/iris-v0/master/goals/GOAL-4-ROADMAP.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/GOAL-5-CLI.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-10.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-11.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-12.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-13.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-4.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-9.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-httpclient.md
+https://raw.githubusercontent.com/ljack/iris-v0/master/goals/goal-iris_wasm_host_plan.md

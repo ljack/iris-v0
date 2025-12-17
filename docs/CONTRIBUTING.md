@@ -15,7 +15,29 @@ To maintain project stability, please check these rules before every commit:
     ```
     *Failure to do this is a common cause of "Unknown intrinsic" errors.*
 
-## How to Add Features
+    ```
+    *Failure to do this is a common cause of "Unknown intrinsic" errors.*
+
+## 🛠 Project Setup
+
+### Prerequisites
+- **Node.js** (v18+)
+- **npm**
+- **System Tools** (for self-hosting verification):
+    - `wabt` (WebAssembly Binary Toolkit) - provides `wat2wasm`
+
+### Quick Start (macOS / Linux)
+We provide a setup script to install dependencies (using Homebrew on macOS):
+
+```bash
+./tools/setup.sh
+```
+
+Or manually:
+```bash
+brew bundle # macOS
+npm install
+```
 
 ### 1. Adding an Intrinsic
 If you want to add a new built-in function (e.g., `math.sqrt`):

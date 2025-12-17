@@ -238,7 +238,6 @@ export class Interpreter {
                     }
                 }
 
-                if (!func) throw new Error(`Unknown function: ${expr.fn}`);
 
                 // Evaluate args in current scope
                 const args: Value[] = [];
@@ -255,6 +254,14 @@ export class Interpreter {
                         // New interpreter instance for the other module
                         const subInterp = new Interpreter(importedProg, this.fs, this.resolver, this.net);
                         return subInterp.callFunction(fname, args);
+                    }
+                }
+
+                if (!func) {
+                    try {
+                        return await this.evalIntrinsic(expr.fn as any, args);
+                    } catch (e) {
+                        throw new Error(`Unknown function: ${expr.fn}`);
                     }
                 }
 
@@ -388,32 +395,46 @@ export class Interpreter {
 
     private async evalIntrinsic(op: IntrinsicOp, args: Value[]): Promise<Value> {
         if (op === '=') {
-            const v1 = args[0]; const v2 = args[1];
-            if (v1.kind === 'I64' && v2.kind === 'I64') return { kind: 'Bool', value: v1.value === v2.value };
-            if (v1.kind === 'Str' && v2.kind === 'Str') return { kind: 'Bool', value: v1.value === v2.value };
-            if (v1.kind === 'Bool' && v2.kind === 'Bool') return { kind: 'Bool', value: v1.value === v2.value };
-            return { kind: 'Bool', value: false }; // structural equality? or false if types differ?
+            const v1 = args[0] as any;
+            const v2 = args[1] as any;
+
+            const r1 = typeof v1 === 'bigint' ? { kind: 'I64', value: v1 } : (typeof v1 === 'string' ? { kind: 'Str', value: v1 } : v1);
+            const r2 = typeof v2 === 'bigint' ? { kind: 'I64', value: v2 } : (typeof v2 === 'string' ? { kind: 'Str', value: v2 } : v2);
+
+            if (r1.kind === 'I64' && r2.kind === 'I64') return { kind: 'Bool', value: r1.value === r2.value };
+            if (r1.kind === 'Str' && r2.kind === 'Str') return { kind: 'Bool', value: r1.value === r2.value };
+            if (r1.kind === 'Bool' && r2.kind === 'Bool') return { kind: 'Bool', value: r1.value === r2.value };
+            return { kind: 'Bool', value: false };
         }
 
-        if (['+', '-', '*', '/', '<=', '<', '>=', '>'].includes(op)) {
-            const v1 = args[0];
-            const v2 = args[1];
-            if (v1.kind !== 'I64' || v2.kind !== 'I64') throw new Error(`Math expects I64 for ${op}, got ${v1.kind} and ${v2.kind}`);
-            const a = v1.value;
-            const b = v2.value;
+        if (['+', '-', '*', '/', '%', '<=', '<', '>=', '>'].includes(op)) {
+            let v1 = args[0] as any;
+            let v2 = args[1] as any;
+
+            const a = typeof v1 === 'bigint' ? v1 : (v1.kind === 'I64' ? v1.value : null);
+            const b = typeof v2 === 'bigint' ? v2 : (v2.kind === 'I64' ? v2.value : null);
+
+            if (a === null || b === null) throw new Error(`Math expects I64 for ${op}, got ${typeof v1 === 'bigint' ? 'bigint' : v1.kind} and ${typeof v2 === 'bigint' ? 'bigint' : v2.kind}`);
+
+            const na = a as bigint;
+            const nb = b as bigint;
 
             switch (op) {
-                case '+': return { kind: 'I64', value: a + b };
-                case '-': return { kind: 'I64', value: a - b };
-                case '*': return { kind: 'I64', value: a * b };
-                case '/': {
-                    if (b === 0n) throw new Error("Division by zero");
-                    return { kind: 'I64', value: a / b };
+                case '+': return { kind: 'I64', value: na + nb };
+                case '-': return { kind: 'I64', value: na - nb };
+                case '*': return { kind: 'I64', value: na * nb };
+                case '%': {
+                    if (nb === 0n) throw new Error("Modulo by zero");
+                    return { kind: 'I64', value: na % nb };
                 }
-                case '<=': return { kind: 'Bool', value: a <= b };
-                case '<': return { kind: 'Bool', value: a < b };
-                case '>=': return { kind: 'Bool', value: a >= b };
-                case '>': return { kind: 'Bool', value: a > b };
+                case '/': {
+                    if (nb === 0n) throw new Error("Division by zero");
+                    return { kind: 'I64', value: na / nb };
+                }
+                case '<=': return { kind: 'Bool', value: na <= nb };
+                case '<': return { kind: 'Bool', value: na < nb };
+                case '>=': return { kind: 'Bool', value: na >= nb };
+                case '>': return { kind: 'Bool', value: na > nb };
             }
         }
 
@@ -547,6 +568,13 @@ export class Interpreter {
             return { kind: 'I64', value: BigInt(val.value) };
         }
 
+        if (op === 'i64.to_string') {
+            const val = args[0] as any;
+            if (typeof val === 'bigint') return { kind: 'Str', value: val.toString() };
+            if (val.kind !== 'I64') throw new Error("i64.to_string expects I64");
+            return { kind: 'Str', value: val.value.toString() };
+        }
+
         if (op.startsWith('net.')) {
             if (op === 'net.listen') {
                 const port = args[0];
@@ -595,6 +623,8 @@ export class Interpreter {
                 return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Connect failed" } };
             }
         }
+
+
 
         if (op === 'http.parse_request') {
             const raw = args[0];
@@ -857,9 +887,9 @@ export class Interpreter {
         }
 
         if (op.startsWith('list.')) {
-            if (op === 'list.len') {
+            if (op === 'list.length') {
                 const l = args[0];
-                if (l.kind !== 'List') throw new Error("list.len expects List");
+                if (l.kind !== 'List') throw new Error("list.length expects List");
                 return { kind: 'I64', value: BigInt(l.items.length) };
             }
             if (op === 'list.get') {
@@ -871,6 +901,25 @@ export class Interpreter {
                     return { kind: 'Option', value: l.items[i] };
                 }
                 return { kind: 'Option', value: null };
+            }
+            if (op === 'list.concat') {
+                const l1 = args[0]; const l2 = args[1];
+                if (l1.kind !== 'List' || l2.kind !== 'List') throw new Error("list.concat expects two Lists");
+                return { kind: 'List', items: [...l1.items, ...l2.items] };
+            }
+            if (op === 'list.unique') {
+                const l = args[0];
+                if (l.kind !== 'List') throw new Error("list.unique expects List");
+                const seen = new Set<string>();
+                const unique: Value[] = [];
+                for (const item of l.items) {
+                    const key = this.valueToKey(item);
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(item);
+                    }
+                }
+                return { kind: 'List', items: unique };
             }
         }
 

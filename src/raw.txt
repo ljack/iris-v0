@@ -1,8 +1,14 @@
+https://raw.githubusercontent.com/ljack/iris-v0/master/src/cli.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/eval.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/main.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/src/platform/raw.txt
+https://raw.githubusercontent.com/ljack/iris-v0/master/src/runtime/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/sexp.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/test-types.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/tests.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/src/tests_cli.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/tier3-tests-from-chatgpt.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/typecheck.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/types.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/src/wasm_runtime.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/src/web-entry.ts

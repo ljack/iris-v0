@@ -1,0 +1,498 @@
+(program
+  (module (name "codegen_wasm") (version 1))
+  (imports
+    (import "list" (as "list"))
+    (import "str" (as "str"))
+  )
+  (defs
+    ;; --- AST Definitions (Mirrors codegen.iris) ---
+    (type Value
+      (union
+        (tag "I64" (I64))
+        (tag "Bool" (Bool))
+        (tag "Str" (Str))
+        (tag "Option" ((Record (value Value)))) 
+        (tag "None" ((Record))) 
+        (tag "Some" (Value)) 
+        (tag "Result" ((Record (isOk Bool) (value Value))))
+        (tag "List" ((Record (items (List Value)))))
+        (tag "Tuple" ((Record (items (List Value)))))
+        (tag "Record" ((Record (fields (List (Tuple Str Value))))))
+        (tag "Map" ((Record (entries (List (Tuple Str Value)))))) 
+      )
+    )
+
+    (type IrisType
+        (union
+            (tag "I64" ((Record)))
+            (tag "Bool" ((Record)))
+            (tag "Str" ((Record)))
+            (tag "Option" ((Record (inner IrisType))))
+            (tag "Result" ((Record (ok IrisType) (err IrisType))))
+            (tag "List" ((Record (inner IrisType))))
+            (tag "Tuple" ((Record (items (List IrisType)))))
+            (tag "Record" ((Record (fields (List (Tuple Str IrisType))))))
+            (tag "Map" ((Record (key IrisType) (value IrisType))))
+            (tag "Fn" ((Record (args (List IrisType)) (ret IrisType) (eff Str))))
+            (tag "Named" ((Record (name Str))))
+            (tag "Union" ((Record (variants (List (Tuple Str IrisType))))))
+        )
+    )
+
+    (type Arg (Record (name Str) (type IrisType)))
+
+    (type Expr
+      (union
+        (tag "Literal" (Value))
+        (tag "Var" ((Record (name Str))))
+        (tag "Let" ((Record (name Str) (value Expr) (body Expr))))
+        (tag "If" ((Record (cond Expr) (then Expr) (else Expr))))
+        (tag "Match" ((Record (target Expr) 
+                             (cases (List (Record (tag Str) (vars (List Str)) (body Expr)))))))
+        (tag "Call" (Str (List Expr)))
+        (tag "Intrinsic" (Str (List Expr)))
+        (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
+        (tag "Tuple" ((Record (items (List Expr)))))
+        (tag "Lambda" ((Record (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
+        (tag "Record" ((Record (fields (List (Tuple Str Expr))))))
+      )
+    )
+
+    ;; --- WASM Code Generator ---
+
+    (deffn (name gen_string_bytes) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
+      (body
+        (if (= i len)
+          ""
+          (let (char_opt (str.get s i))
+            (match char_opt
+              (case (tag "Some" (code))
+                (let (instr (str.concat "(i64.store8 (i32.wrap_i64 (i64.add (local.get $t0) (i64.const " 
+                            (str.concat (i64.to_string (+ 8 i)) 
+                            (str.concat "))) (i64.const " 
+                            (str.concat (i64.to_string code) "))\n")))))
+                  (str.concat instr (gen_string_bytes s (+ i 1) len))
+                )
+              )
+              (case (tag "None") "")
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name gen_list_items) (args (items (List Expr)) (index I64)) (ret Str) (eff !Pure)
+      (body
+        (match (list.get items index)
+          (case (tag "Some" (item))
+            (let (val_code (codegen_wasm item))
+              (let (offset (+ 8 (* index 8)))
+                (str.concat 
+                  "(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const " 
+                  (str.concat (i64.to_string offset) 
+                  (str.concat "))) " 
+                  (str.concat val_code 
+                  (str.concat ")\n" 
+                  (gen_list_items items (+ index 1))
+                )))))
+              )
+            )
+          )
+          (case (tag "None") "")
+        )
+      )
+    )
+
+    (deffn (name gen_record_items) (args (fields (List (Tuple Str Expr))) (index I64)) (ret Str) (eff !Pure)
+      (body
+        (match (list.get fields index)
+          (case (tag "Some" (field))
+            (let (item (tuple.get field 1)) 
+              (let (val_code (codegen_wasm item))
+                (let (offset (+ 8 (* index 8)))
+                  (str.concat 
+                    "(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const " 
+                    (str.concat (i64.to_string offset) 
+                    (str.concat "))) " 
+                    (str.concat val_code 
+                    (str.concat ")\n" 
+                    (gen_record_items fields (+ index 1))
+                  )))))
+                )
+              )
+            )
+          )
+          (case (tag "None") "")
+        )
+      )
+    )
+
+    (deffn (name get_arg) (args (l (List Expr)) (i I64)) (ret Expr) (eff !Pure)
+        (body 
+            (match (list.get l i)
+                (case (tag "Some" (e)) e)
+                (case (tag "None") (tag "Literal" (tag "I64" 0)))
+            )
+        )
+    )
+
+    (deffn (name gen_match_cases) (args (cases (List (Record (tag Str) (vars (List Str)) (body Expr)))) (target_v Str) (level I64)) (ret Str) (eff !Pure)
+        (body
+            (match cases
+                (case (tag "nil") "(unreachable) ;; Exhaustive check failed or empty match")
+                (case (tag "cons" (h t))
+                    (let (tag_name h.tag)
+                    (let (vars h.vars)
+                    (let (body_code (call codegen_wasm h.body))
+                    (let (idx_str (call get_tag_index tag_name))
+                    (let (cond (str.concat "(i64.eq (i64.load (i32.wrap_i64 (local.get " (str.concat target_v (str.concat "))) (i64.const " (str.concat idx_str "))")))))
+                    (let (bindings (call gen_match_bindings vars target_v 0))
+                        (str.concat "(if (result i64) " 
+                            (str.concat cond 
+                                (str.concat "\n  (then\n" 
+                                    (str.concat bindings 
+                                        (str.concat body_code 
+                                            (str.concat "\n  )\n  (else\n" 
+                                                (str.concat (call gen_match_cases t target_v (+ level 1)) "\n  )\n)")))))))
+                    ))))))
+                )
+            )
+        )
+    )
+
+    (deffn (name gen_match_bindings) (args (vars (List Str)) (target_v Str) (index I64)) (ret Str) (eff !Pure)
+        (body
+            (match vars
+                (case (tag "nil") "")
+                (case (tag "cons" (h t))
+                    (let (offset (+ 8 (* index 8)))
+                        (str.concat "(local.set $" 
+                            (str.concat h 
+                            (str.concat " (i64.load (i32.wrap_i64 (i64.add (local.get " 
+                            (str.concat target_v 
+                            (str.concat ") (i64.const " 
+                            (str.concat (i64.to_string offset) 
+                            (str.concat ")) )))\n" (call gen_match_bindings t target_v (+ index 1)))
+                            ))))))
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name get_tag_index) (args (tag Str)) (ret Str) (eff !Pure)
+        (body
+            (if (= tag "None") "0"
+            (if (= tag "Some") "1"
+            (if (= tag "Ok") "0"
+            (if (= tag "Err") "1"
+            (if (= tag "nil") "0"
+            (if (= tag "cons") "1"
+                "999"
+            ))))))
+        )
+    )
+
+    (deffn (name codegen_wasm) (args (e Expr)) (ret Str) (eff !Pure)
+      (body
+        (match e
+          (case (tag "Literal" (v))
+            (match v
+              (case (tag "I64" (i)) (str.concat "(i64.const " (str.concat (i64.to_string i) ")")))
+              (case (tag "Bool" (b)) (if b "(i32.const 1)" "(i32.const 0)"))
+              (case (tag "Str" (s)) 
+                (let (len (str.len s))
+                  (let (size (+ 8 len))
+                    (let (rem (% size 8))
+                      (let (padding (if (= rem 0) 0 (- 8 rem)))
+                        (let (aligned (+ size padding))
+                          (str.concat "(call $alloc (i64.const " 
+                            (str.concat (i64.to_string aligned) 
+                            (str.concat "))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const " 
+                            (str.concat (i64.to_string len) 
+                            (str.concat "))\n" 
+                            (str.concat (gen_string_bytes s 0 len) "(local.get $t0)")
+                          )))))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (case (tag "None" (_)) 
+                (str.concat "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 0))\n(local.get $t0)")
+              ) 
+              (case (tag "Option" (_)) ";; Option")
+              (case (tag "Some" (val)) 
+                (let (vcode (codegen_wasm (tag "Literal" val)))
+                  (let (s1 "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 1))\n")
+                    (let (s2 (str.concat "(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) " (str.concat vcode ")\n")))
+                      (str.concat s1 (str.concat s2 "(local.get $t0)"))
+                    )
+                  )
+                )
+              )
+              (case (tag "Result" (_)) ";; Result")
+              (case (tag "List" (_)) ";; List")
+              (case (tag "Tuple" (_)) ";; Tuple")
+              (case (tag "Record" (_)) ";; Record")
+              (case (tag "Map" (_)) ";; Map")
+            )
+          )
+          (case (tag "Intrinsic" (i))
+            (let (op i.0)
+              (let (args i.1)
+                (if (= op "+")
+                  (let (a1 (codegen_wasm (call get_arg args 0)))
+                    (let (a2 (codegen_wasm (call get_arg args 1)))
+                      (str.concat a1 (str.concat "\n" (str.concat a2 "\n(i64.add)")))
+                    )
+                  )
+                  (if (= op "io.print")
+                    (let (arg (call get_arg args 0))
+                      (let (arg_code (codegen_wasm arg))
+                        (str.concat arg_code "\n(call $print)\n(i64.const 1)")
+                      )
+                    )
+                    (if (= op "list.get")
+                      (let (lcode (codegen_wasm (call get_arg args 0)))
+                        (let (icode (codegen_wasm (call get_arg args 1)))
+                          (let (part1 (str.concat lcode "\n(local.set $t0)\n"))
+                            (let (part2 (str.concat icode "\n(local.set $t1)\n"))
+                              (let (part3 "(if (result i64) (i64.lt_u (local.get $t1) (i64.load (i32.wrap_i64 (local.get $t0))))\n")
+                                (let (part4 "  (then\n    (call $alloc (i64.const 16))\n(local.set $t2)\n    (i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 1))\n    (i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8))) \n      (i64.load (i32.wrap_i64 (i64.add (i64.add (local.get $t0) (i64.const 8)) (i64.mul (local.get $t1) (i64.const 8)))))\n    )\n    (local.get $t2)\n  )\n")
+                                  (let (part5 "  (else\n    (call $alloc (i64.const 16))\n(local.set $t2)\n    (i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 0))\n    (local.get $t2)\n  )\n)")
+                                    (str.concat part1 (str.concat part2 (str.concat part3 (str.concat part4 part5))))
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                      (str.concat ";; unknown intrinsic " (str.concat op " "))
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (case (tag "Let" (l))
+            (let (name l.name)
+              (let (val_code (codegen_wasm l.value))
+                (let (body_code (codegen_wasm l.body))
+                  (str.concat val_code (str.concat "\n(local.set $" (str.concat name (str.concat ")\n" body_code))))
+                )
+              )
+            )
+          )
+          (case (tag "Var" (v))
+            (str.concat "(local.get $" (str.concat v.name ")"))
+          )
+          (case (tag "If" (i))
+            (let (cond_code (codegen_wasm i.cond))
+              (let (then_code (codegen_wasm i.then))
+                (let (else_code (codegen_wasm i.else))
+                  (str.concat cond_code 
+                    (str.concat "\n(if (result i64)\n" 
+                      (str.concat "(then " 
+                        (str.concat then_code 
+                          (str.concat ")\n(else " 
+                            (str.concat else_code ")\n)")
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (case (tag "Call" (c))
+            (let (fn_name c.0)
+              (let (args c.1)
+                (if (= (list.length args) 0)
+                  (str.concat "(call $" (str.concat fn_name ")"))
+                  (if (= (list.length args) 1)
+                    (let (arg_code (codegen_wasm (call get_arg args 0)))
+                      (str.concat arg_code (str.concat "\n(call $" (str.concat fn_name ")")))
+                    )
+                    ";; Multi-arg call not yet implemented in WASM PoC"
+                  )
+                )
+              )
+            )
+          )
+          (case (tag "Match" (m))
+            (let (target_code (call codegen_wasm m.target))
+                (str.concat target_code (str.concat "\n(local.set $t0)\n" (call gen_match_cases m.cases "$t0" 0)))
+            )
+          )
+          (case (tag "List" (l))
+            (let (items l.items)
+              (let (len (list.length items))
+                (let (size_bytes (+ 8 (* len 8))) 
+                  (let (s1 (str.concat "(call $alloc (i64.const " (i64.to_string size_bytes)))
+                    (let (s2 (str.concat "))\n(local.tee $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const " (i64.to_string len)))
+                      (let (s3 (str.concat "))\n" (gen_list_items items 0)))
+                        (str.concat s1 (str.concat s2 (str.concat s3 "\n(local.get $t0)")))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (case (tag "Tuple" (t))
+            (let (items t.items)
+              (let (len (list.length items))
+                (let (size_bytes (+ 8 (* len 8))) 
+                  (let (s1 (str.concat "(call $alloc (i64.const " (i64.to_string size_bytes)))
+                    (let (s2 (str.concat "))\n(local.tee $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const " (i64.to_string len)))
+                      (let (s3 (str.concat "))\n" (gen_list_items items 0)))
+                        (str.concat s1 (str.concat s2 (str.concat s3 "\n(local.get $t0)")))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (case (tag "Record" (r))
+            (let (fields r.fields)
+              (let (len (list.length fields))
+                (let (size_bytes (+ 8 (* len 8))) 
+                  (let (s1 (str.concat "(call $alloc (i64.const " (i64.to_string size_bytes)))
+                    (let (s2 (str.concat "))\n(local.tee $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const " (i64.to_string len)))
+                      (let (s3 (str.concat "))\n" (gen_record_items fields 0)))
+                        (str.concat s1 (str.concat s2 (str.concat s3 "\n(local.get $t0)")))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_locals) (args (e Expr)) (ret (List Str)) (eff !Pure)
+      (body
+        (match e
+          (case (tag "Let" (l))
+            (list.concat (cons l.name (call collect_locals l.body)) (call collect_locals l.value))
+          )
+          (case (tag "If" (i))
+            (let (l1 (call collect_locals i.then))
+              (let (l2 (call collect_locals i.else))
+                (list.concat l1 (list.concat l2 (call collect_locals i.cond)))
+              )
+            )
+          )
+          (case (tag "Match" (m))
+            (list.concat (call collect_locals m.target) (call collect_cases_locals m.cases))
+          )
+          (case (tag "Intrinsic" (i))
+            (call collect_expr_list_locals (tuple.get i 1))
+          )
+          (case (tag "Call" (c))
+            (call collect_expr_list_locals (tuple.get c 1))
+          )
+          (case (tag "List" (l))
+            (call collect_expr_list_locals l.items)
+          )
+          (case (tag "Tuple" (t))
+            (call collect_expr_list_locals t.items)
+          )
+          (case (tag "Record" (r))
+            (call collect_record_fields_locals r.fields)
+          )
+          (case (tag "Literal" (_)) (list))
+          (case (tag "Var" (_)) (list))
+          (case (tag "Lambda" (_)) (list))
+        )
+      )
+    )
+
+    (deffn (name collect_expr_list_locals) (args (l (List Expr))) (ret (List Str)) (eff !Pure)
+      (body
+        (match l
+          (case (tag "nil") (list))
+          (case (tag "cons" (h t))
+            (list.concat (call collect_locals h) (call collect_expr_list_locals t))
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_cases_locals) (args (l (List (Record (tag Str) (vars (List Str)) (body Expr))))) (ret (List Str)) (eff !Pure)
+      (body
+        (match l
+          (case (tag "nil") (list))
+          (case (tag "cons" (h t))
+            (let (body_locals (call collect_locals h.body))
+              (list.concat h.vars (list.concat body_locals (call collect_cases_locals t)))
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_record_fields_locals) (args (l (List (Tuple Str Expr)))) (ret (List Str)) (eff !Pure)
+      (body
+        (match l
+          (case (tag "nil") (list))
+          (case (tag "cons" (h t))
+            (let (expr (tuple.get h 1))
+              (list.concat (call collect_locals expr) (call collect_record_fields_locals t))
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name gen_local_decls) (args (names (List Str))) (ret Str) (eff !Pure)
+      (body
+        (match names
+          (case (tag "nil") "")
+          (case (tag "cons" (h t))
+            (str.concat "(local $" (str.concat h (str.concat " i64) " (call gen_local_decls t))))
+          )
+        )
+      )
+    )
+
+    (deffn (name codegen_module) (args (e Expr)) (ret Str) (eff !Pure)
+      (body
+        (let (body_code (call codegen_wasm e))
+          (let (locals (call collect_locals e))
+            (let (local_decls (call gen_local_decls (list.unique locals)))
+              (str.concat 
+                "(module\n"
+                (str.concat 
+                  "  (import \"host\" \"print\" (func $print (param i64)))\n"
+                  (str.concat 
+                    "  (memory $memory 1)\n  (export \"memory\" (memory $memory))\n"
+                    (str.concat 
+                      "  (global $heap_ptr (mut i64) (i64.const 16))\n" 
+                      (str.concat 
+                        "  (func $alloc (param $size i64) (result i64)\n    (local $ptr i64)\n    (global.get $heap_ptr)\n    (local.set $ptr)\n    (global.set $heap_ptr (i64.add (global.get $heap_ptr) (local.get $size)))\n    (local.get $ptr)\n  )\n"
+                        (str.concat 
+                          "  (func $main (result i64)\n    (local $t0 i64) (local $t1 i64) (local $t2 i64) (local $t3 i64) "
+                          (str.concat local_decls 
+                            (str.concat "\n    " (str.concat body_code "\n  )\n  (export \"main\" (func $main))\n)"))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)

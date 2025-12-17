@@ -22,7 +22,7 @@
 
 ### Known Gaps ⚠️
 - [x] Real network operations (Implemented via Node.js net/http)
-- [/] Self-hosting compiler (Phase 1 Verified: Lexer, Parser, Evaluator working in tests)
+- [x] Self-hosting compiler (Phases 1-5 Verified: Lexer, Parser, TypeChecker, TS/WASM Codegen, Pipeline Integration)
 - ⚠️ Tuple types implemented but need more exhaustive tests
 - ⚠️ Module system needs circular import detection polish
 

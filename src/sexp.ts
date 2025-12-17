@@ -369,7 +369,7 @@ export class Parser {
             }
 
             // Constructors / Intrinsics
-            if (['+', '-', '*', '/', '<=', '<', '=', '>=', '>', '&&', '||', '!', 'Some', 'Ok', 'Err', 'cons', 'tuple.get', 'record.get', 'io.print', 'io.read_file', 'io.write_file', 'i64.from_string'].includes(op)) {
+            if (['+', '-', '*', '/', '%', '<=', '<', '=', '>=', '>', '&&', '||', '!', 'Some', 'Ok', 'Err', 'cons', 'tuple.get', 'record.get', 'io.print', 'io.read_file', 'io.write_file', 'i64.from_string', 'i64.to_string'].includes(op)) {
                 const args: Expr[] = [];
                 while (!this.check('RParen')) {
                     args.push(this.parseExpr());
@@ -440,6 +440,26 @@ export class Parser {
 
             // Check for (list.* ...)
             if (op.startsWith('list.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (tuple.* ...)
+            if (op.startsWith('tuple.')) {
+                const args: Expr[] = [];
+                while (!this.check('RParen')) {
+                    args.push(this.parseExpr());
+                }
+                this.expect('RParen');
+                return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+            }
+
+            // Check for (record.* ...)
+            if (op.startsWith('record.')) {
                 const args: Expr[] = [];
                 while (!this.check('RParen')) {
                     args.push(this.parseExpr());
@@ -521,7 +541,7 @@ export class Parser {
             return { kind: 'Call', fn: op, args };
         }
 
-        throw new Error(`Unexpected token for expression: ${token.kind}`);
+        throw new Error(`Unexpected token for expression: ${token.kind} at ${token.line}:${token.col}`);
     }
 
     private parseType(): IrisType {

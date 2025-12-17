@@ -1,0 +1,11 @@
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/codegen.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/codegen_wasm.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/compiler.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/fib.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/hello.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/http_client.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/http_server.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/interpreter.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/lexer.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/parser.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/examples/typecheck.iris

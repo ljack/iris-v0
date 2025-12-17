@@ -42,6 +42,7 @@ export class TypeChecker {
                 for (let i = 0; i < def.args.length; i++) {
                     env.set(def.args[i].name, def.args[i].type);
                 }
+                if (def.name === 'type_check') console.log("Checking type_check. Ret:", JSON.stringify(def.ret));
 
                 const { type: bodyType, eff: bodyEff } = this.checkExprFull(def.body, env, def.ret);
 
@@ -199,7 +200,7 @@ export class TypeChecker {
                             newEnv.set(c.vars[1], resolvedTarget);       // tail
                         } else throw new Error(`Unknown list match tag: ${c.tag}`);
 
-                        const body = this.checkExprFull(c.body, newEnv);
+                        const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
                         if (retType) this.expectType(retType, body.type, "Match arms mismatch");
                         else retType = body.type;
                         joinedEff = this.joinEffects(joinedEff, body.eff);
@@ -226,7 +227,7 @@ export class TypeChecker {
                             throw new Error(`Match case ${c.tag} expects 1 variable (payload binding)`);
                         }
 
-                        const body = this.checkExprFull(c.body, newEnv);
+                        const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
                         if (retType) this.expectType(retType, body.type, "Match arms mismatch");
                         else retType = body.type;
                         joinedEff = this.joinEffects(joinedEff, body.eff);
@@ -265,7 +266,7 @@ export class TypeChecker {
                 if (expr.args.length !== func.args.length) throw new Error(`TypeError: Arity mismatch for ${expr.fn}`);
                 let eff: IrisEffect = '!Pure';
                 for (let i = 0; i < expr.args.length; i++) {
-                    const arg = this.checkExprFull(expr.args[i], env);
+                    const arg = this.checkExprFull(expr.args[i], env, func.args[i]);
                     this.expectType(func.args[i], arg.type, `Argument ${i} mismatch`);
                     eff = this.joinEffects(eff, arg.eff);
                 }
@@ -304,18 +305,34 @@ export class TypeChecker {
                     resolvedExpect = this.resolve(expectedType);
                     if (resolvedExpect.type === 'Union') {
                         const variantType = resolvedExpect.variants[expr.tag];
-                        if (!variantType) {
-                            throw new Error(`TypeError: Union ${this.fmt(resolvedExpect)} has no variant ${expr.tag}`);
+                        if (variantType) {
+                            expectHint = variantType;
                         }
-                        expectHint = variantType;
+                    } else if (resolvedExpect.type === 'Result') {
+                        if (expr.tag === 'Ok') expectHint = resolvedExpect.ok;
+                        else if (expr.tag === 'Err') expectHint = resolvedExpect.err;
+                    } else if (resolvedExpect.type === 'Option') {
+                        if (expr.tag === 'Some') expectHint = resolvedExpect.inner;
                     }
                 }
 
                 const valRes = this.checkExprFull(expr.value, env, expectHint);
 
-                if (resolvedExpect && resolvedExpect.type === 'Union') {
-                    this.expectType(expectHint!, valRes.type, `Union variant ${expr.tag} mismatch`);
-                    return { type: expectedType!, eff: valRes.eff };
+                if (resolvedExpect) {
+                    if (resolvedExpect.type === 'Union') {
+                        // Check variant existence handling above already?
+                        // If variant exists, we used hint. If not, expectHint is undefined.
+                        // We should re-check variant existence to be safe or rely on valRes check?
+                        // ValRes check verified against hint.
+                        // We strictly return expectedType which describes the whole Union.
+                        if (resolvedExpect.variants[expr.tag]) return { type: expectedType!, eff: valRes.eff };
+                    } else if (resolvedExpect.type === 'Result') {
+                        if (expr.tag === 'Ok') return { type: expectedType!, eff: valRes.eff };
+                        if (expr.tag === 'Err') return { type: expectedType!, eff: valRes.eff };
+                    } else if (resolvedExpect.type === 'Option') {
+                        if (expr.tag === 'Some') return { type: expectedType!, eff: valRes.eff };
+                        if (expr.tag === 'None') return { type: expectedType!, eff: valRes.eff };
+                    }
                 }
 
                 const retType: IrisType = { type: 'Union', variants: { [expr.tag]: valRes.type } };
@@ -385,24 +402,43 @@ export class TypeChecker {
             }
 
             case 'Intrinsic': {
+                // Pre-check for constructors to pass hints
+                let argHints: (IrisType | undefined)[] = [];
+                if (expectedType) {
+                    const resolved = this.resolve(expectedType);
+                    // console.log("Intrinsic hint check:", expr.op, resolved.type);
+                    if (expr.op === 'Ok' && resolved.type === 'Result') argHints = [resolved.ok];
+                    else if (expr.op === 'Err' && resolved.type === 'Result') argHints = [resolved.err];
+                    else if (expr.op === 'Some' && resolved.type === 'Option') argHints = [resolved.inner];
+                    else if (expr.op === 'cons' && resolved.type === 'List') argHints = [resolved.inner, resolved];
+                }
+
+                if (['Ok', 'Err', 'Some'].includes(expr.op)) {
+                    // console.log("Check Intrinsic", expr.op, "Hints:", argHints.length);
+                }
+
                 const argTypes: IrisType[] = [];
                 let joinedEff: IrisEffect = '!Pure';
-                for (const arg of expr.args) {
-                    const res = this.checkExprFull(arg, env);
+                for (let i = 0; i < expr.args.length; i++) {
+                    const arg = expr.args[i];
+                    const hint = argHints[i];
+                    const res = this.checkExprFull(arg, env, hint);
+
                     argTypes.push(res.type);
                     joinedEff = this.joinEffects(joinedEff, res.eff);
                 }
 
                 // Pure Ops
-                if (['+', '-', '*', '/', '<', '<=', '=', '>=', '>'].includes(expr.op)) {
+                if (['+', '-', '*', '/', '%', '<', '<=', '=', '>=', '>'].includes(expr.op)) {
                     // Check arg types
-                    for (let i = 0; i < argTypes.length; i++) {
-                        if (argTypes[i].type !== 'I64') {
-                            // Equality allows others in theory, but v0 spec strict.
-                            if (['+', '-', '*', '/'].includes(expr.op)) {
+                    if (['+', '-', '*', '/', '%'].includes(expr.op)) {
+                        for (let i = 0; i < argTypes.length; i++) {
+                            if (argTypes[i].type !== 'I64') {
                                 throw new Error(`TypeError: Type Error in ${expr.op} operand ${i + 1}: Expected I64, got ${argTypes[i].type}`);
                             }
                         }
+                        if (argTypes.length !== 2) throw new Error(`${expr.op} expects 2 operands`);
+                        return { type: { type: 'I64' }, eff: joinedEff };
                     }
                     return { type: ['<=', '<', '=', '>=', '>'].includes(expr.op) ? { type: 'Bool' } : { type: 'I64' }, eff: joinedEff };
                 }
@@ -566,9 +602,9 @@ export class TypeChecker {
                 }
 
                 if (expr.op.startsWith('list.')) {
-                    if (expr.op === 'list.len') {
-                        if (argTypes.length !== 1) throw new Error("list.len expects 1 arg (list)");
-                        if (argTypes[0].type !== 'List') throw new Error("list.len expects List");
+                    if (expr.op === 'list.length') {
+                        if (argTypes.length !== 1) throw new Error("list.length expects 1 arg (list)");
+                        if (argTypes[0].type !== 'List') throw new Error("list.length expects List");
                         return { type: { type: 'I64' }, eff: joinedEff };
                     }
                     if (expr.op === 'list.get') {
@@ -578,12 +614,28 @@ export class TypeChecker {
                         if (idx.type !== 'I64') throw new Error("list.get expects I64 index");
                         return { type: { type: 'Option', inner: l.inner }, eff: joinedEff };
                     }
+                    if (expr.op === 'list.concat') {
+                        if (argTypes.length !== 2) throw new Error("list.concat expects 2 args (list1, list2)");
+                        const [l1, l2] = argTypes;
+                        if (l1.type !== 'List' || l2.type !== 'List') throw new Error("list.concat expects two Lists");
+                        return { type: l1, eff: joinedEff };
+                    }
+                    if (expr.op === 'list.unique') {
+                        if (argTypes.length !== 1) throw new Error("list.unique expects 1 arg (list)");
+                        return { type: argTypes[0], eff: joinedEff };
+                    }
                 }
 
                 if (expr.op === 'i64.from_string') {
                     if (argTypes.length !== 1) throw new Error("i64.from_string expects 1 arg (Str)");
                     if (argTypes[0].type !== 'Str') throw new Error("i64.from_string expects Str");
                     return { type: { type: 'I64' }, eff: joinedEff };
+                }
+
+                if (expr.op === 'i64.to_string') {
+                    if (argTypes.length !== 1) throw new Error("i64.to_string expects 1 arg (I64)");
+                    if (argTypes[0].type !== 'I64') throw new Error("i64.to_string expects I64");
+                    return { type: { type: 'Str' }, eff: joinedEff };
                 }
 
                 if (expr.op === 'tuple.get') {

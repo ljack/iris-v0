@@ -63,7 +63,7 @@ export type Expr =
 
 // Pre-defined operators
 export type IntrinsicOp =
-  | '+' | '-' | '*' | '/' | '<=' | '<' | '=' | '>=' | '>'
+  | '+' | '-' | '*' | '/' | '%' | '<=' | '<' | '=' | '>=' | '>'
   | '&&' | '||' | '!'
   | 'Some' | 'Ok' | 'Err'
 
@@ -74,11 +74,11 @@ export type IntrinsicOp =
   | 'http.parse_request' | 'http.parse_response'
   | 'http.get' | 'http.post'
   | 'map.make' | 'map.put' | 'map.get' | 'map.contains' | 'map.keys'
-  | 'list.len' | 'list.get'
+  | 'list.length' | 'list.get' | 'list.concat' | 'list.unique'
   | 'tuple.get' | 'record.get'
   | 'str.len' | 'str.concat' | 'str.contains' | 'str.ends_with'
   | 'str.get' | 'str.substring' | 'str.from_code' | 'str.index_of'
-  | 'i64.from_string';
+  | 'i64.from_string' | 'i64.to_string';
 
 export type MatchCase = {
   tag: string;

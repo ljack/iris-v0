@@ -1,0 +1,60 @@
+(program
+  (module (name "compiler") (version 1))
+  (imports
+    (import "io" (as "io"))
+    (import "str" (as "str"))
+    (import "list" (as "list"))
+    (import "lexer" (as "lexer"))
+    (import "parser" (as "parser"))
+    (import "typecheck" (as "typecheck"))
+    (import "codegen" (as "codegen"))
+    (import "codegen_wasm" (as "codegen_wasm"))
+  )
+  (defs
+    ;; Define Result type for compatibility if needed or use from imports if exposed?
+    ;; Result is generic intrinsic type, so we use structural types matching what imports return
+    ;; Note: typecheck.type_check returns (Result IrisType Str)
+    ;; io.read_file returns (Result Str Str)
+    
+    (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
+        (body
+            (let (read_res (io.read_file path))
+                (match read_res
+                    (case (tag "Err" (msg)) (tag "Err" (str.concat "File error: " msg)))
+                    (case (tag "Ok" (source))
+                        ;; 1. Tokenize
+                        (let (tokens (lexer.tokenize source))
+                            ;; 2. Parse
+                            (let (ast (parser.parse tokens))
+                                ;; 3. Type Check
+                                (let (env (typecheck.env_new))
+                                    (let (tc_res (typecheck.type_check ast env))
+                                        (match tc_res
+                                            (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
+                                            (case (tag "Ok" (_))
+                                                ;; 4. Code Gen
+                                                (if (str.contains target "wasm")
+                                                    (tag "Ok" (codegen_wasm.codegen_wasm ast))
+                                                    (tag "Ok" (codegen.codegen ast))
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name main) (args) (ret I64) (eff !IO)
+        (body
+            (let (_ (io.print "Usage: compile_file(path, target)"))
+                0
+            )
+        )
+    )
+  )
+)

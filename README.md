@@ -138,8 +138,8 @@ iris-v0/
 │   ├── goal-4.md         # HTTP server objective
 │   └── GOAL-4-ROADMAP.md # Goal 4 detailed roadmap
 │
+├── docs/                   # Documentation and Roadmap
 ├── examples/             # Example programs
-├── ROADMAP.md           # Main project roadmap
 ├── package.json         # NPM configuration
 └── tsconfig.json        # TypeScript configuration
 ```
@@ -231,7 +231,7 @@ Subtyping:  !Pure < !IO < !Net < !Any
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for guidelines.
 
 ### Development Setup
 
@@ -261,7 +261,7 @@ npx ts-node -e "const {run} = require('./src/main'); console.log(run(source, fs)
 
 ## Roadmap
 
-See [ROADMAP.md](./ROADMAP.md) for comprehensive project roadmap including:
+See [WHATS-NEXT.md](./docs/WHATS-NEXT.md) for comprehensive project roadmap including:
 
 - **Phase 1**: Foundation (error messages, REPL, string operations)
 - **Phase 2**: Professional tools (formatter, LSP, syntax highlighting)
@@ -284,7 +284,7 @@ Current implementation prioritizes correctness and clarity over performance. Pla
 
 ## Documentation
 
-- **[Language Specification](./iris-v0-specification.md)** - Complete language design
+- **[Language Specification](./docs/iris-v0-specification.md)** - Complete language design
 - **[Effect System](./specs/iris-v0.2.md)** - Effect lattice and inference rules
 - **[Implementation Guide](./docs/IMPLEMENTATION.md)** - For contributors
 - **[API Reference](./docs/API.md)** - Standard library reference
@@ -507,8 +507,8 @@ If you use IRIS in academic work, please cite:
 
 ## Resources
 
-- 📚 [Language Specification](./iris-v0-specification.md)
-- 🛣️ [Project Roadmap](./ROADMAP.md)
+- 📚 [Language Specification](./docs/iris-v0-specification.md)
+- 🛣️ [Project Roadmap](./docs/WHATS-NEXT.md)
 - 🎯 [Goal 4 Roadmap](./goals/GOAL-4-ROADMAP.md)
 - 🧪 [Test Suite](./tests/)
 - 📖 [Documentation](./docs/)
