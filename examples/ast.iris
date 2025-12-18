@@ -1,0 +1,78 @@
+(program
+  (module (name "ast") (version 1))
+  (imports
+    (import "list" (as "list"))
+  )
+  (defs
+    ;; Token Structure: (record (kind Str) (value Str))
+    (type Token (Record (kind Str) (value Str)))
+
+    ;; Represents a runtime value
+    (type Value
+      (union
+        (tag "I64" (I64))
+        (tag "Bool" (Bool))
+        (tag "Str" (Str))
+        (tag "Option" ((Record (value Value)))) 
+        (tag "None" ((Record))) 
+        (tag "Some" (Value)) 
+        (tag "Result" ((Record (isOk Bool) (value Value))))
+        (tag "List" ((Record (items (List Value)))))
+        (tag "Tuple" ((Record (items (List Value)))))
+        (tag "Record" ((Record (fields (List (Tuple Str Value))))))
+        (tag "Map" ((Record (entries (List (Tuple Str Value)))))) 
+      )
+    )
+
+    ;; Iris Type representation
+    (type IrisType
+        (union
+            (tag "I64" ((Record)))
+            (tag "Bool" ((Record)))
+            (tag "Str" ((Record)))
+            (tag "Option" ((Record (inner IrisType))))
+            (tag "Result" ((Record (ok IrisType) (err IrisType))))
+            (tag "List" ((Record (inner IrisType))))
+            (tag "Tuple" ((Record (items (List IrisType)))))
+            (tag "Record" ((Record (fields (List (Tuple Str IrisType))))))
+            (tag "Map" ((Record (key IrisType) (value IrisType))))
+            (tag "Fn" ((Record (args (List IrisType)) (ret IrisType) (eff Str))))
+            (tag "Named" ((Record (name Str))))
+            (tag "Union" ((Record (variants (List (Tuple Str IrisType))))))
+            (tag "Unit" ((Record)))
+            (tag "Error" ((Record (msg Str))))
+        )
+    )
+
+    (type Arg (Record (name Str) (type IrisType)))
+
+    ;; Expression representation
+    (type Expr
+      (union
+        (tag "Literal" (Value))
+        (tag "Var" ((Record (name Str))))
+        (tag "Let" ((Record (name Str) (value Expr) (body Expr))))
+        (tag "If" ((Record (cond Expr) (then Expr) (else Expr))))
+        (tag "Match" ((Record (target Expr) (cases (List (Record (variantTag Str) (vars (List Str)) (body Expr)))))))
+        (tag "Call" ((Record (name Str) (args (List Expr)))))
+        (tag "Intrinsic" ((Record (op Str) (args (List Expr)))))
+        (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
+        (tag "Tuple" ((Record (items (List Expr)))))
+        (tag "Lambda" ((Record (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
+        (tag "Record" ((Record (fields (List (Tuple Str Expr))))))
+      )
+    )
+
+    ;; Top-level definitions
+    (type Definition
+        (union
+            (tag "DefFn" ((Record (name Str) (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
+            (tag "TypeDef" ((Record (name Str) (type IrisType))))
+        )
+    )
+
+    (type Import (Record (path Str) (alias Str)))
+    (type ModuleDecl (Record (name Str) (version I64)))
+    (type Program (Record (module ModuleDecl) (imports (List Import)) (defs (List Definition))))
+  )
+)

@@ -1,0 +1,31 @@
+(program
+  (module (name "type_env") (version 1))
+  (imports
+    (import "ast" (as "ast"))
+    (import "map" (as "map"))
+  )
+  (defs
+    ;; Type Environment: Map from Name to IrisType
+    (type TypeEnv (Record (bindings (Map Str ast.IrisType)) (functions (Map Str ast.IrisType))))
+
+    (deffn (name env_new) (args) (ret TypeEnv) (eff !Pure)
+        (body (record (bindings (map.make)) (functions (map.make))))
+    )
+
+    (deffn (name env_get) (args (env TypeEnv) (key Str)) (ret (Option ast.IrisType)) (eff !Pure)
+        (body (map.get env.bindings key))
+    )
+
+    (deffn (name env_get_fn) (args (env TypeEnv) (key Str)) (ret (Option ast.IrisType)) (eff !Pure)
+        (body (map.get env.functions key))
+    )
+
+    (deffn (name env_put) (args (env TypeEnv) (key Str) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
+        (body (record (bindings (map.put env.bindings key t)) (functions env.functions)))
+    )
+
+    (deffn (name env_put_fn) (args (env TypeEnv) (key Str) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
+        (body (record (bindings env.bindings) (functions (map.put env.functions key t))))
+    )
+  )
+)

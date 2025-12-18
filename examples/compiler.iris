@@ -27,14 +27,13 @@
                             ;; 2. Parse
                             (let (ast (parser.parse tokens))
                                 ;; 3. Type Check
-                                (let (env (typecheck.env_new))
-                                    (let (tc_res (typecheck.type_check ast env))
+                                (let (tc_res (typecheck.type_check_program ast))
                                         (match tc_res
                                             (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
                                             (case (tag "Ok" (_))
                                                 ;; 4. Code Gen
                                                 (if (str.contains target "wasm")
-                                                    (tag "Ok" (codegen_wasm.codegen_wasm ast))
+                                                    (tag "Ok" (codegen_wasm.codegen_module ast))
                                                     (tag "Ok" (codegen.codegen ast))
                                                 )
                                             )
@@ -43,7 +42,6 @@
                                 )
                             )
                         )
-                    )
                 )
             )
         )

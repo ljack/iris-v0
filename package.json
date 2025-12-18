@@ -20,5 +20,8 @@
     "esbuild": "^0.27.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "wabt": "^1.0.39"
   }
 }

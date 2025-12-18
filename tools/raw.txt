@@ -1,1 +1,2 @@
+https://raw.githubusercontent.com/ljack/iris-v0/master/tools/check_balance.py
 https://raw.githubusercontent.com/ljack/iris-v0/master/tools/setup.sh

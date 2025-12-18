@@ -77,7 +77,7 @@
             (tuple curr (str.substring input start curr))
             (match (str.get input curr)
                 (case (tag "Some" (c))
-                    (if (|| (call is_alpha c) (|| (call is_digit c) (|| (= c 95) (|| (= c 45) (|| (= c 43) (|| (= c 42) (|| (= c 47) (|| (= c 60) (|| (= c 62) (= c 61)))))))))) ;; alpha, digit, _, -, +, *, /, <, >, =
+                    (if (|| (call is_alpha c) (|| (call is_digit c) (|| (= c 95) (|| (= c 45) (|| (= c 43) (|| (= c 42) (|| (= c 47) (|| (= c 60) (|| (= c 62) (|| (= c 61) (|| (= c 46) (|| (= c 33) (|| (= c 63) (= c 58)))))))))))))) ;; alpha, digit, _, -, +, *, /, <, >, =, ., !, ?, :
                         (call scan_ident_loop input len start (+ curr 1))
                         (tuple curr (str.substring input start curr))
                     )
@@ -92,6 +92,19 @@
       (body (call scan_ident_loop input len start (+ start 1)))
     )
 
+    (deffn (name scan_comment) (args (input Str) (len I64) (pos I64)) (ret I64) (eff !Pure)
+      (body 
+        (if (>= pos len) pos
+          (match (str.get input pos)
+            (case (tag "Some" (c))
+                (if (= c 10) (+ pos 1) (call scan_comment input len (+ pos 1)))
+            )
+            (case (tag "None") pos)
+          )
+        )
+      )
+    )
+
     (deffn (name tokenize_rec) (args (input Str) (len I64) (pos I64) (tokens (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
       (body
         (if (>= pos len)
@@ -100,6 +113,8 @@
                 (case (tag "Some" (c))
                     (if (call is_whitespace c)
                         (call tokenize_rec input len (+ pos 1) tokens)
+                        (if (= c 59) ;; ;
+                            (call tokenize_rec input len (call scan_comment input len (+ pos 1)) tokens)
                         (if (= c 40) ;; (
                             (call tokenize_rec input len (+ pos 1) (cons (call mk_token "LPAREN" "(") tokens))
                             (if (= c 41) ;; )
@@ -120,8 +135,12 @@
                                                 )
                                             )
                                         )
-                                        ;; Identifier / Keyword
-                                        (let (res (call scan_ident input len pos))
+                                        (if (= c 38) ;; &
+                                            (call tokenize_rec input len (+ pos 2) (cons (call mk_token "IDENT" "&&") tokens))
+                                        (if (= c 124) ;; |
+                                            (call tokenize_rec input len (+ pos 2) (cons (call mk_token "IDENT" "||") tokens))
+                                            ;; Identifier / Keyword
+                                            (let (res (call scan_ident input len pos))
                                             (let (new_pos (tuple.get res 0))
                                                 (let (val (tuple.get res 1))
                                                     (let (kind (if (|| (= val "let") (|| (= val "fn") (|| (= val "if") (= val "match")))) "KEYWORD" "IDENT"))
@@ -130,12 +149,14 @@
                                                 )
                                             )
                                         )
+                                        )
+                                        )
                                     )
                                 )
                             )
                         )
                     )
-                )
+                ))
                 (case (tag "None") tokens)
             )
         )

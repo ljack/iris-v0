@@ -1,0 +1,32 @@
+(program
+  (module (name "parser_base") (version 1))
+  (imports
+    (import "ast" (as "ast"))
+    (import "list" (as "list"))
+  )
+  (defs
+    (type Parser (Record (tokens (List ast.Token))))
+
+    (deffn (name parser_new) (args (tokens (List ast.Token))) (ret Parser) (eff !Pure)
+        (body (record (tokens tokens)))
+    )
+
+    (deffn (name parser_peek) (args (p Parser)) (ret ast.Token) (eff !Pure)
+        (body 
+            (match p.tokens
+                (case (tag "cons" (h t)) h)
+                (case (tag "nil") (record (kind "EOF") (value "")))
+            )
+        )
+    )
+
+    (deffn (name parser_consume) (args (p Parser)) (ret Parser) (eff !Pure)
+        (body 
+            (match p.tokens
+                (case (tag "cons" (h t)) (record (tokens t)))
+                (case (tag "nil") p)
+            )
+        )
+    )
+  )
+)

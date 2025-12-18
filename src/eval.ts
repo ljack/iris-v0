@@ -1,4 +1,4 @@
-import { Program, Definition, Expr, Value, IntrinsicOp, MatchCase, ModuleResolver } from './types';
+import { Program, Definition, Expr, Value, IntrinsicOp, MatchCase, ModuleResolver, LinkedEnv, IrisType } from './types';
 import { ProcessManager } from './runtime/process';
 
 
@@ -38,36 +38,37 @@ class MockNetwork implements INetwork {
     async connect(host: string, port: number) { return 3; }
 }
 
+
+
 export class Interpreter {
     private program: Program;
     private functions = new Map<string, Definition & { kind: 'DefFn' }>();
     private constants = new Map<string, Value>();
     private fs: IFileSystem;
     private net: INetwork;
-    public pid: number;
 
     private valueToKey(v: Value): string {
-        if (v.kind === 'I64') return `I64:${v.value}`;
-        if (v.kind === 'Str') return `Str:${v.value}`;
+        if (v.kind === 'I64') return `I64:${v.value} `;
+        if (v.kind === 'Str') return `Str:${v.value} `;
         if (v.kind === 'Tagged') {
             if (v.tag === 'Str') {
                 // Determine if payload is simple Str or wrapped
                 // Iris Value: (tag "Str" (Str)). Payload is Str value.
-                if (v.value.kind === 'Str') return `Str:${v.value.value}`;
+                if (v.value.kind === 'Str') return `Str:${v.value.value} `;
                 // If payload is literal/expression wrapper in some cases?
                 // Should only happen for Value types.
                 // Fallback attempt to extract value
-                if ((v.value as any).value && typeof (v.value as any).value === 'string') return `Str:${(v.value as any).value}`;
-                return `Str:${JSON.stringify(v.value)}`;
+                if ((v.value as any).value && typeof (v.value as any).value === 'string') return `Str:${(v.value as any).value} `;
+                return `Str:${JSON.stringify(v.value)} `;
             }
             if (v.tag === 'I64') {
-                if (v.value.kind === 'I64') return `I64:${v.value.value}`;
-                return `I64:${JSON.stringify(v.value)}`;
+                if (v.value.kind === 'I64') return `I64:${v.value.value} `;
+                return `I64:${JSON.stringify(v.value)} `;
             }
             // For other tags, maybe use JSON stringify of the whole thing?
-            return `Tagged:${v.tag}:${JSON.stringify(v.value, (_, val) => typeof val === 'bigint' ? val.toString() : val)}`;
+            return `Tagged:${v.tag}:${JSON.stringify(v.value, (_, val) => typeof val === 'bigint' ? val.toString() : val)} `;
         }
-        throw new Error(`Runtime: Invalid map key type: ${v.kind}`);
+        throw new Error(`Runtime: Invalid map key type: ${v.kind} `);
     }
 
     private keyToValue(k: string): Value {
@@ -81,7 +82,7 @@ export class Interpreter {
             // Tagged:TAG:JSON
             const firstColon = k.indexOf(':');
             const secondColon = k.indexOf(':', firstColon + 1);
-            if (secondColon === -1) throw new Error(`Runtime: Invalid tagged key format: ${k}`);
+            if (secondColon === -1) throw new Error(`Runtime: Invalid tagged key format: ${k} `);
             const tag = k.substring(firstColon + 1, secondColon);
             const json = k.substring(secondColon + 1);
             const val = JSON.parse(json, (_, v) => {
@@ -110,11 +111,18 @@ export class Interpreter {
         // if (k === 'false') return { kind: 'Bool', value: false };
         // if (k.startsWith('"')) return { kind: 'Str', value: JSON.parse(k) };
 
-        throw new Error(`Runtime: Invalid map key string: ${k}`);
+        throw new Error(`Runtime: Invalid map key string: ${k} `);
     }
 
-    constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver, net?: INetwork) {
+    private pid: number;
+    private interpreterCache: Map<string, Interpreter> = new Map();
+    private depthCounter = 0;
+    private static globalStepCounter = 0;
+
+    constructor(program: Program, fs: Record<string, string> | IFileSystem = {}, private resolver?: ModuleResolver, net?: INetwork, cache?: Map<string, Interpreter>) {
         this.program = program;
+        if (cache) this.interpreterCache = cache;
+        this.interpreterCache.set(this.program.module.name, this);
         // Backwards compatibility with tests passing Record
         if (typeof (fs as any).readFile === 'function') {
             this.fs = fs as IFileSystem;
@@ -140,74 +148,107 @@ export class Interpreter {
         const main = this.functions.get('main');
         if (!main) throw new Error("No main function defined");
 
-        return this.evalExpr(main.body, new Map());
+        return this.evalExpr(main.body, undefined);
     }
 
     // Public method to call a specific function with values
-    async callFunction(name: string, args: Value[]): Promise<Value> {
+    public async callFunction(name: string, args: Value[]): Promise<Value> {
         await this.initConstants();
+        const func = this.functions.get(name);
+        if (!func) throw new Error(`Unknown function: $ { name } `);
+        if (args.length !== func.args.length) throw new Error(`Arity mismatch call ${name} `);
 
+        let env: LinkedEnv | undefined = undefined;
+        for (let i = 0; i < args.length; i++) {
+            env = { name: func.args[i].name, value: args[i], parent: env };
+        }
+        return this.evalExpr(func.body, env);
+    }
+
+    public callFunctionSync(name: string, args: Value[]): Value {
+        this.initConstantsSync();
         const func = this.functions.get(name);
         if (!func) throw new Error(`Unknown function: ${name}`);
         if (args.length !== func.args.length) throw new Error(`Arity mismatch call ${name}`);
 
-        const newEnv = new Map<string, Value>();
+        let env: LinkedEnv | undefined = undefined;
         for (let i = 0; i < args.length; i++) {
-            newEnv.set(func.args[i].name, args[i]);
+            env = { name: func.args[i].name, value: args[i], parent: env };
         }
-        return this.evalExpr(func.body, newEnv);
+        console.log(`[Interpreter CALL] ${this.program.module.name}.${name}`);
+        this.depthCounter = 0;
+        return this.evalExprSync(func.body, env);
     }
 
     private async initConstants() {
         if (this.constants.size > 0) return;
         for (const def of this.program.defs) {
             if (def.kind === 'DefConst') {
-                this.constants.set(def.name, await this.evalExpr(def.value, new Map()));
+                this.constants.set(def.name, await this.evalExpr(def.value, undefined));
             }
         }
     }
 
-    private async evalExpr(expr: Expr, env: Map<string, Value>): Promise<Value> {
+    private initConstantsSync() {
+        if (this.constants.size > 0) return;
+        for (const def of this.program.defs) {
+            if (def.kind === 'DefConst') {
+                this.constants.set(def.name, this.evalExprSync(def.value, undefined));
+            }
+        }
+    }
+
+    private resolveEnv(name: string, env?: LinkedEnv): Value | undefined {
+        let current = env;
+        while (current) {
+            if (current.name === name) {
+                return current.value;
+            }
+            current = current.parent;
+        }
+        return undefined;
+    }
+
+    private async evalExpr(expr: Expr, env?: LinkedEnv): Promise<Value> {
         switch (expr.kind) {
             case 'Literal':
                 return expr.value;
 
             case 'Var': {
-                const v = env.get(expr.name);
+                const v = this.resolveEnv(expr.name, env);
                 if (v !== undefined) return v;
                 const c = this.constants.get(expr.name);
                 if (c !== undefined) return c;
 
                 if (expr.name.includes('.')) {
                     const parts = expr.name.split('.');
-                    let currentVal = env.get(parts[0]) || this.constants.get(parts[0]);
+                    let currentVal = this.resolveEnv(parts[0], env) || this.constants.get(parts[0]);
                     if (currentVal) {
                         for (let i = 1; i < parts.length; i++) {
                             const part = parts[i];
                             if (currentVal!.kind === 'Record') {
                                 const fieldVal: Value = (currentVal as any).fields[part];
-                                if (!fieldVal) throw new Error(`Runtime: Unknown field ${part}`);
+                                if (!fieldVal) throw new Error(`Runtime: Unknown field ${part} `);
                                 currentVal = fieldVal;
                             } else if (currentVal!.kind === 'Tuple') {
                                 const index = parseInt(part);
-                                if (isNaN(index)) throw new Error(`Runtime: Tuple index must be number, got ${part}`);
-                                if (index < 0 || index >= (currentVal as any).items.length) throw new Error(`Runtime: Tuple index out of bounds ${index}`);
+                                if (isNaN(index)) throw new Error(`Runtime: Tuple index must be number, got ${part} `);
+                                if (index < 0 || index >= (currentVal as any).items.length) throw new Error(`Runtime: Tuple index out of bounds ${index} `);
                                 currentVal = (currentVal as any).items[index];
                             } else {
-                                throw new Error(`Runtime: Cannot access field ${part} of ${currentVal!.kind}`);
+                                throw new Error(`Runtime: Cannot access field ${part} of ${currentVal!.kind} `);
                             }
                         }
                         return currentVal!;
                     }
                 }
 
-                throw new Error(`Runtime Unknown variable: ${expr.name}`);
+                throw new Error(`Runtime Unknown variable: ${expr.name} `);
             }
 
             case 'Let': {
                 const val = await this.evalExpr(expr.value, env);
-                const newEnv = new Map(env);
-                newEnv.set(expr.name, val);
+                const newEnv: LinkedEnv = { name: expr.name, value: val, parent: env };
                 return this.evalExpr(expr.body, newEnv);
             }
 
@@ -250,10 +291,29 @@ export class Interpreter {
                     const [alias, fname] = expr.fn.split('.');
                     const importDecl = this.program.imports.find(i => i.alias === alias);
                     if (importDecl && this.resolver) {
-                        const importedProg = this.resolver(importDecl.path)!;
-                        // New interpreter instance for the other module
-                        const subInterp = new Interpreter(importedProg, this.fs, this.resolver, this.net);
-                        return subInterp.callFunction(fname, args);
+                        const importedPath = importDecl.path;
+                        let subInterp = this.interpreterCache.get(importedPath);
+                        if (!subInterp) {
+                            const importedProg = this.resolver(importedPath);
+                            if (importedProg) {
+                                subInterp = new Interpreter(importedProg, this.fs, this.resolver, this.net, this.interpreterCache);
+                            }
+                        }
+                        if (subInterp) {
+                            const res = await subInterp.callFunction(fname, args);
+
+                            // Diagnostic logging
+                            if (expr.fn === 'lexer.tokenize' && res.kind === 'List') {
+                                console.log(`[Diagnostic] lexer.tokenize returned ${res.items.length} tokens`);
+                            } else if (expr.fn === 'parser.parse' && res.kind === 'Record') {
+                                const defs = res.fields['defs'];
+                                if (defs && defs.kind === 'List') {
+                                    console.log(`[Diagnostic] parser.parse returned ${defs.items.length} definitions`);
+                                }
+                            }
+
+                            return res;
+                        }
                     }
                 }
 
@@ -261,16 +321,16 @@ export class Interpreter {
                     try {
                         return await this.evalIntrinsic(expr.fn as any, args);
                     } catch (e) {
-                        throw new Error(`Unknown function: ${expr.fn}`);
+                        throw new Error(`Unknown function: $ { expr.fn } `);
                     }
                 }
 
                 if (args.length !== func.args.length) throw new Error(`Arity mismatch for ${expr.fn}`);
 
                 // Create new env for function body
-                const newEnv = new Map<string, Value>();
+                let newEnv: LinkedEnv | undefined = undefined;
                 for (let i = 0; i < args.length; i++) {
-                    newEnv.set(func.args[i].name, args[i]);
+                    newEnv = { name: func.args[i].name, value: args[i], parent: newEnv };
                 }
 
                 return this.evalExpr(func.body, newEnv);
@@ -283,49 +343,42 @@ export class Interpreter {
                 for (const c of expr.cases) {
                     // Check tag match
                     let match = false;
-                    let newBindings = new Map(env);
+                    let newEnv = env;
 
                     if (target.kind === 'Option') {
                         if (c.tag === 'None' && target.value === null) match = true;
                         else if (c.tag === 'Some' && target.value !== null) {
                             match = true;
-                            if (c.vars.length > 0) newBindings.set(c.vars[0], target.value);
+                            if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
                         }
                     } else if (target.kind === 'Result') {
                         if (c.tag === 'Ok' && target.isOk) {
                             match = true;
-                            if (c.vars.length > 0) newBindings.set(c.vars[0], target.value);
+                            if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
                         } else if (c.tag === 'Err' && !target.isOk) {
                             match = true;
-                            if (c.vars.length > 0) newBindings.set(c.vars[0], target.value);
+                            if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
                         }
                     } else if (target.kind === 'List') {
                         if (c.tag === 'nil' && target.items.length === 0) {
                             match = true;
                         } else if (c.tag === 'cons' && target.items.length > 0) {
                             match = true;
-                            if (c.vars.length >= 1) newBindings.set(c.vars[0], target.items[0]);
+                            if (c.vars.length >= 1) newEnv = { name: c.vars[0], value: target.items[0], parent: newEnv };
                             if (c.vars.length >= 2) {
-                                newBindings.set(c.vars[1], { kind: 'List', items: target.items.slice(1) });
+                                newEnv = { name: c.vars[1], value: { kind: 'List', items: target.items.slice(1) }, parent: newEnv };
                             }
                         }
                     } else if (target.kind === 'Tagged') {
                         if (c.tag === target.tag) {
                             match = true;
-                            if (c.vars.length > 0) {
-                                // If target.value is a Tuple and we have multiple vars, destructure?
-                                // Iris spec implies (tag "Name" (v1 v2)) binds to (v1 v2).
-                                // But current parser makes value a single Expr (Tuple if multiple).
-                                // If target.value IS a Tuple and vars > 1, bind items.
-                                if (target.value.kind === 'Tuple' && c.vars.length > 1) {
-                                    for (let i = 0; i < c.vars.length; i++) {
-                                        if (i < target.value.items.length) {
-                                            newBindings.set(c.vars[i], target.value.items[i]);
-                                        }
+                            if (c.vars.length > 0 && target.value) {
+                                if (target.value.kind === 'Tuple') {
+                                    for (let i = 0; i < c.vars.length && i < target.value.items.length; i++) {
+                                        newEnv = { name: c.vars[i], value: target.value.items[i], parent: newEnv };
                                     }
                                 } else {
-                                    // Bind single value to first var
-                                    newBindings.set(c.vars[0], target.value);
+                                    newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
                                 }
                             }
                         }
@@ -337,14 +390,14 @@ export class Interpreter {
                             // Bind variables to remaining tuple items
                             for (let i = 0; i < c.vars.length; i++) {
                                 if (i + 1 < target.items.length) {
-                                    newBindings.set(c.vars[i], target.items[i + 1]);
+                                    newEnv = { name: c.vars[i], value: target.items[i + 1], parent: newEnv };
                                 }
                             }
                         }
                     }
 
-                    if (match) {
-                        return this.evalExpr(c.body, newBindings);
+                    if (match || c.tag === '_') {
+                        return this.evalExpr(c.body, newEnv);
                     }
                 }
                 const replacer = (_: string, v: any) => typeof v === 'bigint' ? v.toString() + 'n' : v;
@@ -414,7 +467,7 @@ export class Interpreter {
             const a = typeof v1 === 'bigint' ? v1 : (v1.kind === 'I64' ? v1.value : null);
             const b = typeof v2 === 'bigint' ? v2 : (v2.kind === 'I64' ? v2.value : null);
 
-            if (a === null || b === null) throw new Error(`Math expects I64 for ${op}, got ${typeof v1 === 'bigint' ? 'bigint' : v1.kind} and ${typeof v2 === 'bigint' ? 'bigint' : v2.kind}`);
+            if (a === null || b === null) throw new Error(`Math expects I64 for ${op}, got ${typeof v1 === 'bigint' ? 'bigint' : v1.kind} and ${typeof v2 === 'bigint' ? 'bigint' : v2.kind} `);
 
             const na = a as bigint;
             const nb = b as bigint;
@@ -472,7 +525,7 @@ export class Interpreter {
                 try {
                     await child.callFunction(fnName.value, []);
                 } catch (e) {
-                    console.error(`Process ${childPid} crashed:`, e);
+                    console.error(`Process ${childPid} crashed: `, e);
                 }
             });
 
@@ -930,7 +983,7 @@ export class Interpreter {
             if (field.kind !== 'Str') throw new Error("record.get expects Str field name");
             const val = r.fields[field.value];
             if (val === undefined) {
-                throw new Error(`Record has no field ${field.value}`);
+                throw new Error(`Record has no field ${field.value} `);
             }
             return val;
         }
@@ -946,6 +999,484 @@ export class Interpreter {
             return t.items[i];
         }
 
-        throw new Error(`Unknown intrinsic ${op}`);
+        throw new Error(`Unknown intrinsic ${op} `);
+    }
+
+
+    private evalExprSync(expr: Expr, env?: LinkedEnv): Value {
+        this.depthCounter++;
+        if (expr.kind === 'Call') {
+            if (expr.fn === 'parse_def_list' || expr.fn === 'parse_expr' || expr.fn === 'parse_def') {
+                // Try to peek at the parser state 'p' in env
+                let pVal = this.resolveEnv('p', env);
+                if (pVal && pVal.kind === 'Record') {
+                    const tokens = pVal.fields['tokens'] as any;
+                    if (tokens && tokens.kind === 'List' && tokens.items.length > 0) {
+                        const firstToken = tokens.items[0] as any;
+                        if (firstToken && firstToken.kind === 'Record') {
+                            console.log(`[Parser Trace] [${this.program.module.name}] ${expr.fn} at Token: ${firstToken.fields['kind'].value}:${firstToken.fields['value'].value}`);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (this.depthCounter % 1000 === 0) {
+            let info = expr.kind;
+            if (expr.kind === 'Call') {
+                info += `:${expr.fn}`;
+            }
+            console.log(`[Interpreter DEPTH] ${this.depthCounter} | ${info} | ${this.program.module.name}`);
+        }
+
+        const result = this._evalExprSync(expr, env);
+
+        if (expr.kind === 'Call' && expr.fn === 'parse_def_list' && result.kind === 'Tuple') {
+            const defs = result.items[1];
+            if (defs && defs.kind === 'List') {
+                console.log(`[Parser Trace] [${this.program.module.name}] parse_def_list RETURNED ${defs.items.length} definitions`);
+            }
+        }
+
+        this.depthCounter--;
+        return result;
+    }
+
+    private _evalExprSync(expr: Expr, env?: LinkedEnv): Value {
+        let currentExpr = expr;
+        let currentEnv = env;
+
+        while (true) {
+            Interpreter.globalStepCounter++;
+            if (Interpreter.globalStepCounter % 1000000 === 0) {
+                console.log(`[Interpreter STEPS] ${Interpreter.globalStepCounter}`);
+            }
+            switch (currentExpr.kind) {
+                case 'Literal':
+                    return currentExpr.value;
+
+                case 'Var': {
+                    const v = this.resolveEnv(currentExpr.name, currentEnv);
+                    if (v !== undefined) return v;
+                    const c = this.constants.get(currentExpr.name);
+                    if (c !== undefined) return c;
+
+                    if (currentExpr.name.includes('.')) {
+                        const parts = currentExpr.name.split('.');
+                        let currentVal = this.resolveEnv(parts[0], currentEnv) || this.constants.get(parts[0]);
+                        if (currentVal) {
+                            for (let i = 1; i < parts.length; i++) {
+                                const part = parts[i];
+                                if (currentVal!.kind === 'Record') {
+                                    const fieldVal: Value = (currentVal as any).fields[part];
+                                    if (!fieldVal) throw new Error(`Runtime: Unknown field ${part} `);
+                                    currentVal = fieldVal;
+                                } else if (currentVal!.kind === 'Tuple') {
+                                    const index = parseInt(part);
+                                    if (isNaN(index)) throw new Error(`Runtime: Tuple index must be number, got ${part} `);
+                                    if (index < 0 || index >= (currentVal as any).items.length) throw new Error(`Runtime: Tuple index out of bounds ${index} `);
+                                    currentVal = (currentVal as any).items[index];
+                                } else {
+                                    throw new Error(`Runtime: Cannot access field ${part} of ${currentVal!.kind} `);
+                                }
+                            }
+                            return currentVal!;
+                        }
+                    }
+
+                    throw new Error(`Runtime Unknown variable: ${currentExpr.name} `);
+                }
+
+                case 'Let': {
+                    const val = this.evalExprSync(currentExpr.value, currentEnv);
+                    const newEnv: LinkedEnv = { name: currentExpr.name, value: val, parent: currentEnv };
+                    // TCO: update expr and env, stay in loop
+                    currentExpr = currentExpr.body;
+                    currentEnv = newEnv;
+                    continue;
+                }
+
+                case 'If': {
+                    const cond = this.evalExprSync(currentExpr.cond, currentEnv);
+                    if (cond.kind !== 'Bool') throw new Error("If condition must be Bool");
+                    if (cond.value) {
+                        currentExpr = currentExpr.then;
+                    } else {
+                        currentExpr = currentExpr.else;
+                    }
+                    // TCO: stay in loop
+                    continue;
+                }
+
+                case 'Call': {
+                    let func = this.functions.get(currentExpr.fn);
+
+                    if (!func && currentExpr.fn.includes('.')) {
+                        const [alias, fname] = currentExpr.fn.split('.');
+                        const importDecl = this.program.imports.find(i => i.alias === alias);
+                        if (importDecl && this.resolver) {
+                            const importedProg = this.resolver(importDecl.path);
+                            if (importedProg) {
+                                const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
+                                if (targetDef) {
+                                    func = targetDef;
+                                }
+                            }
+                        }
+                    }
+
+                    const args: Value[] = [];
+                    for (const arg of currentExpr.args) {
+                        args.push(this.evalExprSync(arg, currentEnv));
+                    }
+
+                    if (currentExpr.fn.includes('.')) {
+                        const [alias, fname] = currentExpr.fn.split('.');
+                        const importDecl = this.program.imports.find(i => i.alias === alias);
+                        if (importDecl && this.resolver) {
+                            const importedPath = importDecl.path;
+                            let subInterp = this.interpreterCache.get(importedPath);
+                            if (!subInterp) {
+                                const importedProg = this.resolver(importedPath);
+                                if (importedProg) {
+                                    subInterp = new Interpreter(importedProg, this.fs, this.resolver, this.net, this.interpreterCache);
+                                } else {
+                                    console.error(`Resolver failed for module path: ${importedPath}. Imports: ${JSON.stringify(this.program.imports)}`);
+                                }
+                            }
+                            if (subInterp) {
+                                const res = subInterp.callFunctionSync(fname, args);
+                                if (currentExpr.fn === 'lexer.tokenize' && res.kind === 'List') {
+                                    console.log(`[Diagnostic] lexer.tokenize returned ${res.items.length} tokens`);
+                                } else if (currentExpr.fn === 'parser.parse' && res.kind === 'Record') {
+                                    const defs = res.fields['defs'];
+                                    if (defs && defs.kind === 'List') {
+                                        console.log(`[Diagnostic] parser.parse returned ${defs.items.length} definitions`);
+                                    }
+                                }
+                                return res;
+                            }
+                        }
+                    }
+
+                    if (!func) {
+                        return this.evalIntrinsicSync(currentExpr.fn as any, args);
+                    }
+
+                    if (args.length !== func.args.length) throw new Error(`Arity mismatch error call ${currentExpr.fn} expected ${func.args.length} args, got ${args.length} `);
+
+                    let newEnv: LinkedEnv | undefined = undefined;
+                    for (let i = 0; i < args.length; i++) {
+                        newEnv = { name: func.args[i].name, value: args[i], parent: newEnv };
+                    }
+
+                    // TCO: Tail call optimization for Call!
+                    currentExpr = func.body;
+                    currentEnv = newEnv;
+                    continue;
+                }
+
+                case 'Match': {
+                    const target = this.evalExprSync(currentExpr.target, currentEnv);
+                    let foundCase = false;
+                    for (const c of currentExpr.cases) {
+                        let match = false;
+                        let newEnv = currentEnv;
+
+                        if (target.kind === 'Option') {
+                            if (c.tag === 'None' && target.value === null) match = true;
+                            else if (c.tag === 'Some' && target.value !== null) {
+                                match = true;
+                                if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            }
+                        } else if (target.kind === 'Result') {
+                            if (c.tag === 'Ok' && target.isOk) {
+                                match = true;
+                                if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            } else if (c.tag === 'Err' && !target.isOk) {
+                                match = true;
+                                if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            }
+                        } else if (target.kind === 'Tagged') {
+                            if (c.tag === target.tag) {
+                                match = true;
+                                if (c.vars.length > 0 && target.value) {
+                                    if (target.value.kind === 'Tuple') {
+                                        for (let i = 0; i < c.vars.length && i < target.value.items.length; i++) {
+                                            newEnv = { name: c.vars[i], value: target.value.items[i], parent: newEnv };
+                                        }
+                                    } else {
+                                        newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                                    }
+                                }
+                            }
+                        } else if (target.kind === 'List') {
+                            if (c.tag === 'nil' && target.items.length === 0) {
+                                match = true;
+                            } else if (c.tag === 'cons' && target.items.length > 0) {
+                                match = true;
+                                if (c.vars.length >= 1) newEnv = { name: c.vars[0], value: target.items[0], parent: newEnv };
+                                if (c.vars.length >= 2) {
+                                    newEnv = { name: c.vars[1], value: { kind: 'List', items: target.items.slice(1) }, parent: newEnv };
+                                }
+                            }
+                        } else if (target.kind === 'Tuple' && target.items.length > 0 && target.items[0].kind === 'Str') {
+                            // Generic Tagged Union (represented as Tuple ["Tag", ...args])
+                            const tagName = target.items[0].value;
+                            if (c.tag === tagName) {
+                                match = true;
+                                // Bind variables to remaining tuple items
+                                for (let i = 0; i < c.vars.length; i++) {
+                                    if (i + 1 < target.items.length) {
+                                        newEnv = { name: c.vars[i], value: target.items[i + 1], parent: newEnv };
+                                    }
+                                }
+                            }
+                        }
+
+                        if (match || c.tag === '_') {
+                            // TCO: Tail call optimized Match case
+                            currentExpr = c.body;
+                            currentEnv = newEnv;
+                            foundCase = true;
+                            break;
+                        }
+                    }
+                    if (foundCase) continue;
+                    throw new Error(`Non - exhaustive match for ${JSON.stringify(target)}`);
+                }
+
+                case 'Tuple': {
+                    const items: Value[] = [];
+                    for (const item of currentExpr.items) {
+                        items.push(this.evalExprSync(item, currentEnv));
+                    }
+                    return { kind: 'Tuple', items };
+                }
+
+                case 'Record': {
+                    const fields: Record<string, Value> = {};
+                    for (const [name, valExpr] of Object.entries(currentExpr.fields)) {
+                        fields[name] = this.evalExprSync(valExpr, currentEnv);
+                    }
+                    return { kind: 'Record', fields };
+                }
+
+                case 'List': {
+                    const items: Value[] = [];
+                    for (const item of currentExpr.items) {
+                        items.push(this.evalExprSync(item, currentEnv));
+                    }
+                    return { kind: 'List', items };
+                }
+
+                case 'Intrinsic': {
+                    const args: Value[] = [];
+                    for (const arg of currentExpr.args) {
+                        args.push(this.evalExprSync(arg, currentEnv));
+                    }
+                    return this.evalIntrinsicSync(currentExpr.op, args);
+                }
+
+                case 'Tagged': {
+                    const val = this.evalExprSync(currentExpr.value, currentEnv);
+                    return { kind: 'Tagged', tag: currentExpr.tag, value: val };
+                }
+
+                case 'Lambda': {
+                    return {
+                        kind: 'Lambda',
+                        args: currentExpr.args,
+                        ret: currentExpr.ret,
+                        eff: currentExpr.eff,
+                        body: currentExpr.body,
+                        env: currentEnv
+                    };
+                }
+
+                default:
+                    throw new Error(`Unimplemented evalSync for ${(currentExpr as any).kind}`);
+            }
+        }
+    }
+
+    private evalIntrinsicSync(op: IntrinsicOp, args: Value[]): Value {
+        // Implementation of synchronous intrinsics.
+        // Most are synchronous except net.* and sys.sleep.
+
+        if (op === '=') {
+            const v1 = args[0] as any;
+            const v2 = args[1] as any;
+
+            const normalize = (v: any): any => {
+                if (typeof v === 'bigint') return { kind: 'I64', value: v };
+                if (typeof v === 'string') return { kind: 'Str', value: v };
+                if (typeof v === 'boolean') return { kind: 'Bool', value: v };
+                if (v && v.kind === 'Literal') {
+                    if (typeof v.value === 'bigint') return { kind: 'I64', value: v.value };
+                    if (typeof v.value === 'string') return { kind: 'Str', value: v.value };
+                    if (typeof v.value === 'boolean') return { kind: 'Bool', value: v.value };
+                }
+                return v;
+            };
+
+            const r1 = normalize(v1);
+            const r2 = normalize(v2);
+
+
+            if (r1.kind === 'I64' && r2.kind === 'I64') return { kind: 'Bool', value: r1.value === r2.value };
+            if (r1.kind === 'Str' && r2.kind === 'Str') return { kind: 'Bool', value: r1.value === r2.value };
+            if (r1.kind === 'Bool' && r2.kind === 'Bool') return { kind: 'Bool', value: r1.value === r2.value };
+            return { kind: 'Bool', value: false };
+        }
+
+        if (['+', '-', '*', '/', '%', '<=', '<', '>=', '>'].includes(op)) {
+            let v1 = args[0] as any;
+            let v2 = args[1] as any;
+            const a = typeof v1 === 'bigint' ? v1 : (v1.kind === 'I64' ? v1.value : null);
+            const b = typeof v2 === 'bigint' ? v2 : (v2.kind === 'I64' ? v2.value : null);
+            if (a === null || b === null) throw new Error(`Math expects I64 for ${op}`);
+            const na = a as bigint; const nb = b as bigint;
+            switch (op) {
+                case '+': return { kind: 'I64', value: na + nb };
+                case '-': return { kind: 'I64', value: na - nb };
+                case '*': return { kind: 'I64', value: na * nb };
+                case '/': if (nb === 0n) throw new Error("Division by zero"); return { kind: 'I64', value: na / nb };
+                case '%': if (nb === 0n) throw new Error("Modulo by zero"); return { kind: 'I64', value: na % nb };
+                case '<=': return { kind: 'Bool', value: na <= nb };
+                case '<': return { kind: 'Bool', value: na < nb };
+                case '>=': return { kind: 'Bool', value: na >= nb };
+                case '>': return { kind: 'Bool', value: na > nb };
+            }
+        }
+
+        if (op === '&&' || op === '||' || op === '&' || op === '|') {
+            const v1 = args[0]; const v2 = args[1];
+            if (v1.kind !== 'Bool' || v2.kind !== 'Bool') throw new Error(`${op} expects Bools`);
+            if (op === '&&' || op === '&') return { kind: 'Bool', value: v1.value && v2.value };
+            return { kind: 'Bool', value: v1.value || v2.value };
+        }
+
+        if (op === 'Not' || op === '!') {
+            if (args[0].kind !== 'Bool') throw new Error("Not expects Bool");
+            return { kind: 'Bool', value: !args[0].value };
+        }
+
+        if (op === 'Some') return { kind: 'Option', value: args[0] };
+        if (op === 'Ok') return { kind: 'Result', isOk: true, value: args[0] };
+        if (op === 'Err') return { kind: 'Result', isOk: false, value: args[0] };
+
+        if (op === 'io.read_file') {
+            const path = args[0];
+            if (path.kind !== 'Str') throw new Error("path must be string");
+            const content = this.fs.readFile(path.value);
+            if (content !== null) return { kind: 'Result', isOk: true, value: { kind: 'Str', value: content } };
+            return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "ENOENT" } };
+        }
+
+        if (op === 'io.write_file') {
+            const path = args[0]; const content = args[1];
+            if (path.kind !== 'Str' || content.kind !== 'Str') throw new Error("io.write_file expects strings");
+            this.fs.writeFile(path.value, content.value);
+            return { kind: 'Result', isOk: true, value: { kind: 'I64', value: BigInt(content.value.length) } };
+        }
+
+        if (op === 'io.file_exists') {
+            return { kind: 'Bool', value: this.fs.exists((args[0] as any).value) };
+        }
+
+        if (op === 'io.print') {
+            const val = args[0];
+            if (val.kind === 'Str') console.log(val.value);
+            else if (val.kind === 'I64' || val.kind === 'Bool') console.log(val.value.toString());
+            else console.log(JSON.stringify(val));
+            return { kind: 'I64', value: 0n };
+        }
+
+        if (op === 'str.concat') return { kind: 'Str', value: ((args[0] as any)?.value || "") + ((args[1] as any)?.value || "") };
+        if (op === 'str.len') return { kind: 'I64', value: BigInt(((args[0] as any)?.value || "").length) };
+        if (op === 'str.get') {
+            const s = (args[0] as any).value; const i = Number((args[1] as any).value);
+            if (i >= 0 && i < s.length) return { kind: 'Option', value: { kind: 'I64', value: BigInt(s.charCodeAt(i)) } };
+            return { kind: 'Option', value: null };
+        }
+        if (op === 'str.substring') return { kind: 'Str', value: (args[0] as any).value.substring(Number((args[1] as any).value), Number((args[2] as any).value)) };
+        if (op === 'str.from_code') return { kind: 'Str', value: String.fromCharCode(Number((args[0] as any).value)) };
+        if (op === 'str.index_of') {
+            const s = (args[0] as any).value; const sub = (args[1] as any).value;
+            const idx = s.indexOf(sub);
+            if (idx === -1) return { kind: 'Option', value: null };
+            return { kind: 'Option', value: { kind: 'I64', value: BigInt(idx) } };
+        }
+        if (op === 'str.contains') return { kind: 'Bool', value: (args[0] as any).value.includes((args[1] as any).value) };
+        if (op === 'str.ends_with') return { kind: 'Bool', value: (args[0] as any).value.endsWith((args[1] as any).value) };
+
+        if (op === 'cons') return { kind: 'List', items: [args[0], ... (args[1] as any).items] };
+        if (op === 'list.length') return { kind: 'I64', value: BigInt((args[0] as any).items.length) };
+        if (op === 'list.get') {
+            const l = (args[0] as any).items; const i = Number((args[1] as any).value);
+            if (i >= 0 && i < l.length) return { kind: 'Option', value: l[i] };
+            return { kind: 'Option', value: null };
+        }
+        if (op === 'list.concat') return { kind: 'List', items: [...(args[0] as any).items, ...(args[1] as any).items] };
+        if (op === 'list.unique') {
+            const l = args[0] as any;
+            const seen = new Set<string>();
+            const items: Value[] = [];
+            for (const item of l.items) {
+                const k = this.valueToKey(item);
+                if (!seen.has(k)) {
+                    seen.add(k);
+                    items.push(item);
+                }
+            }
+            return { kind: 'List', items };
+        }
+
+        if (op.startsWith('map.')) {
+            if (op === 'map.make') return { kind: 'Map', value: new Map() };
+            if (op === 'map.put') {
+                const m = args[0] as any; const k = args[1]; const v = args[2];
+                const newMap = new Map<string, Value>(m.value);
+                newMap.set(this.valueToKey(k), v);
+                return { kind: 'Map', value: newMap };
+            }
+            if (op === 'map.get') {
+                const m = args[0] as any; const k = args[1];
+                const v = m.value.get(this.valueToKey(k));
+                return v ? { kind: 'Option', value: v } : { kind: 'Option', value: null };
+            }
+            if (op === 'map.contains') return { kind: 'Bool', value: (args[0] as any).value.has(this.valueToKey(args[1])) };
+            if (op === 'map.keys') {
+                const m = args[0] as any;
+                const keys = Array.from((m.value as Map<string, Value>).keys()).map((k: string) => this.keyToValue(k));
+                return { kind: 'List', items: keys };
+            }
+        }
+
+        if (op === 'record.get') {
+            const r = args[0]; const f = args[1];
+            if (r.kind !== 'Record' || f.kind !== 'Str') throw new Error("record.get expects Record and Str");
+            const val = r.fields[f.value];
+            if (val === undefined) throw new Error(`Field ${f.value} not found`);
+            return val;
+        }
+
+        if (op === 'tuple.get') {
+            const t = args[0]; const i = args[1];
+            if (t.kind !== 'Tuple' || i.kind !== 'I64') throw new Error("tuple.get expects Tuple and I64");
+            const idx = Number(i.value);
+            if (idx < 0 || idx >= t.items.length) throw new Error("Tuple index out of bounds");
+            return t.items[idx];
+        }
+
+        if (op.startsWith('net.') || op === 'sys.sleep') {
+            throw new Error(`Cannot call async intrinsic ${op} from synchronous evaluation path`);
+        }
+
+        if (op === 'i64.to_string') return { kind: 'Str', value: (args[0] as any).value.toString() };
+        if (op === 'i64.from_string') return { kind: 'I64', value: BigInt((args[0] as any).value) };
+
+        throw new Error(`Unknown intrinsic or not implemented in Sync path: ${op} `);
     }
 }

@@ -1,1 +1,7 @@
 https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/build_web.js
+https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/interpreter_worker.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/probe_worker.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/test_hello_sync.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/test_stack_worker.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/test_t144_worker.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/worker_launcher.ts

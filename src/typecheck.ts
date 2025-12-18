@@ -81,7 +81,12 @@ export class TypeChecker {
                     // Generous Result type
                     return { type: { type: 'Result', ok: val.isOk ? v.type : { type: 'Str' }, err: val.isOk ? { type: 'Str' } : v.type }, eff: v.eff };
                 }
-                if (val.kind === 'List') return { type: { type: 'List', inner: { type: 'I64' } }, eff: '!Pure' };
+                if (val.kind === 'List') {
+                    if (expectedType && expectedType.type === 'List') {
+                        return { type: expectedType, eff: '!Pure' };
+                    }
+                    return { type: { type: 'List', inner: { type: 'I64' } }, eff: '!Pure' };
+                }
                 if (val.kind === 'Tuple') return { type: { type: 'Tuple', items: [] }, eff: '!Pure' };
                 if (val.kind === 'Record') return { type: { type: 'Record', fields: {} }, eff: '!Pure' };
                 throw new Error(`Unknown literal kind: ${(val as any).kind}`);
@@ -131,19 +136,16 @@ export class TypeChecker {
             }
 
             case 'If': {
-                const condRes = this.checkExprFull(expr.cond, env);
-                if (condRes.type.type !== 'Bool') throw new Error("If condition must be Bool");
-                const thenRes = this.checkExprFull(expr.then, env, expectedType);
-                const elseRes = this.checkExprFull(expr.else, env, expectedType);
-
-                if (expectedType) {
-                    this.expectType(expectedType, thenRes.type, "If then branch mismatch");
-                    this.expectType(expectedType, elseRes.type, "If else branch mismatch");
-                    return { type: expectedType, eff: this.joinEffects(condRes.eff, this.joinEffects(thenRes.eff, elseRes.eff)) };
+                const cond = this.checkExprFull(expr.cond, env, { type: 'Bool' });
+                const thenBr = this.checkExprFull(expr.then, env, expectedType);
+                const elseBr = this.checkExprFull(expr.else, env, expectedType || thenBr.type);
+                if (expectedType && expectedType.type === 'Tuple' && (expectedType.items[1] as any).inner?.type === 'Str') {
+                    // console.log("IF Expected:", this.fmt(expectedType));
+                    // console.log("IF thenBr type:", this.fmt(thenBr.type));
+                    // console.log("IF elseBr type:", this.fmt(elseBr.type));
                 }
-
-                this.expectType(thenRes.type, elseRes.type, "If branches mismatch");
-                return { type: thenRes.type, eff: this.joinEffects(condRes.eff, this.joinEffects(thenRes.eff, elseRes.eff)) };
+                this.expectType(thenBr.type, elseBr.type, "If branches mismatch");
+                return { type: expectedType || thenBr.type, eff: this.joinEffects(cond.eff, this.joinEffects(thenBr.eff, elseBr.eff)) };
             }
 
             case 'Match': {
@@ -363,7 +365,11 @@ export class TypeChecker {
                 // But if the returned type from item check is distinct (e.g. strict supertype?), we might need strict check?
                 // checkExprFull returns inferred type or expected type if coerced.
 
-                return { type: { type: 'Tuple', items }, eff };
+                const retType: IrisType = { type: 'Tuple', items };
+                if (expectedType && this.fmt(expectedType).includes("List Str")) {
+                    // console.log("TUPLE returning:", this.fmt(retType));
+                }
+                return { type: retType, eff };
             }
 
             case 'List': {

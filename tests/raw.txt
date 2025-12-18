@@ -38,6 +38,10 @@ https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t14.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t140.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t141.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t142.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t143.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t144.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t144_worker_wrapper.js
+https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t145.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t15.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t16.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t17.ts
@@ -109,3 +113,4 @@ https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t82.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/t90.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/test_server.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/test_web.ts
+https://raw.githubusercontent.com/ljack/iris-v0/master/tests/verify_modular.ts

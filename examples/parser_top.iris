@@ -1,0 +1,287 @@
+(program
+  (module (name "parser_top") (version 1))
+  (imports
+    (import "ast" (as "ast"))
+    (import "list" (as "list"))
+    (import "parser_base" (as "base"))
+    (import "parser_type" (as "parser_type"))
+    (import "parser_expr" (as "parser_expr"))
+  )
+  (defs
+    (deffn (name parse_program) (args (p base.Parser)) (ret (Tuple base.Parser ast.Program)) (eff !Pure)
+        (body
+            ;; (program (module ...) (imports ...) (defs ...))
+            (let (t (call base.parser_peek p))
+                (if (= t.value "(")
+                    (let (p2 (call base.parser_consume p))
+                        (let (t2 (call base.parser_peek p2))
+                            (if (= t2.value "program")
+                                (let (p3 (call base.parser_consume p2))
+                                    (let (res_mod (call parse_module p3))
+                                        (let (p4 (tuple.get res_mod 0))
+                                        (let (mod (tuple.get res_mod 1))
+                                            (let (res_imp (call parse_imports p4))
+                                                (let (p5 (tuple.get res_imp 0))
+                                                (let (imps (tuple.get res_imp 1))
+                                                    (let (res_defs (call parse_defs p5))
+                                                        (let (p6 (tuple.get res_defs 0))
+                                                        (let (defs (tuple.get res_defs 1))
+                                                            (let (p7 (call base.parser_consume p6)) ;; skip )
+                                                                (tuple p7 (record (module mod) (imports imps) (defs defs)))
+                                                            ))))
+                                                ))))
+                                    )
+                                )
+                                (tuple p (record (module (record (name "") (version 0))) (imports (list)) (defs (list))))
+                            )
+                        )
+                    )
+                    (tuple p (record (module (record (name "") (version 0))) (imports (list)) (defs (list))))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_module) (args (p base.Parser)) (ret (Tuple base.Parser ast.ModuleDecl)) (eff !Pure)
+        (body
+            ;; (module (name "NAME") (version VERSION))
+            (let (p2 (call base.parser_consume p)) ;; skip (
+            (let (p3 (call base.parser_consume p2)) ;; skip module
+            (let (p4 (call base.parser_consume p3)) ;; skip (
+            (let (p5 (call base.parser_consume p4)) ;; skip name
+            (let (t_name (call base.parser_peek p5))
+            (let (p6 (call base.parser_consume p5))
+            (let (p7 (call base.parser_consume p6)) ;; skip )
+            (let (p8 (call base.parser_consume p7)) ;; skip (
+            (let (p9 (call base.parser_consume p8)) ;; skip version
+            (let (t_ver (call base.parser_peek p9))
+            (let (p10 (call base.parser_consume p9))
+            (let (p11 (call base.parser_consume p10)) ;; skip )
+            (let (p12 (call base.parser_consume p11)) ;; skip )
+                (tuple p12 (record (name t_name.value) (version (i64.from_string t_ver.value))))
+            )))))))))))))
+        )
+    )
+
+    (deffn (name parse_imports) (args (p base.Parser)) (ret (Tuple base.Parser (List ast.Import))) (eff !Pure)
+        (body
+            ;; (imports (import "PATH" (as "ALIAS")) ...)
+            (let (t (call base.parser_peek p))
+                (if (= t.kind "LPAREN")
+                    (let (t2 (call base.parser_peek (call base.parser_consume p)))
+                        (if (= t2.value "imports")
+                            (let (p2 (call base.parser_consume (call base.parser_consume p))) ;; skip ( and imports
+                                (let (res (call parse_import_list p2))
+                                    (let (p3 (tuple.get res 0))
+                                    (let (imps (tuple.get res 1))
+                                        (tuple (call base.parser_consume p3) imps) ;; skip )
+                                    ))
+                                )
+                            )
+                            (tuple p (list))
+                        )
+                    )
+                    (tuple p (list))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_import_list) (args (p base.Parser)) (ret (Tuple base.Parser (List ast.Import))) (eff !Pure)
+        (body
+            (let (t (call base.parser_peek p))
+                (if (= t.kind "LPAREN")
+                    (let (res (call parse_import p))
+                        (let (p2 (tuple.get res 0))
+                        (let (imp (tuple.get res 1))
+                            (let (res2 (call parse_import_list p2))
+                                (let (p3 (tuple.get res2 0))
+                                (let (tail (tuple.get res2 1))
+                                    (tuple p3 (cons imp tail))
+                                ))
+                            )
+                        ))
+                    )
+                    (tuple p (list))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_import) (args (p base.Parser)) (ret (Tuple base.Parser ast.Import)) (eff !Pure)
+        (body
+            ;; (import "PATH" (as "ALIAS"))
+            (let (p2 (call base.parser_consume p)) ;; skip (
+            (let (p3 (call base.parser_consume p2)) ;; skip import
+            (let (t_path (call base.parser_peek p3))
+            (let (p4 (call base.parser_consume p3))
+            (let (p5 (call base.parser_consume p4)) ;; skip (
+            (let (p6 (call base.parser_consume p5)) ;; skip as
+            (let (t_alias (call base.parser_peek p6))
+            (let (p7 (call base.parser_consume p6))
+            (let (p8 (call base.parser_consume p7)) ;; skip )
+            (let (p9 (call base.parser_consume p8)) ;; skip )
+                (tuple p9 (record (path t_path.value) (alias t_alias.value)))
+            ))))))))))
+        )
+    )
+
+    (deffn (name parse_defs) (args (p base.Parser)) (ret (Tuple base.Parser (List ast.Definition))) (eff !Pure)
+        (body
+            ;; (defs (deffn ...) ...)
+            (let (t (call base.parser_peek p))
+                (if (= t.kind "LPAREN")
+                    (let (t2 (call base.parser_peek (call base.parser_consume p)))
+                        (if (= t2.value "defs")
+                            (let (p2 (call base.parser_consume (call base.parser_consume p))) ;; skip ( and defs
+                                (let (res (call parse_def_list p2))
+                                    (let (p3 (tuple.get res 0))
+                                    (let (defs (tuple.get res 1))
+                                        (tuple (call base.parser_consume p3) defs) ;; skip )
+                                    ))
+                                )
+                            )
+                            (tuple p (list))
+                        )
+                    )
+                    (tuple p (list))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_def_list) (args (p base.Parser)) (ret (Tuple base.Parser (List ast.Definition))) (eff !Pure)
+        (body
+            (let (t (call base.parser_peek p))
+                (if (= t.kind "LPAREN")
+                    (let (res (call parse_def p))
+                        (let (p2 (tuple.get res 0))
+                        (let (d (tuple.get res 1))
+                            (let (res2 (call parse_def_list p2))
+                                (let (p3 (tuple.get res2 0))
+                                (let (tail (tuple.get res2 1))
+                                    (tuple p3 (cons d tail))
+                                ))
+                            )
+                        ))
+                    )
+                    (tuple p (list))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_def) (args (p base.Parser)) (ret (Tuple base.Parser ast.Definition)) (eff !Pure)
+        (body
+            (let (t (call base.parser_peek (call base.parser_consume p)))
+                (if (|| (= t.value "deffn") (= t.value "defconst")) (call parse_deffn p)
+                (if (= t.value "type") (call parse_type_def p)
+                    (tuple (call base.parser_consume p) (tag "TypeDef" (record (name "") (type (tag "I64" (record))))))
+                ))
+            )
+        )
+    )
+
+    (deffn (name parse_deffn) (args (p base.Parser)) (ret (Tuple base.Parser ast.Definition)) (eff !Pure)
+        (body
+            ;; (deffn (name NAME) (args ...) (ret TYPE) (eff EFF) (body EXPR))
+            (let (p2 (call base.parser_consume p)) ;; skip (
+            (let (p3 (call base.parser_consume p2)) ;; skip deffn
+            (let (p4 (call base.parser_consume p3)) ;; skip (
+            (let (p5 (call base.parser_consume p4)) ;; skip name
+            (let (t_name (call base.parser_peek p5))
+            (let (p6 (call base.parser_consume p5))
+            (let (p7 (call base.parser_consume p6)) ;; skip )
+            (let (res_args (call parse_args_decl p7))
+                (let (p8 (tuple.get res_args 0))
+                (let (args (tuple.get res_args 1))
+                    (let (p9 (call base.parser_consume p8)) ;; skip (
+                    (let (p10 (call base.parser_consume p9)) ;; skip ret
+                    (let (res_ret (call parser_type.parse_type p10))
+                        (let (p11 (tuple.get res_ret 0))
+                        (let (ret_ty (tuple.get res_ret 1))
+                            (let (p12 (call base.parser_consume p11)) ;; skip )
+                            (let (p13 (call base.parser_consume p12)) ;; skip (
+                            (let (p14 (call base.parser_consume p13)) ;; skip eff
+                            (let (t_eff (call base.parser_peek p14))
+                            (let (p15 (call base.parser_consume p14))
+                            (let (p16 (call base.parser_consume p15)) ;; skip )
+                            (let (p17 (call base.parser_consume p16)) ;; skip (
+                            (let (p18 (call base.parser_consume p17)) ;; skip body
+                            (let (res_body (call parser_expr.parse_expr p18))
+                                (let (p19 (tuple.get res_body 0))
+                                (let (body (tuple.get res_body 1))
+                                    (let (p20 (call base.parser_consume p19)) ;; skip ) for body
+                                    (let (p21 (call base.parser_consume p20)) ;; skip ) for deffn
+                                        (tuple p21 (tag "DefFn" (record (name t_name.value) (args args) (ret ret_ty) (eff t_eff.value) (body body))))
+                                    ))))))))))))))))))))))))))))
+        )
+    )
+
+    (deffn (name parse_args_decl) (args (p base.Parser)) (ret (Tuple base.Parser (List ast.Arg))) (eff !Pure)
+        (body
+            ;; (args (n t) ...)
+            (let (p2 (call base.parser_consume p)) ;; skip (
+            (let (p3 (call base.parser_consume p2)) ;; skip args
+                (let (res (call parse_arg_list p3))
+                    (let (p4 (tuple.get res 0))
+                    (let (args (tuple.get res 1))
+                        (tuple (call base.parser_consume p4) args) ;; skip )
+                    ))
+                )
+            ))
+        )
+    )
+
+    (deffn (name parse_arg_list) (args (p base.Parser)) (ret (Tuple base.Parser (List ast.Arg))) (eff !Pure)
+        (body
+            (let (t (call base.parser_peek p))
+                (if (= t.kind "LPAREN")
+                    (let (res (call parse_arg_decl p))
+                        (let (p2 (tuple.get res 0))
+                        (let (a (tuple.get res 1))
+                            (let (res2 (call parse_arg_list p2))
+                                (let (p3 (tuple.get res2 0))
+                                (let (tail (tuple.get res2 1))
+                                    (tuple p3 (cons a tail))
+                                ))
+                            )
+                        ))
+                    )
+                    (tuple p (list))
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_arg_decl) (args (p base.Parser)) (ret (Tuple base.Parser ast.Arg)) (eff !Pure)
+        (body
+            ;; (name TYPE)
+            (let (p2 (call base.parser_consume p)) ;; skip (
+            (let (t_name (call base.parser_peek p2))
+            (let (p3 (call base.parser_consume p2))
+            (let (res_ty (call parser_type.parse_type p3))
+                (let (p4 (tuple.get res_ty 0))
+                (let (ty (tuple.get res_ty 1))
+                    (tuple (call base.parser_consume p4) (record (name t_name.value) (type ty)))
+                ))))))
+        )
+    )
+
+    (deffn (name parse_type_def) (args (p base.Parser)) (ret (Tuple base.Parser ast.Definition)) (eff !Pure)
+        (body
+            ;; (type NAME TYPE)
+            (let (p2 (call base.parser_consume p)) ;; skip (
+            (let (p3 (call base.parser_consume p2)) ;; skip type
+            (let (t_name (call base.parser_peek p3))
+            (let (p4 (call base.parser_consume p3)) ;; skip NAME
+            (let (res_ty (call parser_type.parse_type p4))
+                (let (p5 (tuple.get res_ty 0))
+                (let (ty (tuple.get res_ty 1))
+                    (tuple (call base.parser_consume p5) (tag "TypeDef" (record (name t_name.value) (type ty)))) ;; skip )
+                ))
+            ))))
+        )
+    )
+  )
+)

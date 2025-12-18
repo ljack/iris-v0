@@ -1,0 +1,101 @@
+(program
+  (module (name "type_eq") (version 1))
+  (imports
+    (import "ast" (as "ast"))
+    (import "list" (as "list"))
+  )
+  (defs
+    (deffn (name type_list_eq) (args (l1 (List ast.IrisType)) (l2 (List ast.IrisType))) (ret Bool) (eff !Pure)
+        (body
+            (match l1
+                (case (tag "nil") (match l2 (case (tag "nil") true) (case (tag "cons" (_)) false)))
+                (case (tag "cons" (h1 t1))
+                    (match l2
+                        (case (tag "nil") false)
+                        (case (tag "cons" (h2 t2))
+                            (if (call type_eq h1 h2)
+                                (call type_list_eq t1 t2)
+                                false
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name field_list_eq) (args (f1 (List (Tuple Str ast.IrisType))) (f2 (List (Tuple Str ast.IrisType)))) (ret Bool) (eff !Pure)
+        (body
+             (match f1
+                (case (tag "nil") (match f2 (case (tag "nil") true) (case (tag "cons" (_)) false)))
+                (case (tag "cons" (h1 t1))
+                    (match f2
+                        (case (tag "nil") false)
+                        (case (tag "cons" (h2 t2))
+                            (let (n1 (tuple.get h1 0))
+                            (let (ty1 (tuple.get h1 1))
+                            (let (n2 (tuple.get h2 0))
+                            (let (ty2 (tuple.get h2 1))
+                                (if (&& (= n1 n2) (call type_eq ty1 ty2))
+                                    (call field_list_eq t1 t2)
+                                    false
+                                )
+                            ))))
+                        )
+                    )
+                )
+             )
+        )
+    )
+
+    (deffn (name type_eq) (args (t1 ast.IrisType) (t2 ast.IrisType)) (ret Bool) (eff !Pure)
+        (body
+            (match t1
+                (case (tag "I64" (_)) (match t2 (case (tag "I64" (_)) true) (case (tag "_") false)))
+                (case (tag "Bool" (_)) (match t2 (case (tag "Bool" (_)) true) (case (tag "_") false)))
+                (case (tag "Str" (_)) (match t2 (case (tag "Str" (_)) true) (case (tag "_") false)))
+                (case (tag "Unit" (_)) (match t2 (case (tag "Unit" (_)) true) (case (tag "_") false)))
+                (case (tag "Option" (o1)) 
+                    (match t2 
+                        (case (tag "Option" (o2)) (call type_eq o1.inner o2.inner))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "Result" (r1))
+                    (match t2
+                        (case (tag "Result" (r2)) (&& (call type_eq r1.ok r2.ok) (call type_eq r1.err r2.err)))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "List" (l1))
+                    (match t2
+                        (case (tag "List" (l2)) (call type_eq l1.inner l2.inner))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "Tuple" (tp1))
+                    (match t2
+                        (case (tag "Tuple" (tp2)) (call type_list_eq tp1.items tp2.items))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "Record" (rec1))
+                    (match t2
+                        (case (tag "Record" (rec2)) (call field_list_eq rec1.fields rec2.fields))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "Fn" (f1)) (match t2 (case (tag "_") false))) ;; Fn eq hard
+                (case (tag "Named" (n1)) (match t2 (case (tag "Named" (n2)) (= n1.name n2.name)) (case (tag "_") false)))
+                (case (tag "Map" (m1))
+                    (match t2
+                        (case (tag "Map" (m2)) (&& (call type_eq m1.key m2.key) (call type_eq m1.value m2.value)))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "_") false)
+            )
+        )
+    )
+  )
+)

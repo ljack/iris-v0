@@ -6,11 +6,12 @@ https://raw.githubusercontent.com/ljack/iris-v0/master/LICENSE-APACHE
 https://raw.githubusercontent.com/ljack/iris-v0/master/LICENSE-MIT
 https://raw.githubusercontent.com/ljack/iris-v0/master/README.md
 https://raw.githubusercontent.com/ljack/iris-v0/master/bin/raw.txt
+https://raw.githubusercontent.com/ljack/iris-v0/master/dist_test/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/docs/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/examples/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/generate_raw_links.ts
 https://raw.githubusercontent.com/ljack/iris-v0/master/goals/raw.txt
-https://raw.githubusercontent.com/ljack/iris-v0/master/hello.iris
+https://raw.githubusercontent.com/ljack/iris-v0/master/interpreter_trace.log
 https://raw.githubusercontent.com/ljack/iris-v0/master/old/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/package-lock.json
 https://raw.githubusercontent.com/ljack/iris-v0/master/package.json
@@ -18,7 +19,6 @@ https://raw.githubusercontent.com/ljack/iris-v0/master/scripts/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/specs/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/src/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/stdlib/raw.txt
-https://raw.githubusercontent.com/ljack/iris-v0/master/test_output.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/tests/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/tools/raw.txt
 https://raw.githubusercontent.com/ljack/iris-v0/master/tsconfig.json

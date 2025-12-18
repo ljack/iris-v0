@@ -1,71 +1,16 @@
 (program
-  (module (name "codegen") (version 1))
+  (module (name "codegen") (version 2))
   (imports
+    (import "ast" (as "ast"))
     (import "list" (as "list"))
     (import "str" (as "str"))
   )
   (defs
-    ;; --- AST Definitions (Mirrors parser/typecheck) ---
-
-    (type Value
-      (union
-        (tag "I64" (I64))
-        (tag "Bool" (Bool))
-        (tag "Str" (Str))
-        (tag "Option" ((Record (value Value)))) 
-        (tag "None" ((Record))) 
-        (tag "Some" (Value)) 
-        (tag "Result" ((Record (isOk Bool) (value Value))))
-        (tag "List" ((Record (items (List Value)))))
-        (tag "Tuple" ((Record (items (List Value)))))
-        (tag "Record" ((Record (fields (List (Tuple Str Value))))))
-        (tag "Map" ((Record (entries (List (Tuple Str Value)))))) 
-      )
-    )
-
-    (type IrisType
-        (union
-            (tag "I64" ((Record)))
-            (tag "Bool" ((Record)))
-            (tag "Str" ((Record)))
-            (tag "Option" ((Record (inner IrisType))))
-            (tag "Result" ((Record (ok IrisType) (err IrisType))))
-            (tag "List" ((Record (inner IrisType))))
-            (tag "Tuple" ((Record (items (List IrisType)))))
-            (tag "Record" ((Record (fields (List (Tuple Str IrisType))))))
-            (tag "Map" ((Record (key IrisType) (value IrisType))))
-            (tag "Fn" ((Record (args (List IrisType)) (ret IrisType) (eff Str))))
-            (tag "Named" ((Record (name Str))))
-            (tag "Union" ((Record (variants (List (Tuple Str IrisType))))))
-        )
-    )
-
-    (type Arg (Record (name Str) (type IrisType)))
-
-    (type Expr
-      (union
-        (tag "Literal" (Value))
-        (tag "Var" ((Record (name Str))))
-        (tag "Let" ((Record (name Str) (value Expr) (body Expr))))
-        (tag "If" ((Record (cond Expr) (then Expr) (else Expr))))
-        (tag "Match" ((Record (target Expr) 
-                             (cases (List (Record (tag Str) (vars (List Str)) (body Expr)))))))
-        (tag "Call" (Str (List Expr)))
-        (tag "Intrinsic" (Str (List Expr)))
-        (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
-        (tag "Tuple" ((Record (items (List Expr)))))
-        (tag "Lambda" ((Record (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
-        (tag "Record" ((Record (fields (List (Tuple Str Expr))))))
-      )
-    )
-
-    ;; --- Code Generator ---
-
     (deffn (name quote_str) (args (s Str)) (ret Str) (eff !Pure)
         (body (str.concat "'" (str.concat s "'")))
     )
 
-    (deffn (name get_arg) (args (l (List Expr)) (i I64)) (ret Expr) (eff !Pure)
+    (deffn (name get_arg) (args (l (List ast.Expr)) (i I64)) (ret ast.Expr) (eff !Pure)
         (body 
             (match (list.get l i)
                 (case (tag "Some" (e)) e)
@@ -74,83 +19,69 @@
         )
     )
 
-    (deffn (name codegen) (args (e Expr)) (ret Str) (eff !Pure)
+    (deffn (name codegen) (args (e ast.Expr)) (ret Str) (eff !Pure)
         (body
             (match e
                 (case (tag "Literal" (v))
                     (match v
                         (case (tag "I64" (i)) (str.concat (i64.to_string i) "n"))
                         (case (tag "Bool" (b)) (if b "true" "false"))
-                        (case (tag "Str" (s)) (quote_str s))
-                        (case (tag "None" (_)) "null") 
-                        ;; Fallback
-                        (case (tag "Option" (_)) "null")
-                        (case (tag "Some" (_)) "null")
-                        (case (tag "Result" (_)) "null")
-                        (case (tag "List" (_)) "null")
-                        (case (tag "Tuple" (_)) "null")
-                        (case (tag "Record" (_)) "null")
-                        (case (tag "Map" (_)) "null")
+                        (case (tag "Str" (s)) (call quote_str s))
+                        (case (tag "_") "null")
                     )
                 )
                 (case (tag "Var" (v)) v.name)
                 (case (tag "Let" (l))
-                    ;; ((name) => { return body; })(val)
-                    (let (val_code (codegen l.value))
-                        (let (body_code (codegen l.body))
-                            (str.concat "((" 
-                                (str.concat l.name
-                                    (str.concat ") => { return "
-                                        (str.concat body_code
-                                            (str.concat "; })("
-                                                (str.concat val_code ")")
-                                            )
-                                        )
-                                    )
-                                )
-                            )
+                    (let (val_code (call codegen l.value))
+                        (let (body_code (call codegen l.body))
+                            (str.concat "((" (str.concat l.name (str.concat ") => { return " (str.concat body_code (str.concat "; })(" (str.concat val_code ")"))))))
                         )
                     )
                 )
                 (case (tag "If" (i))
-                    ;; (cond ? then : else)
-                    (let (cond_code (codegen i.cond))
-                        (let (then_code (codegen i.then))
-                            (let (else_code (codegen i.else))
-                                (str.concat "("
-                                    (str.concat cond_code
-                                        (str.concat " ? "
-                                            (str.concat then_code
-                                                (str.concat " : "
-                                                    (str.concat else_code ")")
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
+                    (let (cond_code (call codegen i.cond))
+                        (let (then_code (call codegen i.then))
+                            (let (else_code (call codegen i.else))
+                                (str.concat "(" (str.concat cond_code (str.concat " ? " (str.concat then_code (str.concat " : " (str.concat else_code ")"))))))
                             )
                         )
                     )
                 )
                 (case (tag "Intrinsic" (i))
-                    (let (op i.0)
-                    (let (args i.1)
+                    (let (op i.op)
+                    (let (args i.args)
                         (if (= op "+")
-                            (let (a1 (codegen (get_arg args 0)))
-                            (let (a2 (codegen (get_arg args 1)))
+                            (let (a1 (call codegen (call get_arg args 0)))
+                            (let (a2 (call codegen (call get_arg args 1)))
                                 (str.concat "(" (str.concat a1 (str.concat " + " (str.concat a2 ")"))))
                             ))
                             (str.concat "/* unknown intrinsic " (str.concat op " */"))
                         )
                     ))
                 )
-                ;; Fallback
-                (case (tag "Match" (_)) "/* Match */")
-                (case (tag "Call" (_)) "/* Call */")
-                (case (tag "List" (_)) "/* List */")
-                (case (tag "Tuple" (_)) "/* Tuple */")
-                (case (tag "Lambda" (_)) "/* Lambda */")
-                (case (tag "Record" (_)) "/* Record */")
+                (case (tag "Call" (c))
+                    (let (name c.name)
+                    (let (args (call gen_call_args c.args))
+                        (str.concat name (str.concat "(" (str.concat args ")")))
+                    ))
+                )
+                (case (tag "_") "/* unsupported */")
+            )
+        )
+    )
+
+    (deffn (name gen_call_args) (args (l (List ast.Expr))) (ret Str) (eff !Pure)
+        (body
+            (match l
+                (case (tag "nil") "")
+                (case (tag "cons" (h t))
+                    (let (h_code (call codegen h))
+                        (match t
+                            (case (tag "nil") h_code)
+                            (case (tag "cons" (_)) (str.concat h_code (str.concat ", " (call gen_call_args t))))
+                        )
+                    )
+                )
             )
         )
     )

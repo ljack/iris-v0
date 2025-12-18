@@ -64,7 +64,7 @@ export type Expr =
 // Pre-defined operators
 export type IntrinsicOp =
   | '+' | '-' | '*' | '/' | '%' | '<=' | '<' | '=' | '>=' | '>'
-  | '&&' | '||' | '!'
+  | '&&' | '||' | '!' | '&' | '|' | 'Not'
   | 'Some' | 'Ok' | 'Err'
 
   | 'cons'
@@ -86,6 +86,13 @@ export type MatchCase = {
   body: Expr;
 };
 
+// Linked List Environment
+export type LinkedEnv = {
+  name: string;
+  value: Value;
+  parent?: LinkedEnv;
+};
+
 // Runtime Values
 export type Value =
   | { kind: 'I64'; value: bigint }
@@ -97,4 +104,12 @@ export type Value =
   | { kind: 'Tuple'; items: Value[] }
   | { kind: 'Record'; fields: Record<string, Value> }
   | { kind: 'Tagged'; tag: string; value: Value }
-  | { kind: 'Map'; value: Map<string, Value> };
+  | { kind: 'Map'; value: Map<string, Value> }
+  | {
+    kind: 'Lambda';
+    args: { name: string; type: IrisType }[];
+    ret: IrisType;
+    eff: string;
+    body: Expr;
+    env?: LinkedEnv; // Closure environment
+  };
