@@ -2,7 +2,7 @@
   (module (name "http") (version 0))
 
   (defs
-    ;; Helper to parse URL into (host, port, path)
+    ;; Helper to parse URL into host, port, path
   ;; For now, assumes http://host/path or host/path
   ;; No https support yet.
   (deffn (name parse_url)

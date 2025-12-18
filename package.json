@@ -12,11 +12,17 @@
     "test": "ts-node src/tests.ts",
     "test:web": "ts-node tests/test_web.ts",
     "test-cli": "ts-node src/tests_cli.ts",
+    "test:wasm": "ts-node src/tests.ts --grep wasm",
+    "test:wasm:validate": "ts-node src/tests.ts --grep wasm && npm run validate:wasm",
+    "validate:wasm": "ts-node scripts/validate_all_wasm.ts",
+    "test:coverage": "c8 --reporter=text --reporter=html --reporter=json-summary --include='src/**/*.ts' --exclude='src/tests.ts' --exclude='src/tests_cli.ts' --exclude='src/test-types.ts' ts-node src/tests.ts",
+    "coverage": "c8 --reporter=text --reporter=html --reporter=json-summary --include='src/**/*.ts' --exclude='src/tests.ts' --exclude='src/tests_cli.ts' --exclude='src/test-types.ts' ts-node src/tests.ts",
     "update-raw": "ts-node generate_raw_links.ts",
     "build": "tsc"
   },
   "devDependencies": {
-    "@types/node": "^25.0.2",
+    "@types/node": "^25.0.3",
+    "c8": "^10.1.3",
     "esbuild": "^0.27.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

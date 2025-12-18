@@ -90,10 +90,14 @@ export function check(source: string, modules: Record<string, string> = {}): Che
 
             const src = modules[path];
             if (src) {
-                const p = new Parser(src);
-                const pr = p.parse();
-                for (const i of pr.imports) {
-                    dfs(i.path);
+                try {
+                    const p = new Parser(src);
+                    const pr = p.parse();
+                    for (const i of pr.imports) {
+                        dfs(i.path);
+                    }
+                } catch (e: any) {
+                    throw new Error(`In module '${path}': ${e.message}`);
                 }
             }
             recursionStack.delete(path);

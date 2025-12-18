@@ -4,6 +4,7 @@
     (import "ast" (as "ast"))
     (import "list" (as "list"))
     (import "str" (as "str"))
+    (import "wasm_syntax" (as "ws"))
   )
   (defs
     (deffn (name gen_string_bytes) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
@@ -13,11 +14,11 @@
           (let (char_opt (str.get s i))
             (match char_opt
               (case (tag "Some" (code))
-                (let (addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string (+ 8 i)) ")))")))
+                (let (addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string (+ 8 i)) "))")))
                 (let (store (str.concat "(i64.store8 (i32.wrap_i64 " (str.concat addr (str.concat ") (i64.const " (str.concat (i64.to_string code) "))\n")))))
                   (str.concat store (call gen_string_bytes s (+ i 1) len))
                 )))
-              (case (tag "None") "")
+              (case (tag "None" ()) "")
             )
           )
         )
@@ -28,7 +29,7 @@
       (body
         (match (list.get l i)
           (case (tag "Some" (v)) v)
-          (case (tag "None") (tag "Literal" (tag "I64" 0)))
+          (case (tag "None" ()) (tag "Literal" (tag "I64" 0)))
         )
       )
     )
@@ -39,11 +40,11 @@
           (case (tag "Some" (item))
             (let (val_code (call codegen_expr item))
             (let (offset (+ 8 (* index 8)))
-            (let (addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string offset) ")))"))
+            (let (addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string offset) "))")))
             (let (store (str.concat "(i64.store (i32.wrap_i64 " (str.concat addr (str.concat ")) " (str.concat val_code ")\n")))))
                 (str.concat store (call gen_list_items items (+ index 1)))
-            ))))
-          (case (tag "None") "")
+            )))))
+          (case (tag "None" ()) "")
         )
       )
     )
@@ -51,12 +52,12 @@
     (deffn (name gen_match_bindings) (args (vars (List Str)) (target_v Str) (index I64)) (ret Str) (eff !Pure)
         (body
             (match vars
-                (case (tag "nil") "")
+                (case (tag "nil" ()) "")
                 (case (tag "cons" (h t))
                     (let (offset (+ 8 (* index 8)))
-                    (let (addr (str.concat "(i64.add (local.get " (str.concat target_v (str.concat ") (i64.const " (str.concat (i64.to_string offset) ")))"))))
+                    (let (addr (str.concat "(i64.add (local.get " (str.concat target_v (str.concat ") (i64.const " (str.concat (i64.to_string offset) "))")))))
                     (let (val  (str.concat "(i64.load (i32.wrap_i64 " (str.concat addr "))")))
-                    (let (set  (str.concat "(local.set $" (str.concat h (str.concat " " (str.concat val ")\n")))))
+                    (let (set  (str.concat "(local.set $" (str.concat (call ws.sanitize_identifier h) (str.concat " " (str.concat val ")\n")))))
                         (str.concat set (call gen_match_bindings t target_v (+ index 1)))
                     )))))
             )
@@ -79,7 +80,7 @@
     (deffn (name gen_match_cases) (args (cases (List ast.MatchCase)) (target_v Str) (level I64)) (ret Str) (eff !Pure)
         (body
             (match cases
-                (case (tag "nil") "(unreachable)")
+                (case (tag "nil" ()) "(unreachable)")
                 (case (tag "cons" (h t))
                     (let (tag_name h.variantTag)
                     (let (vars h.vars)
@@ -97,7 +98,7 @@
                     ))))))
             )
         )
-    )
+    ))
 
     (deffn (name codegen_expr) (args (e ast.Expr)) (ret Str) (eff !Pure)
       (body
@@ -120,10 +121,10 @@
                 (let (s2 (str.concat "(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) " (str.concat vcode ")\n")))
                     (str.concat s1 (str.concat s2 "(local.get $t0)"))
                 ))))
-              (case (tag "None" (r)) 
+              (case (tag "None" ()) 
                 "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 0))\n(local.get $t0)"
               )
-              (case (tag "_") "(i64.const 0)")
+              (case (tag "_" ()) "(i64.const 0)")
             )
           )
           
@@ -169,11 +170,11 @@
             ))
           )
           
-          (case (tag "Var" (v)) (str.concat "(local.get $" (str.concat v.name ")")))
+          (case (tag "Var" (v)) (str.concat "(local.get $" (str.concat (call ws.sanitize_identifier v.name) ")")))
           
           (case (tag "Let" (l))
             (let (vcode (call codegen_expr l.value))
-                (str.concat vcode (str.concat "\n(local.set $" (str.concat l.name (str.concat ")\n" (call codegen_expr l.body)))))
+                (str.concat vcode (str.concat "\n(local.set $" (str.concat (call ws.sanitize_identifier l.name) (str.concat ")\n" (call codegen_expr l.body)))))
             )
           )
           
@@ -194,11 +195,11 @@
           (case (tag "Call" (c))
              (let (name c.name)
              (let (args c.args)
-                 (str.concat (call gen_call_args args 0) (str.concat "(call $" (str.concat name ")")))
+                 (str.concat (call gen_call_args args 0) (str.concat "(call $" (str.concat (call ws.sanitize_identifier name) ")")))
              ))
           )
 
-          (case (tag "_") "(i64.const 0)")
+          (case (tag "_" ()) "(i64.const 0)")
         )
       )
     )
@@ -209,7 +210,7 @@
                 (case (tag "Some" (arg))
                     (str.concat (call codegen_expr arg) (str.concat "\n" (call gen_call_args args (+ index 1))))
                 )
-                (case (tag "None") "")
+                (case (tag "None" ()) "")
             )
         )
     )

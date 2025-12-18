@@ -7,6 +7,10 @@
     (import "parser_type" (as "parser_type"))
   )
   (defs
+    (deffn (name is_intrinsic) (args (op Str)) (ret Bool) (eff !Pure)
+        (body (|| (= op "+") (|| (= op "-") (|| (= op "*") (|| (= op "/") (|| (= op "%") (|| (= op "&&") (|| (= op "||") (|| (= op "&") (|| (= op "|") (|| (= op "=") (|| (= op ">") (|| (= op "<") (= op ">="))))))))))))))
+    )
+
     (deffn (name parse_expr) (args (p base.Parser)) (ret (Tuple base.Parser ast.Expr)) (eff !Pure)
         (body
             (let (t (call base.parser_peek p))
@@ -43,7 +47,7 @@
                         (if (= t.value "lambda") (call parse_lambda p2)
                         (if (= t.value "list-of") (call parse_list_of p2)
                         (if (= t.value "record") (call parse_record p2)
-                        (if (|| (= t.value "+") (|| (= t.value "-") (|| (= t.value "*") (|| (= t.value "/") (|| (= t.value "%") (|| (= t.value "&&") (|| (= t.value "||") (|| (= t.value "&") (|| (= t.value "|") (|| (= t.value "=") (|| (= t.value ">") (|| (= t.value "<") (= t.value ">=")))))))))))))
+                        (if (call is_intrinsic t.value)
                             (let (res (call parse_args p2))
                                 (let (p3 (tuple.get res 0))
                                 (let (args (tuple.get res 1))
@@ -51,9 +55,11 @@
                                 ))
                             )
                             (call parse_call p2 t.value)
-                        ))))))))
+                        )))))))
                     )
-                    (tuple p (tag "Literal" (tag "I64" 999)))
+                    (let (lit (tag "I64" 999))
+                        (tuple p (tag "Literal" lit))
+                    )
                 )
             )
         )
@@ -75,7 +81,7 @@
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
                     (let (p2 (call base.parser_consume p))
-                         (tuple p2 (list))  
+                         (tuple p2 (tag "nil" (record)))  
                     )
                     (let (res (call parse_expr p))
                          (let (p2 (tuple.get res 0))
@@ -94,7 +100,7 @@
 
     (deffn (name parse_let) (args (p base.Parser)) (ret (Tuple base.Parser ast.Expr)) (eff !Pure)
         (body
-            ;; (let (x VAL) BODY)
+            ;; let x VAL BODY
             (let (t1 (call base.parser_peek p))
                 (if (= t1.kind "LPAREN")
                     (let (p2 (call base.parser_consume p))
@@ -181,7 +187,7 @@
         (body
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
-                    (tuple (call base.parser_consume p) (list))
+                    (tuple (call base.parser_consume p) (tag "nil" (record)))
                     (let (res_case (call parse_match_case p))
                         (let (p2 (tuple.get res_case 0))
                         (let (c (tuple.get res_case 1))
@@ -197,24 +203,24 @@
 
     (deffn (name parse_match_case) (args (p base.Parser)) (ret (Tuple base.Parser (Record (variantTag Str) (vars (List Str)) (body ast.Expr)))) (eff !Pure)
         (body
-            ;; (case (tag "TAG" (vars...)) body)
-            (let (p2 (call base.parser_consume p)) ;; skip (
+            ;; case tag TAG vars... body
+            (let (p2 (call base.parser_consume p)) ;; skip lparen
             (let (p3 (call base.parser_consume p2)) ;; skip case
-            (let (p4 (call base.parser_consume p3)) ;; skip (
+            (let (p4 (call base.parser_consume p3)) ;; skip lparen
             (let (p5 (call base.parser_consume p4)) ;; skip tag
             (let (t_tag (call base.parser_peek p5))
             (let (p6 (call base.parser_consume p5))
-            (let (p7 (call base.parser_consume p6)) ;; skip (
+            (let (p7 (call base.parser_consume p6)) ;; skip lparen
             (let (res_vars (call parse_vars_loop p7))
             (let (p8 (tuple.get res_vars 0))
             (let (vars (tuple.get res_vars 1))
-            (let (p9 (call base.parser_consume p8)) ;; skip )
+            (let (p9 (call base.parser_consume p8)) ;; skip rparen
             (let (res_body (call parse_expr p9))
             (let (p10 (tuple.get res_body 0))
             (let (body (tuple.get res_body 1))
-            (let (p11 (call base.parser_consume p10)) ;; skip )
+            (let (p11 (call base.parser_consume p10)) ;; skip rparen
                 (tuple p11 (record (variantTag t_tag.value) (vars vars) (body body)))
-            ))))))))))))))
+            )))))))))))))))
         )
     )
 
@@ -222,7 +228,7 @@
         (body
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
-                    (tuple p (list))
+                    (tuple p (tag "nil" (record)))
                     (if (= t.kind "IDENT")
                         (let (p2 (call base.parser_consume p))
                             (let (res (call parse_vars_loop p2))
@@ -232,7 +238,7 @@
                                 ))
                             )
                         )
-                        (tuple p (list))
+                        (tuple p (tag "nil" (record)))
                     )
                 )
             )
@@ -241,12 +247,12 @@
 
     (deffn (name parse_list_of) (args (p base.Parser)) (ret (Tuple base.Parser ast.Expr)) (eff !Pure)
         (body
-            ;; (list-of (TYPE) expr...)
-            (let (p2 (call base.parser_consume p)) ;; skip (
+            ;; list-of TYPE expr...
+            (let (p2 (call base.parser_consume p)) ;; skip lparen
             (let (res_ty (call parser_type.parse_type p2))
             (let (p3 (tuple.get res_ty 0))
             (let (ty (tuple.get res_ty 1))
-            (let (p4 (call base.parser_consume p3)) ;; skip )
+            (let (p4 (call base.parser_consume p3)) ;; skip rparen
             (let (res_args (call parse_args p4))
                 (let (p5 (tuple.get res_args 0))
                 (let (args (tuple.get res_args 1))
@@ -260,14 +266,14 @@
         (body
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
-                    (tuple (call base.parser_consume p) (list))
-                    (let (p2 (call base.parser_consume p)) ;; skip (
+                    (tuple (call base.parser_consume p) (tag "nil" (record)))
+                    (let (p2 (call base.parser_consume p)) ;; skip lparen
                     (let (t_name (call base.parser_peek p2))
                         (let (p3 (call base.parser_consume p2)) ;; skip name
                         (let (res_val (call parse_expr p3))
                              (let (p4 (tuple.get res_val 0))
                              (let (val (tuple.get res_val 1))
-                                 (let (p5 (call base.parser_consume p4)) ;; skip )
+                                 (let (p5 (call base.parser_consume p4)) ;; skip rparen
                                      (let (res_tail (call parse_record_expr_fields p5))
                                          (tuple (tuple.get res_tail 0) (cons (tuple t_name.value val) (tuple.get res_tail 1)))
                                      )
@@ -303,9 +309,10 @@
 
     (deffn (name parse_lambda) (args (p base.Parser)) (ret (Tuple base.Parser ast.Expr)) (eff !Pure)
         (body
-            ;; (lambda (args) body) - simplified for now
+            ;; lambda args body - simplified for now
             (tuple p (tag "Literal" (tag "I64" 777)))
         )
     )
   )
 )
+

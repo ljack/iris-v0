@@ -1,0 +1,9 @@
+CONS ERROR. t: {
+  "kind": "Tagged",
+  "tag": "nil",
+  "value": {
+    "kind": "Record",
+    "fields": {}
+  }
+}
+RuntimeError: cons arguments must be (head, tail-list)

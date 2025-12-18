@@ -58,7 +58,7 @@ export type Expr =
   | { kind: 'Tuple'; items: Expr[] }
   | { kind: 'Fold'; list: Expr; init: Expr; fn: Expr } // fn is likely a Lambda or Var
   | { kind: 'Lambda'; args: { name: string; type: IrisType }[]; ret: IrisType; eff: IrisEffect; body: Expr }
-  | { kind: 'Record'; fields: Record<string, Expr> }
+  | { kind: 'Record'; fields: Expr[] }
   | { kind: 'Tagged'; tag: string; value: Expr };
 
 // Pre-defined operators
@@ -82,7 +82,7 @@ export type IntrinsicOp =
 
 export type MatchCase = {
   tag: string;
-  vars: string[]; // e.g., (case (tag "Some" (v)) ...) -> vars: ["v"]
+  vars: Value; // List of Str
   body: Expr;
 };
 

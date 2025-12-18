@@ -9,7 +9,7 @@
     (type TypeEnv (Record (bindings (Map Str ast.IrisType)) (functions (Map Str ast.IrisType))))
 
     (deffn (name env_new) (args) (ret TypeEnv) (eff !Pure)
-        (body (record (bindings (map.make)) (functions (map.make))))
+        (body (record (bindings (map.make "" (tag "Unit" (record)))) (functions (map.make "" (tag "Unit" (record))))))
     )
 
     (deffn (name env_get) (args (env TypeEnv) (key Str)) (ret (Option ast.IrisType)) (eff !Pure)
@@ -26,6 +26,16 @@
 
     (deffn (name env_put_fn) (args (env TypeEnv) (key Str) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
         (body (record (bindings env.bindings) (functions (map.put env.functions key t))))
+    )
+    (deffn (name env_put_multi) (args (env TypeEnv) (keys (List Str)) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
+        (body
+            (match keys
+                (case (tag "nil") env)
+                (case (tag "cons" (h tail))
+                    (call env_put_multi (call env_put env h t) tail t)
+                )
+            )
+        )
     )
   )
 )

@@ -2,7 +2,7 @@
   (module (name "server") (version 0))
 
   (defs
-    ;; Helper to join strings in a list (for index generation)
+    ;; Helper to join strings in a list for index generation
     (deffn (name join_files) (args (files (List Str))) (ret Str) (eff !Pure)
       (body 
         (match files

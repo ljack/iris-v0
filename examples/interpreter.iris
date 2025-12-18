@@ -6,7 +6,7 @@
     (import "str" (as "str"))
   )
   (defs
-    ;; --- AST Definitions (Mirrors parser.iris) ---
+    ;; --- AST Definitions Mirrors parser.iris ---
 
     (type Value
       (union
@@ -172,5 +172,4 @@
     )
 
   )
-)
 )

@@ -12,8 +12,8 @@
     (deffn (name type_check_program) (args (p ast.Program)) (ret (Result ast.IrisType Str)) (eff !Pure)
         (body
             (let (e (call env.env_new))
-            (let (e2 (call collect_defs p.defs e))
-                (call type_check_defs p.defs e2)
+            (let (e2 (call collect_defs p.progDefs e))
+                (call type_check_defs p.progDefs e2)
             ))
         )
     )

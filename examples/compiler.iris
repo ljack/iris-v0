@@ -13,8 +13,8 @@
   (defs
     ;; Define Result type for compatibility if needed or use from imports if exposed?
     ;; Result is generic intrinsic type, so we use structural types matching what imports return
-    ;; Note: typecheck.type_check returns (Result IrisType Str)
-    ;; io.read_file returns (Result Str Str)
+    ;; Note: typecheck.type_check returns Result IrisType Str
+    ;; io.read_file returns Result Str Str
     
     (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
         (body
@@ -30,11 +30,10 @@
                                 (let (tc_res (typecheck.type_check_program ast))
                                         (match tc_res
                                             (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
-                                            (case (tag "Ok" (_))
-                                                ;; 4. Code Gen
+                                            (case (tag "Ok" (ignore))
                                                 (if (str.contains target "wasm")
-                                                    (tag "Ok" (codegen_wasm.codegen_module ast))
-                                                    (tag "Ok" (codegen.codegen ast))
+                                                    (tag "Ok" (call codegen_wasm.codegen_module ast))
+                                                    (tag "Ok" (call codegen.codegen ast))
                                                 )
                                             )
                                         )

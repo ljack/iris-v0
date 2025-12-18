@@ -19,7 +19,7 @@
         )
     )
 
-    (deffn (name codegen) (args (e ast.Expr)) (ret Str) (eff !Pure)
+    (deffn (name codegen_expr) (args (e ast.Expr)) (ret Str) (eff !Pure)
         (body
             (match e
                 (case (tag "Literal" (v))
@@ -32,16 +32,16 @@
                 )
                 (case (tag "Var" (v)) v.name)
                 (case (tag "Let" (l))
-                    (let (val_code (call codegen l.value))
-                        (let (body_code (call codegen l.body))
+                    (let (val_code (call codegen_expr l.value))
+                        (let (body_code (call codegen_expr l.body))
                             (str.concat "((" (str.concat l.name (str.concat ") => { return " (str.concat body_code (str.concat "; })(" (str.concat val_code ")"))))))
                         )
                     )
                 )
                 (case (tag "If" (i))
-                    (let (cond_code (call codegen i.cond))
-                        (let (then_code (call codegen i.then))
-                            (let (else_code (call codegen i.else))
+                    (let (cond_code (call codegen_expr i.cond))
+                        (let (then_code (call codegen_expr i.then))
+                            (let (else_code (call codegen_expr i.else))
                                 (str.concat "(" (str.concat cond_code (str.concat " ? " (str.concat then_code (str.concat " : " (str.concat else_code ")"))))))
                             )
                         )
@@ -51,8 +51,8 @@
                     (let (op i.op)
                     (let (args i.args)
                         (if (= op "+")
-                            (let (a1 (call codegen (call get_arg args 0)))
-                            (let (a2 (call codegen (call get_arg args 1)))
+                            (let (a1 (call codegen_expr (call get_arg args 0)))
+                            (let (a2 (call codegen_expr (call get_arg args 1)))
                                 (str.concat "(" (str.concat a1 (str.concat " + " (str.concat a2 ")"))))
                             ))
                             (str.concat "/* unknown intrinsic " (str.concat op " */"))
@@ -75,7 +75,7 @@
             (match l
                 (case (tag "nil") "")
                 (case (tag "cons" (h t))
-                    (let (h_code (call codegen h))
+                    (let (h_code (call codegen_expr h))
                         (match t
                             (case (tag "nil") h_code)
                             (case (tag "cons" (_)) (str.concat h_code (str.concat ", " (call gen_call_args t))))
@@ -84,6 +84,31 @@
                 )
             )
         )
+    )
+
+
+    (deffn (name gen_defs) (args (defs (List ast.Definition))) (ret Str) (eff !Pure)
+        (body
+            (match defs
+                (case (tag "nil") "")
+                (case (tag "cons" (h t))
+                    (let (rest (call gen_defs t))
+                        (match h
+                            (case (tag "DefFn" (f))
+                                (let (body_code (call codegen_expr f.body))
+                                    (str.concat "function " (str.concat f.name (str.concat "() { return " (str.concat body_code (str.concat "; }\n" rest)))))
+                                )
+                            )
+                            (case (tag "_") rest)
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name codegen) (args (p ast.Program)) (ret Str) (eff !Pure)
+        (body (call gen_defs p.progDefs))
     )
   )
 )

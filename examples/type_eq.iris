@@ -8,7 +8,7 @@
     (deffn (name type_list_eq) (args (l1 (List ast.IrisType)) (l2 (List ast.IrisType))) (ret Bool) (eff !Pure)
         (body
             (match l1
-                (case (tag "nil") (match l2 (case (tag "nil") true) (case (tag "cons" (_)) false)))
+                (case (tag "nil") (match l2 (case (tag "nil") true) (case (tag "cons" (_ _)) false)))
                 (case (tag "cons" (h1 t1))
                     (match l2
                         (case (tag "nil") false)
@@ -27,7 +27,7 @@
     (deffn (name field_list_eq) (args (f1 (List (Tuple Str ast.IrisType))) (f2 (List (Tuple Str ast.IrisType)))) (ret Bool) (eff !Pure)
         (body
              (match f1
-                (case (tag "nil") (match f2 (case (tag "nil") true) (case (tag "cons" (_)) false)))
+                (case (tag "nil") (match f2 (case (tag "nil") true) (case (tag "cons" (_ _)) false)))
                 (case (tag "cons" (h1 t1))
                     (match f2
                         (case (tag "nil") false)

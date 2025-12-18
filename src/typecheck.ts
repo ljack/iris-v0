@@ -10,6 +10,23 @@ export class TypeChecker {
 
     check(program: Program) {
         this.currentProgram = program;
+
+        // Pre-pass: load imported types
+        if (this.resolver) {
+            for (const imp of program.imports) {
+                const mod = this.resolver(imp.path);
+                if (mod) {
+                    const exportedTypes = new Set(mod.defs.filter(d => d.kind === 'TypeDef').map(d => d.name));
+                    for (const def of mod.defs) {
+                        if (def.kind === 'TypeDef') {
+                            const qualified = this.qualifyType(def.type, imp.alias, exportedTypes);
+                            this.types.set(`${imp.alias}.${def.name}`, qualified);
+                        }
+                    }
+                }
+            }
+        }
+
         // First pass: collect signatures
         for (const def of program.defs) {
             if (def.kind === 'DefConst') {
@@ -61,6 +78,36 @@ export class TypeChecker {
                 // Nothing to check for body
             }
         }
+    }
+
+    private qualifyType(t: IrisType, alias: string, exported: Set<string>): IrisType {
+        if (t.type === 'Named') {
+            if (exported.has(t.name)) {
+                return { type: 'Named', name: `${alias}.${t.name}` };
+            }
+            return t; // External or built-in
+        }
+        if (t.type === 'Option') return { ...t, inner: this.qualifyType(t.inner, alias, exported) };
+        if (t.type === 'Result') return { ...t, ok: this.qualifyType(t.ok, alias, exported), err: this.qualifyType(t.err, alias, exported) };
+        if (t.type === 'List') return { ...t, inner: this.qualifyType(t.inner, alias, exported) };
+        if (t.type === 'Tuple') return { ...t, items: t.items.map(i => this.qualifyType(i, alias, exported)) };
+        if (t.type === 'Record') {
+            const newFields: any = {};
+            for (const k in t.fields) newFields[k] = this.qualifyType(t.fields[k], alias, exported);
+            return { ...t, fields: newFields };
+        }
+        if (t.type === 'Union') {
+            const newVars: any = {};
+            for (const k in t.variants) newVars[k] = this.qualifyType(t.variants[k], alias, exported);
+            return { ...t, variants: newVars };
+        }
+        if (t.type === 'Map') return { ...t, key: this.qualifyType(t.key, alias, exported), value: this.qualifyType(t.value, alias, exported) };
+        if (t.type === 'Fn') return {
+            ...t,
+            args: t.args.map(a => this.qualifyType(a, alias, exported)),
+            ret: this.qualifyType(t.ret, alias, exported)
+        };
+        return t;
     }
 
     // Returns Type AND Inferred Effect
@@ -159,12 +206,19 @@ export class TypeChecker {
                 if (resolvedTarget.type === 'Option') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
+                        const vars: string[] = [];
+                        if (c.vars.kind === 'List') {
+                            for (const item of c.vars.items) {
+                                if (item.kind === 'Str') vars.push(item.value);
+                            }
+                        }
+
                         if (c.tag === 'Some') {
-                            if (c.vars.length !== 1) throw new Error("Some case expects 1 variable");
+                            if (vars.length !== 1) throw new Error("Some case expects 1 variable");
                             if (!resolvedTarget.inner) throw new Error("Internal error: Option type missing inner type");
-                            newEnv.set(c.vars[0], resolvedTarget.inner);
+                            newEnv.set(vars[0], resolvedTarget.inner);
                         } else if (c.tag === 'None') {
-                            if (c.vars.length !== 0) throw new Error("None case expects 0 variables");
+                            if (vars.length !== 0) throw new Error("None case expects 0 variables");
                         } else throw new Error(`Unknown option match tag: ${c.tag}`);
 
                         const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
@@ -175,14 +229,21 @@ export class TypeChecker {
                 } else if (resolvedTarget.type === 'Result') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
+                        const vars: string[] = [];
+                        if (c.vars.kind === 'List') {
+                            for (const item of c.vars.items) {
+                                if (item.kind === 'Str') vars.push(item.value);
+                            }
+                        }
+
                         if (c.tag === 'Ok') {
-                            if (c.vars.length !== 1) throw new Error("Ok case expects 1 variable");
+                            if (vars.length !== 1) throw new Error("Ok case expects 1 variable");
                             if (!resolvedTarget.ok) throw new Error("Internal error: Result type missing ok type");
-                            newEnv.set(c.vars[0], resolvedTarget.ok);
+                            newEnv.set(vars[0], resolvedTarget.ok);
                         } else if (c.tag === 'Err') {
-                            if (c.vars.length !== 1) throw new Error("Err case expects 1 variable");
+                            if (vars.length !== 1) throw new Error("Err case expects 1 variable");
                             if (!resolvedTarget.err) throw new Error("Internal error: Result type missing err type");
-                            newEnv.set(c.vars[0], resolvedTarget.err);
+                            newEnv.set(vars[0], resolvedTarget.err);
                         } else throw new Error(`Unknown result match tag: ${c.tag}`);
 
                         const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
@@ -193,13 +254,20 @@ export class TypeChecker {
                 } else if (resolvedTarget.type === 'List') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
+                        const vars: string[] = [];
+                        if (c.vars.kind === 'List') {
+                            for (const item of c.vars.items) {
+                                if (item.kind === 'Str') vars.push(item.value);
+                            }
+                        }
+
                         if (c.tag === 'nil') {
-                            if (c.vars.length !== 0) throw new Error("nil case expects 0 variables");
+                            if (vars.length !== 0) throw new Error("nil case expects 0 variables");
                         } else if (c.tag === 'cons') {
-                            if (c.vars.length !== 2) throw new Error("cons case expects 2 variables (head tail)");
+                            if (vars.length !== 2) throw new Error("cons case expects 2 variables (head tail)");
                             if (!resolvedTarget.inner) throw new Error("Internal List missing inner");
-                            newEnv.set(c.vars[0], resolvedTarget.inner!); // head
-                            newEnv.set(c.vars[1], resolvedTarget);       // tail
+                            newEnv.set(vars[0], resolvedTarget.inner!); // head
+                            newEnv.set(vars[1], resolvedTarget);       // tail
                         } else throw new Error(`Unknown list match tag: ${c.tag}`);
 
                         const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
@@ -210,23 +278,27 @@ export class TypeChecker {
                 } else if (resolvedTarget.type === 'Union') {
                     for (const c of expr.cases) {
                         const newEnv = new Map(env);
-                        const variantType = resolvedTarget.variants[c.tag];
-                        if (!variantType) throw new Error(`TypeError: Union ${this.fmt(resolvedTarget)} has no variant ${c.tag}`);
+                        const vars: string[] = [];
+                        if (c.vars.kind === 'List') {
+                            for (const item of c.vars.items) {
+                                if (item.kind === 'Str') vars.push(item.value);
+                            }
+                        }
 
-                        // For v0, assume 1 var binds to payload.
-                        // If payload is implicitly unit or not present?
-                        // Iris Union variant types ALWAYS have a type. Unit is Record w/o fields.
-
-                        if (c.vars.length === 1) {
-                            newEnv.set(c.vars[0], variantType);
-                        } else if (c.vars.length === 0) {
-                            // Allow 0 vars if payload is Unit? Or ignoring payload?
-                            // Strictly, if user wrote `(case (tag "Foo" ()) body)`, vars is [].
-                            // If they wrote `(case (tag "Foo" x) body)`, vars is [x].
-                            // If variants[tag] is Unit, and they bind it, it's Unit.
+                        if (c.tag === '_') {
+                            if (vars.length !== 0) throw new Error("Wildcard match cannot bind variables");
                         } else {
-                            // Destructuring not supported generically yet unless specific Tuple case added.
-                            throw new Error(`Match case ${c.tag} expects 1 variable (payload binding)`);
+                            const variantType = resolvedTarget.variants[c.tag];
+                            if (!variantType) throw new Error(`TypeError: Union ${this.fmt(resolvedTarget)} has no variant ${c.tag}`);
+
+                            // For v0, assume 1 var binds to payload.
+                            if (vars.length === 1) {
+                                newEnv.set(vars[0], variantType);
+                            } else if (vars.length === 0) {
+                                // Unit payload or ignored
+                            } else {
+                                throw new Error(`Match case ${c.tag} expects 1 variable (payload binding)`);
+                            }
                         }
 
                         const body = this.checkExprFull(c.body, newEnv, retType || expectedType);
@@ -808,8 +880,6 @@ export class TypeChecker {
         t1 = this.resolve(t1);
         t2 = this.resolve(t2);
 
-        t2 = this.resolve(t2);
-
         if (t1 === t2) return true;
 
         if (t1.type !== t2.type) {
@@ -832,6 +902,11 @@ export class TypeChecker {
             }
             return false;
         }
+
+        if (t1.type === 'Named') return t1.name === (t2 as any).name;
+        if (t1.type === 'I64') return true;
+        if (t1.type === 'Bool') return true;
+        if (t1.type === 'Str') return true;
 
         if (t1.type === 'Union' && t2.type === 'Union') {
             // Subtyping: t1 expected, t2 actual. t2 must be subset of t1?
@@ -924,9 +999,7 @@ export class TypeChecker {
             }
         }
 
-        if (t1.type === 'I64' && t2.type === 'I64') return true;
-        if (t1.type === 'Bool' && t2.type === 'Bool') return true;
-        if (t1.type === 'Str' && t2.type === 'Str') return true;
+
 
         return false;
     }

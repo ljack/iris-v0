@@ -314,13 +314,16 @@ export class Parser {
             }
             if (op === 'record') {
                 // (record (k v) ...)
-                const fields: { [k: string]: Expr } = {};
+                const fields: Expr[] = [];
                 while (!this.check('RParen')) {
                     this.expect('LParen');
                     const key = this.expectSymbol();
                     const val = this.parseExpr();
                     this.expect('RParen');
-                    fields[key] = val; // checking duplicates?
+
+                    const keyExpr: Expr = { kind: 'Literal', value: { kind: 'Str', value: key } };
+                    const fieldTuple: Expr = { kind: 'Tuple', items: [keyExpr, val] };
+                    fields.push(fieldTuple);
                 }
                 this.expect('RParen');
                 return { kind: 'Record', fields };
@@ -353,7 +356,12 @@ export class Parser {
                     this.expect('RParen'); // close tag
                     const body = this.parseExpr();
                     this.expect('RParen'); // close case
-                    cases.push({ tag, vars, body });
+
+                    const varsValue: Value = {
+                        kind: 'List',
+                        items: vars.map(v => ({ kind: 'Str', value: v } as Value))
+                    };
+                    cases.push({ tag, vars: varsValue, body });
                 }
                 this.expect('RParen');
                 return { kind: 'Match', target, cases };
@@ -537,7 +545,6 @@ export class Parser {
                 args.push(this.parseExpr());
             }
             this.expect('RParen');
-            console.log("Fallback Call for op:", op);
             return { kind: 'Call', fn: op, args };
         }
 

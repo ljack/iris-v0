@@ -1,0 +1,14 @@
+(program
+  (module (name "test_match") (version 1))
+  (imports (import "ast" (as "ast")))
+  (defs
+    (deffn (name test) (args (v ast.Value)) (ret ast.IrisType) (eff !Pure)
+      (body 
+        (match v
+          (case (tag "I64" (i)) (tag "I64" (record)))
+          (case (tag "_") (tag "I64" (record)))
+        )
+      )
+    )
+  )
+)

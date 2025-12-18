@@ -11,13 +11,13 @@
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
                     (tuple (call base.parser_consume p) (list))
-                    (let (p2 (call base.parser_consume p)) ;; skip (
+                    (let (p2 (call base.parser_consume p)) ;; skip lparen
                     (let (t_name (call base.parser_peek p2))
                         (let (p3 (call base.parser_consume p2)) ;; skip name
                         (let (res_ty (call parse_type p3))
                              (let (p4 (tuple.get res_ty 0))
                              (let (ty (tuple.get res_ty 1))
-                                 (let (p5 (call base.parser_consume p4)) ;; skip )
+                                 (let (p5 (call base.parser_consume p4)) ;; skip rparen
                                      (let (res_tail (call parse_record_fields p5))
                                          (tuple (tuple.get res_tail 0) (cons (tuple t_name.value ty) (tuple.get res_tail 1)))
                                      )
@@ -36,11 +36,11 @@
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
                     (tuple (call base.parser_consume p) (list))
-                    (let (p2 (call base.parser_consume p)) ;; skip ( [start of tag]
+                    (let (p2 (call base.parser_consume p)) ;; skip lparen [start of tag]
                     (let (p3 (call base.parser_consume p2)) ;; skip tag
                     (let (t_name (call base.parser_peek p3))
                     (let (p4 (call base.parser_consume p3)) ;; skip name
-                    (let (p5 (call base.parser_consume p4)) ;; skip ( [start of args list]
+                    (let (p5 (call base.parser_consume p4)) ;; skip lparen [start of args list]
                     (let (res_args (call parse_type_list p5))
                     (let (p6 (tuple.get res_args 0))
                     (let (args (tuple.get res_args 1))
@@ -48,7 +48,7 @@
                                 (let (item (list.get args 0)) (match item (case (tag "Some" (v)) v) (case (tag "None") (tag "I64" (record)))))
                                 (tag "Tuple" (record (items args)))
                              ))
-                    (let (p7 (call base.parser_consume p6)) ;; skip ) [end of tag]
+                    (let (p7 (call base.parser_consume p6)) ;; skip rparen [end of tag]
                     (let (res_tail (call parse_union_variants p7))
                         (tuple (tuple.get res_tail 0) (cons (tuple t_name.value ty) (tuple.get res_tail 1)))
                     )))))))))))

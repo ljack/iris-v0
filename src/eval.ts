@@ -304,11 +304,11 @@ export class Interpreter {
 
                             // Diagnostic logging
                             if (expr.fn === 'lexer.tokenize' && res.kind === 'List') {
-                                console.log(`[Diagnostic] lexer.tokenize returned ${res.items.length} tokens`);
+
                             } else if (expr.fn === 'parser.parse' && res.kind === 'Record') {
                                 const defs = res.fields['defs'];
                                 if (defs && defs.kind === 'List') {
-                                    console.log(`[Diagnostic] parser.parse returned ${defs.items.length} definitions`);
+
                                 }
                             }
 
@@ -349,36 +349,48 @@ export class Interpreter {
                         if (c.tag === 'None' && target.value === null) match = true;
                         else if (c.tag === 'Some' && target.value !== null) {
                             match = true;
-                            if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            if (c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                const varVal = c.vars.items[0];
+                                if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.value, parent: newEnv };
+                            }
                         }
                     } else if (target.kind === 'Result') {
                         if (c.tag === 'Ok' && target.isOk) {
                             match = true;
-                            if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            if (c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                const varVal = c.vars.items[0];
+                                if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.value, parent: newEnv };
+                            }
                         } else if (c.tag === 'Err' && !target.isOk) {
                             match = true;
-                            if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            if (c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                const varVal = c.vars.items[0];
+                                if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.value, parent: newEnv };
+                            }
                         }
                     } else if (target.kind === 'List') {
                         if (c.tag === 'nil' && target.items.length === 0) {
                             match = true;
                         } else if (c.tag === 'cons' && target.items.length > 0) {
                             match = true;
-                            if (c.vars.length >= 1) newEnv = { name: c.vars[0], value: target.items[0], parent: newEnv };
-                            if (c.vars.length >= 2) {
-                                newEnv = { name: c.vars[1], value: { kind: 'List', items: target.items.slice(1) }, parent: newEnv };
+                            if (c.vars.kind === 'List') {
+                                if (c.vars.items.length >= 1) {
+                                    const headName = c.vars.items[0];
+                                    if (headName.kind === 'Str') newEnv = { name: headName.value, value: target.items[0], parent: newEnv };
+                                }
+                                if (c.vars.items.length >= 2) {
+                                    const tailName = c.vars.items[1];
+                                    if (tailName.kind === 'Str') newEnv = { name: tailName.value, value: { kind: 'List', items: target.items.slice(1) }, parent: newEnv };
+                                }
                             }
                         }
                     } else if (target.kind === 'Tagged') {
                         if (c.tag === target.tag) {
                             match = true;
-                            if (c.vars.length > 0 && target.value) {
-                                if (target.value.kind === 'Tuple') {
-                                    for (let i = 0; i < c.vars.length && i < target.value.items.length; i++) {
-                                        newEnv = { name: c.vars[i], value: target.value.items[i], parent: newEnv };
-                                    }
-                                } else {
-                                    newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                            if (target.value && c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                const varNameVal = c.vars.items[0];
+                                if (varNameVal.kind === 'Str') {
+                                    newEnv = { name: varNameVal.value, value: target.value, parent: newEnv };
                                 }
                             }
                         }
@@ -388,9 +400,14 @@ export class Interpreter {
                         if (c.tag === tagName) {
                             match = true;
                             // Bind variables to remaining tuple items
-                            for (let i = 0; i < c.vars.length; i++) {
-                                if (i + 1 < target.items.length) {
-                                    newEnv = { name: c.vars[i], value: target.items[i + 1], parent: newEnv };
+                            if (c.vars.kind === 'List') {
+                                for (let i = 0; i < c.vars.items.length; i++) {
+                                    if (i + 1 < target.items.length) {
+                                        const varVal = c.vars.items[i];
+                                        if (varVal.kind === 'Str') {
+                                            newEnv = { name: varVal.value, value: target.items[i + 1], parent: newEnv };
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -406,8 +423,17 @@ export class Interpreter {
 
             case 'Record': {
                 const fields: Record<string, Value> = {};
-                for (const [key, valExpr] of Object.entries(expr.fields)) {
-                    fields[key] = await this.evalExpr(valExpr, env);
+                for (const fieldTuple of expr.fields) {
+                    // Expect fieldTuple to be Tuple(Key, Val)
+                    // We need to evaluate it to get Key
+                    // Optimization: if key is Literal, direct access?
+                    // Parser produces Literal Str.
+
+                    const tupleVal = await this.evalExpr(fieldTuple, env);
+                    if (tupleVal.kind !== 'Tuple' || tupleVal.items.length !== 2) throw new Error("Invalid record field tuple");
+                    const keyVal = tupleVal.items[0];
+                    if (keyVal.kind !== 'Str') throw new Error("Record key must be Str");
+                    fields[keyVal.value] = tupleVal.items[1];
                 }
                 return { kind: 'Record', fields };
             }
@@ -934,6 +960,12 @@ export class Interpreter {
         if (op === 'cons') {
             const h = args[0];
             const t = args[1];
+
+            // Allow Tagged "nil" as empty list (interop with self-hosted parser)
+            if (t.kind === 'Tagged' && t.tag === 'nil') {
+                return { kind: 'List', items: [h] };
+            }
+
             if (t.kind !== 'List') throw new Error("cons arguments must be (head, tail-list)");
             // cons adds to front
             return { kind: 'List', items: [h, ...t.items] };
@@ -1147,11 +1179,11 @@ export class Interpreter {
                             if (subInterp) {
                                 const res = subInterp.callFunctionSync(fname, args);
                                 if (currentExpr.fn === 'lexer.tokenize' && res.kind === 'List') {
-                                    console.log(`[Diagnostic] lexer.tokenize returned ${res.items.length} tokens`);
+
                                 } else if (currentExpr.fn === 'parser.parse' && res.kind === 'Record') {
                                     const defs = res.fields['defs'];
                                     if (defs && defs.kind === 'List') {
-                                        console.log(`[Diagnostic] parser.parse returned ${defs.items.length} definitions`);
+
                                     }
                                 }
                                 return res;
@@ -1187,26 +1219,33 @@ export class Interpreter {
                             if (c.tag === 'None' && target.value === null) match = true;
                             else if (c.tag === 'Some' && target.value !== null) {
                                 match = true;
-                                if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                                if (c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                    const varVal = c.vars.items[0];
+                                    if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.value, parent: newEnv };
+                                }
                             }
                         } else if (target.kind === 'Result') {
                             if (c.tag === 'Ok' && target.isOk) {
                                 match = true;
-                                if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                                if (c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                    const varVal = c.vars.items[0];
+                                    if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.value, parent: newEnv };
+                                }
                             } else if (c.tag === 'Err' && !target.isOk) {
                                 match = true;
-                                if (c.vars.length > 0) newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                                if (c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                    const varVal = c.vars.items[0];
+                                    if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.value, parent: newEnv };
+                                }
                             }
                         } else if (target.kind === 'Tagged') {
                             if (c.tag === target.tag) {
                                 match = true;
-                                if (c.vars.length > 0 && target.value) {
-                                    if (target.value.kind === 'Tuple') {
-                                        for (let i = 0; i < c.vars.length && i < target.value.items.length; i++) {
-                                            newEnv = { name: c.vars[i], value: target.value.items[i], parent: newEnv };
-                                        }
-                                    } else {
-                                        newEnv = { name: c.vars[0], value: target.value, parent: newEnv };
+                                if (target.value && c.vars.kind === 'List' && c.vars.items.length > 0) {
+                                    // Assuming simplified single-arg tagged union for now like evalAsync
+                                    const varNameVal = c.vars.items[0];
+                                    if (varNameVal.kind === 'Str') {
+                                        newEnv = { name: varNameVal.value, value: target.value, parent: newEnv };
                                     }
                                 }
                             }
@@ -1215,20 +1254,28 @@ export class Interpreter {
                                 match = true;
                             } else if (c.tag === 'cons' && target.items.length > 0) {
                                 match = true;
-                                if (c.vars.length >= 1) newEnv = { name: c.vars[0], value: target.items[0], parent: newEnv };
-                                if (c.vars.length >= 2) {
-                                    newEnv = { name: c.vars[1], value: { kind: 'List', items: target.items.slice(1) }, parent: newEnv };
+                                if (c.vars.kind === 'List') {
+                                    if (c.vars.items.length >= 1) {
+                                        const headName = c.vars.items[0];
+                                        if (headName.kind === 'Str') newEnv = { name: headName.value, value: target.items[0], parent: newEnv };
+                                    }
+                                    if (c.vars.items.length >= 2) {
+                                        const tailName = c.vars.items[1];
+                                        if (tailName.kind === 'Str') newEnv = { name: tailName.value, value: { kind: 'List', items: target.items.slice(1) }, parent: newEnv };
+                                    }
                                 }
                             }
                         } else if (target.kind === 'Tuple' && target.items.length > 0 && target.items[0].kind === 'Str') {
-                            // Generic Tagged Union (represented as Tuple ["Tag", ...args])
+                            // Generic Tagged Union
                             const tagName = target.items[0].value;
                             if (c.tag === tagName) {
                                 match = true;
-                                // Bind variables to remaining tuple items
-                                for (let i = 0; i < c.vars.length; i++) {
-                                    if (i + 1 < target.items.length) {
-                                        newEnv = { name: c.vars[i], value: target.items[i + 1], parent: newEnv };
+                                if (c.vars.kind === 'List') {
+                                    for (let i = 0; i < c.vars.items.length; i++) {
+                                        if (i + 1 < target.items.length) {
+                                            const varVal = c.vars.items[i];
+                                            if (varVal.kind === 'Str') newEnv = { name: varVal.value, value: target.items[i + 1], parent: newEnv };
+                                        }
                                     }
                                 }
                             }
@@ -1256,8 +1303,12 @@ export class Interpreter {
 
                 case 'Record': {
                     const fields: Record<string, Value> = {};
-                    for (const [name, valExpr] of Object.entries(currentExpr.fields)) {
-                        fields[name] = this.evalExprSync(valExpr, currentEnv);
+                    for (const fieldTuple of currentExpr.fields) {
+                        const tupleVal = this.evalExprSync(fieldTuple, currentEnv);
+                        if (tupleVal.kind !== 'Tuple' || tupleVal.items.length !== 2) throw new Error("Invalid record field tuple");
+                        const keyVal = tupleVal.items[0];
+                        if (keyVal.kind !== 'Str') throw new Error("Record key must be Str");
+                        fields[keyVal.value] = tupleVal.items[1];
                     }
                     return { kind: 'Record', fields };
                 }

@@ -1,0 +1,23 @@
+(program
+  (module (name "test_compiler_wasm") (version 1))
+  (imports
+    (import "io" (as "io"))
+    (import "compiler" (as "compiler"))
+  )
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !IO)
+        (body
+            (let (res (call compiler.compile_file "examples/test_wasm_syntax.iris" "wasm"))
+                (match res
+                    (case (tag "Ok" (wat))
+                        (let (_ (io.write_file "output.wat" wat)) 0)
+                    )
+                    (case (tag "Err" (msg))
+                        (let (_ (io.print msg)) 1)
+                    )
+                )
+            )
+        )
+    )
+  )
+)

@@ -4,12 +4,13 @@
     (import "io" (as "io"))
     (import "str" (as "str"))
     (import "list" (as "list"))
+    (import "ast" (as "ast"))
   )
   (defs
-    ;; Token Structure: (record (kind Str) (value Str))
+    ;; Token Structure: record kind Str, value Str
     ;; Kinds: "LPAREN", "RPAREN", "INT", "STR", "IDENT", "KEYWORD", "EOF"
 
-    (deffn (name mk_token) (args (kind Str) (value Str)) (ret (Record (kind Str) (value Str))) (eff !Pure)
+    (deffn (name mk_token) (args (kind Str) (value Str)) (ret ast.Token) (eff !Pure)
       (body (record (kind kind) (value value)))
     )
 
@@ -105,7 +106,7 @@
       )
     )
 
-    (deffn (name tokenize_rec) (args (input Str) (len I64) (pos I64) (tokens (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
+    (deffn (name tokenize_rec) (args (input Str) (len I64) (pos I64) (tokens (List ast.Token))) (ret (List ast.Token)) (eff !Pure)
       (body
         (if (>= pos len)
             (cons (call mk_token "EOF" "") tokens)
@@ -115,9 +116,9 @@
                         (call tokenize_rec input len (+ pos 1) tokens)
                         (if (= c 59) ;; ;
                             (call tokenize_rec input len (call scan_comment input len (+ pos 1)) tokens)
-                        (if (= c 40) ;; (
+                        (if (= c 40) ;; lparen
                             (call tokenize_rec input len (+ pos 1) (cons (call mk_token "LPAREN" "(") tokens))
-                            (if (= c 41) ;; )
+                            (if (= c 41) ;; rparen
                                 (call tokenize_rec input len (+ pos 1) (cons (call mk_token "RPAREN" ")") tokens))
                                 (if (= c 34) ;; "
                                     (let (res (call scan_string input len pos))
@@ -163,7 +164,7 @@
       )
     )
 
-    (deffn (name reverse_loop) (args (rem (List (Record (kind Str) (value Str)))) (acc (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
+    (deffn (name reverse_loop) (args (rem (List ast.Token)) (acc (List ast.Token))) (ret (List ast.Token)) (eff !Pure)
       (body
         (match rem
             (case (tag "nil") acc)
@@ -172,15 +173,15 @@
       )
     )
 
-    (deffn (name reverse) (args (l (List (Record (kind Str) (value Str))))) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
-      (body (call reverse_loop l (list-of (Record (kind Str) (value Str)))))
+    (deffn (name reverse) (args (l (List ast.Token))) (ret (List ast.Token)) (eff !Pure)
+      (body (call reverse_loop l (list-of ast.Token)))
     )
 
-    (deffn (name tokenize) (args (input Str)) (ret (List (Record (kind Str) (value Str)))) (eff !Pure)
-      (body (call reverse (call tokenize_rec input (str.len input) 0 (list-of (Record (kind Str) (value Str))))))
+    (deffn (name tokenize) (args (input Str)) (ret (List ast.Token)) (eff !Pure)
+      (body (call reverse (call tokenize_rec input (str.len input) 0 (list-of ast.Token))))
     )
 
-    (deffn (name print_token_list) (args (l (List (Record (kind Str) (value Str))))) (ret I64) (eff !IO)
+    (deffn (name print_token_list) (args (l (List ast.Token))) (ret I64) (eff !IO)
       (body
         (match l
             (case (tag "nil") 0)

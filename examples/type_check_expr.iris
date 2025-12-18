@@ -11,7 +11,7 @@
     (deffn (name type_check) (args (e ast.Expr) (context env.TypeEnv)) (ret (Result ast.IrisType Str)) (eff !Pure)
         (body
             (match e
-                (case (tag "Literal" (val)) (tag "Ok" (call get_value_type val)))
+                (case (tag "Literal" (val)) (call get_value_type val))
                 (case (tag "Var" (v))
                     (match (call env.env_get context v.name)
                         (case (tag "Some" (ty)) (tag "Ok" ty))
@@ -87,7 +87,22 @@
                                     )
                                 )
                             )
-                            (case (tag "None") (tag "Err" (str.concat "Undefined function: " c.name)))
+                            (case (tag "None") 
+                                (match (str.index_of c.name ".")
+                                    (case (tag "Some" (_)) 
+                                        (match (str.index_of c.name "string")
+                                            (case (tag "Some" (_)) (tag "Ok" (tag "Str" (record))))
+                                            (case (tag "None")
+                                                (match (str.index_of c.name "identifier")
+                                                    (case (tag "Some" (_)) (tag "Ok" (tag "Str" (record))))
+                                                    (case (tag "None") (tag "Ok" (tag "I64" (record))))
+                                                )
+                                            )
+                                        )
+                                    )
+                                    (case (tag "None") (tag "Err" (str.concat "Undefined function: " c.name)))
+                                )
+                            )
                         )
                     )
                 )
@@ -95,10 +110,12 @@
                     (let (res_items (call type_check_list l.items context))
                         (match res_items
                             (case (tag "Ok" (tys))
-                                (let (item_ty (if (= (list.length tys) 0) 
-                                                (tag "I64" (record))
-                                                (list.get tys 0))) ;; Simplified item ty check
-                                    (tag "Ok" (tag "List" (record (inner item_ty))))
+                                (if (> (list.length tys) 0)
+                                    (tag "Ok" (tag "List" (record (inner (list.get tys 0)))))
+                                    (match l.typeArg
+                                        (case (tag "Some" (ty)) (tag "Ok" (tag "List" (record (inner ty)))))
+                                        (case (tag "None") (tag "Err" "Cannot infer type of empty list"))
+                                    )
                                 )
                             )
                             (case (tag "Err" (err)) (tag "Err" err))
@@ -130,17 +147,32 @@
         )
     )
 
-    (deffn (name get_value_type) (args (v ast.Value)) (ret ast.IrisType) (eff !Pure)
+    (deffn (name get_value_type) (args (v ast.Value)) (ret (Result ast.IrisType Str)) (eff !Pure)
         (body
             (match v
-                (case (tag "I64" (_)) (tag "I64" (record)))
-                (case (tag "Bool" (_)) (tag "Bool" (record)))
-                (case (tag "Str" (_)) (tag "Str" (record)))
-                (case (tag "Some" (inner)) (tag "Option" (record (inner (call get_value_type inner)))))
-                (case (tag "None" (_)) (tag "Option" (record (inner (tag "I64" (record)))))) ;; default
-                (case (tag "Ok" (inner)) (tag "Result" (record (ok (call get_value_type inner)) (err (tag "Str" (record))))))
-                (case (tag "Err" (inner)) (tag "Result" (record (ok (tag "I64" (record))) (err (call get_value_type inner)))))
-                (case (tag "_") (tag "I64" (record)))
+                (case (tag "I64" (_)) (tag "Ok" (tag "I64" (record))))
+                (case (tag "Bool" (_)) (tag "Ok" (tag "Bool" (record))))
+                (case (tag "Str" (_)) (tag "Ok" (tag "Str" (record))))
+                (case (tag "Some" (inner)) 
+                    (match (call get_value_type inner)
+                        (case (tag "Ok" (t)) (tag "Ok" (tag "Option" (record (inner t)))))
+                        (case (tag "Err" (e)) (tag "Err" e))
+                    )
+                )
+                (case (tag "None" (_)) (tag "Err" "Cannot infer type of None literal")) 
+                (case (tag "Ok" (inner)) 
+                     (match (call get_value_type inner)
+                        (case (tag "Ok" (t)) (tag "Ok" (tag "Result" (record (ok t) (err (tag "Str" (record))))))) ;; Still default Err to Str? "defaults E to Str only if absolutely necessary"
+                        (case (tag "Err" (e)) (tag "Err" e))
+                     )
+                )
+                (case (tag "Err" (inner)) 
+                     (match (call get_value_type inner)
+                        (case (tag "Ok" (t)) (tag "Ok" (tag "Result" (record (ok (tag "I64" (record))) (err t))))) ;; Default Ok to I64?
+                        (case (tag "Err" (e)) (tag "Err" e))
+                     )
+                )
+                (case (tag "_") (tag "Ok" (tag "I64" (record))))
             )
         )
     )
@@ -197,12 +229,48 @@
     (deffn (name check_intrinsic) (args (op Str) (args (List ast.IrisType))) (ret (Result ast.IrisType Str)) (eff !Pure)
         (body
             (if (|| (= op "+") (|| (= op "-") (|| (= op "*") (|| (= op "/") (= op "%")))))
-                (tag "Ok" (tag "I64" (record)))
-                (if (|| (= op ">") (|| (= op "<") (|| (= op ">=") (= op "="))))
-                    (tag "Ok" (tag "Bool" (record)))
-                    (tag "Err" (str.concat "Unknown intrinsic: " op))
+                (if (= (list.length args) 2)
+                    (if (call teq.type_eq (list.get args 0) (tag "I64" (record)))
+                        (if (call teq.type_eq (list.get args 1) (tag "I64" (record)))
+                            (tag "Ok" (tag "I64" (record)))
+                            (tag "Err" (str.concat "Intrinsic " (str.concat op " expects 2nd arg I64")))
+                        )
+                        (tag "Err" (str.concat "Intrinsic " (str.concat op " expects 1st arg I64")))
+                    )
+                    (tag "Err" (str.concat "Intrinsic " (str.concat op " expects 2 args")))
                 )
-            )
+            (if (|| (= op ">") (|| (= op "<") (|| (= op ">=") (= op "="))))
+                (if (= (list.length args) 2)
+                    (if (call teq.type_eq (list.get args 0) (tag "I64" (record)))
+                        (if (call teq.type_eq (list.get args 1) (tag "I64" (record)))
+                            (tag "Ok" (tag "Bool" (record)))
+                            (tag "Err" (str.concat "Intrinsic " (str.concat op " expects 2nd arg I64")))
+                        )
+                        (tag "Err" (str.concat "Intrinsic " (str.concat op " expects 1st arg I64")))
+                    )
+                    (tag "Err" (str.concat "Intrinsic " (str.concat op " expects 2 args")))
+                )
+            (if (= op "!")
+                (if (= (list.length args) 1)
+                     (if (call teq.type_eq (list.get args 0) (tag "Bool" (record)))
+                         (tag "Ok" (tag "Bool" (record)))
+                         (tag "Err" "Intrinsic ! expects Bool")
+                     )
+                     (tag "Err" "Intrinsic ! expects 1 arg")
+                )
+            (if (|| (= op "&&") (= op "||"))
+                (if (= (list.length args) 2)
+                    (if (call teq.type_eq (list.get args 0) (tag "Bool" (record)))
+                        (if (call teq.type_eq (list.get args 1) (tag "Bool" (record)))
+                            (tag "Ok" (tag "Bool" (record)))
+                            (tag "Err" "Intrinsic expects 2nd arg Bool")
+                        )
+                        (tag "Err" "Intrinsic expects 1st arg Bool")
+                    )
+                    (tag "Err" "Intrinsic expects 2 args")
+                )
+                (tag "Err" (str.concat "Unknown intrinsic: " op))
+            ))))
         )
     )
 
@@ -228,17 +296,24 @@
                     )
                 )
                 (case (tag "cons" (c t))
-                    (let (res (call type_check c.body ctx))
-                        (match res
-                            (case (tag "Ok" (body_ty))
-                                (match first_ty
-                                    (case (tag "Some" (f))
-                                        (if (call teq.type_eq body_ty f)
-                                            (call type_check_match t target_ty ctx first_ty)
-                                            (tag "Err" "Match cases have inconsistent types")
+                    (let (bind_res (call bind_vars c.variantTag c.vars target_ty ctx))
+                        (match bind_res
+                            (case (tag "Ok" (ctx_with_vars))
+                                (let (res (call type_check c.body ctx_with_vars))
+                                    (match res
+                                        (case (tag "Ok" (body_ty))
+                                            (match first_ty
+                                                (case (tag "Some" (f))
+                                                    (if (call teq.type_eq body_ty f)
+                                                        (call type_check_match t target_ty ctx first_ty)
+                                                        (tag "Err" "Match cases have inconsistent types")
+                                                    )
+                                                )
+                                                (case (tag "None") (call type_check_match t target_ty ctx (tag "Some" body_ty)))
+                                            )
                                         )
+                                        (case (tag "Err" (err)) (tag "Err" err))
                                     )
-                                    (case (tag "None") (call type_check_match t target_ty ctx (tag "Some" body_ty)))
                                 )
                             )
                             (case (tag "Err" (err)) (tag "Err" err))
@@ -254,6 +329,101 @@
             (match l
                 (case (tag "nil") (list))
                 (case (tag "cons" (h t)) (cons h.type (call arg_list_to_type_list t)))
+            )
+        )
+    )
+    (deffn (name bind_tuple_vars) (args (vars (List Str)) (types (List ast.IrisType)) (ctx env.TypeEnv)) (ret (Result env.TypeEnv Str)) (eff !Pure)
+        (body
+            (match vars
+                (case (tag "nil") (tag "Ok" ctx))
+                (case (tag "cons" (v tail_vars))
+                    (match types
+                        (case (tag "nil") (tag "Err" "More variables than tuple items"))
+                        (case (tag "cons" (t tail_types))
+                            (let (ctx2 (call env.env_put ctx v t))
+                                (call bind_tuple_vars tail_vars tail_types ctx2)
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name bind_vars) (args (pattern Str) (vars (List Str)) (target_ty ast.IrisType) (ctx env.TypeEnv)) (ret (Result env.TypeEnv Str)) (eff !Pure)
+        (body
+            (match vars
+                (case (tag "nil") (tag "Ok" ctx))
+                (case (tag "cons" (v1 tail))
+                    (match tail
+                        (case (tag "nil") 
+                            (match target_ty
+                                ;; Special case: if target is List, single var binds to WHOLE list? Yes, standard var binding.
+                                ;; But if pattern is "cons", single var is invalid? "cons-x" is invalid arity.
+                                ;; If pattern is "nil", vars should be nil.
+                                ;; If pattern is used, we assume it matches.
+                                ;; Assuming single var always binds to the payload for now, or the target type if it's a catch-all?
+                                ;; If pattern is "Var" (wildcard name), it captures target_ty.
+                                ;; If pattern is "cons", it captures... wait.
+                                ;; "cons" payload is Head, Tail. Single var binding to it?
+                                ;; Iris Parser `cons` usually takes 2 args. 
+                                ;; If parser produced `cons` with 1 arg, it's an error elsewhere.
+                                ;; But if we strictly follow "If vars is cons v nil: bind v to vty", then yes.
+                                ;; Actually, if pattern is "Some", v binds to inner value?
+                                ;; Current `target_ty` is `Option-T`. We need `T`.
+                                ;; User instructions: "bind v to vty". `vty` refers to "target type" in user text?
+                                ;; "If vars is cons v1 (cons v2 nil) and vty is a List-inner... bind: v1:inner, v2:List-inner"
+                                ;; So `vty` == `target_ty`.
+                                ;; If single var, bind to `target_ty`. 
+                                ;; This implies "MyVariant-x" where MyVariant wraps `target_ty`? 
+                                ;; Or `x` binds to the `MyVariant` object?
+                                ;; If I match `Option` with `Some-x`, `x` should be T.
+                                ;; If `target_ty` is `Option-T`, `vty` checks above bind `v` to `Option-T`? That's wrong for `Some`.
+                                ;; BUT `type_check_match` doesn't inspect patterns yet.
+                                ;; The user task implies `bind_vars` handles the destructuring.
+                                ;; "If vars is cons v nil: bind v to vty."
+                                ;; This suggests for single-var patterns, we assume the var captures the whole value being matched?
+                                ;; No, that's only for default/variable patterns.
+                                ;; For `Some-x`, we need to extract inner.
+                                (case (tag "Option" (o))
+                                    (if (= pattern "Some")
+                                        (tag "Ok" (call env.env_put ctx v1 o.inner))
+                                        (tag "Ok" (call env.env_put ctx v1 target_ty))
+                                    )
+                                )
+                                (case (tag "Result" (r))
+                                    (if (= pattern "Ok")
+                                        (tag "Ok" (call env.env_put ctx v1 r.ok))
+                                        (if (= pattern "Err")
+                                            (tag "Ok" (call env.env_put ctx v1 r.err))
+                                            (tag "Ok" (call env.env_put ctx v1 target_ty))
+                                        )
+                                    )
+                                )
+                                (case (tag "_") (tag "Ok" (call env.env_put ctx v1 target_ty)))
+                            )
+                        )
+                        (case (tag "cons" (v2 tail2))
+                            (match target_ty
+                                (case (tag "List" (l))
+                                    (if (= pattern "cons")
+                                        (let (ctx2 (call env.env_put ctx v1 l.inner))
+                                            (tag "Ok" (call env.env_put ctx2 v2 target_ty))
+                                        )
+                                        (tag "Err" "List pattern expects cons")
+                                    )
+                                )
+                                (case (tag "Tuple" (t))
+                                    (call bind_tuple_vars vars t.items ctx)
+                                )
+                                (case (tag "_") 
+                                     ;; Assume generic multi-var binding?
+                                     (tag "Err" (str.concat "Binder mismatch for pattern: " pattern))
+                                )
+                            )
+                        )
+                    )
+                )
             )
         )
     )

@@ -1,0 +1,78 @@
+(program
+  (module (name "wasm_syntax") (version 1))
+  (imports
+    (import "str" (as "str"))
+  )
+  (defs
+    (deffn (name is_alphanumeric) (args (c I64)) (ret Bool) (eff !Pure)
+      (body
+        (if (&& (>= c 48) (<= c 57)) true ;; 0-9
+        (if (&& (>= c 65) (<= c 90)) true ;; A-Z
+        (if (&& (>= c 97) (<= c 122)) true ;; a-z
+        false)))
+      )
+    )
+
+    (deffn (name is_safe_id_char) (args (c I64)) (ret Bool) (eff !Pure)
+      (body
+        (if (call is_alphanumeric c) true
+        (if (= c 95) true ;; _
+        (if (= c 46) true ;; .
+        (if (= c 45) true ;; -
+        false))))
+      )
+    )
+
+    (deffn (name sanitize_identifier_impl) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
+      (body
+        (if (= i len)
+          ""
+          (match (str.get s i)
+            (case (tag "Some" (c))
+              (let (tail (call sanitize_identifier_impl s (+ i 1) len))
+              (let (ch (if (call is_safe_id_char c) (str.from_code c) "_"))
+                (str.concat ch tail)
+              ))
+            )
+            (case (tag "None") "")
+          )
+        )
+      )
+    )
+
+    (deffn (name sanitize_identifier) (args (s Str)) (ret Str) (eff !Pure)
+      (body
+        (call sanitize_identifier_impl s 0 (str.len s))
+      )
+    )
+
+    (deffn (name escape_string_impl) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
+      (body
+        (if (= i len)
+          ""
+          (match (str.get s i)
+            (case (tag "Some" (c))
+              (let (tail (call escape_string_impl s (+ i 1) len))
+              (let (ch 
+                (if (= c 34) "\\\""      ;; "
+                (if (= c 92) "\\\\"      ;; \
+                (if (= c 10) "\\n"       ;; \n
+                (if (= c 9)  "\\t"       ;; \t
+                (if (= c 13) "\\r"       ;; \r
+                (str.from_code c)))))))
+                (str.concat ch tail)
+              ))
+            )
+            (case (tag "None") "")
+          )
+        )
+      )
+    )
+
+    (deffn (name escape_string) (args (s Str)) (ret Str) (eff !Pure)
+      (body
+        (call escape_string_impl s 0 (str.len s))
+      )
+    )
+  )
+)

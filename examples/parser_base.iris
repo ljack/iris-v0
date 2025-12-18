@@ -7,7 +7,7 @@
   (defs
     (type Parser (Record (tokens (List ast.Token))))
 
-    (deffn (name parser_new) (args (tokens (List ast.Token))) (ret Parser) (eff !Pure)
+    (deffn (name parser_new) (args (tokens (List ast.Token))) (ret (Record (tokens (List ast.Token)))) (eff !Pure)
         (body (record (tokens tokens)))
     )
 

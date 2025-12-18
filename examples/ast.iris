@@ -4,7 +4,7 @@
     (import "list" (as "list"))
   )
   (defs
-    ;; Token Structure: (record (kind Str) (value Str))
+    ;; Token Structure: record kind Str, value Str
     (type Token (Record (kind Str) (value Str)))
 
     ;; Represents a runtime value
@@ -45,6 +45,7 @@
     )
 
     (type Arg (Record (name Str) (type IrisType)))
+    (type MatchCase (Record (variantTag Str) (vars (List Str)) (body Expr)))
 
     ;; Expression representation
     (type Expr
@@ -53,7 +54,7 @@
         (tag "Var" ((Record (name Str))))
         (tag "Let" ((Record (name Str) (value Expr) (body Expr))))
         (tag "If" ((Record (cond Expr) (then Expr) (else Expr))))
-        (tag "Match" ((Record (target Expr) (cases (List (Record (variantTag Str) (vars (List Str)) (body Expr)))))))
+        (tag "Match" ((Record (target Expr) (cases (List MatchCase)))))
         (tag "Call" ((Record (name Str) (args (List Expr)))))
         (tag "Intrinsic" ((Record (op Str) (args (List Expr)))))
         (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
@@ -73,6 +74,6 @@
 
     (type Import (Record (path Str) (alias Str)))
     (type ModuleDecl (Record (name Str) (version I64)))
-    (type Program (Record (module ModuleDecl) (imports (List Import)) (defs (List Definition))))
+    (type Program (Record (progMod ModuleDecl) (progImports (List Import)) (progDefs (List Definition))))
   )
 )
