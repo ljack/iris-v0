@@ -16,7 +16,7 @@
                 (let (addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string (+ 8 i)) ")))")))
                 (let (store (str.concat "(i64.store8 (i32.wrap_i64 " (str.concat addr (str.concat ") (i64.const " (str.concat (i64.to_string code) "))\n")))))
                   (str.concat store (call gen_string_bytes s (+ i 1) len))
-                ))
+                )))
               (case (tag "None") "")
             )
           )
