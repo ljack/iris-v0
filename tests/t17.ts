@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 
 export const t17: TestCase = {
   name: 'Test 17: match non-option',
-  expect: 'TypeError: Match target must be Option, Result, or List (got I64)',
+  expect: 'TypeError: Match target must be Option, Result, List, or Union (got I64)',
   source: `(program
  (module (name "t17") (version 0))
  (defs

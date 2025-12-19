@@ -17,7 +17,7 @@ const moduleA = `(program
 
 const moduleB = `(program
  (module (name "b") (version 0))
- (imports (import (path "a") (alias "a")))
+ (imports (import "a" (as "a")))
  (defs
   (deffn (name main)
     (args)
@@ -32,19 +32,21 @@ export const t281_cross_module_sync: TestCase = {
     const progA = parserA.parse();
     const parserB = new Parser(moduleB);
     const progB = parserB.parse();
-    
-    const checker = new TypeChecker();
-    checker.check(progA);
-    checker.check(progB);
-    
+
+    // Define resolver FIRST
     const resolver: ModuleResolver = (path: string) => {
       if (path === 'a') return progA;
       return undefined;
     };
-    
+
+    // Pass resolver to TypeChecker
+    const checker = new TypeChecker(resolver);
+    checker.check(progA);
+    checker.check(progB);
+
     const interpreter = new Interpreter(progB, {}, resolver);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 30n) {
       throw new Error(`Expected 30, got ${JSON.stringify(result)}`);
     }
@@ -56,22 +58,31 @@ export const t282_cross_module_resolver_fail: TestCase = {
   fn: async () => {
     const source = `(program
  (module (name "t282") (version 0))
- (imports (import (path "nonexistent") (alias "x")))
+ (imports (import "nonexistent" (as "x")))
  (defs
   (deffn (name main)
     (args)
     (ret I64)
     (eff !Pure)
     (body (call x.func))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-    
+
     const resolver: ModuleResolver = () => undefined;
+    const checker = new TypeChecker(resolver);
+
+    try {
+      checker.check(program);
+    } catch (e: any) {
+      if (e.message.includes('Unknown') || e.message.includes('function')) {
+        return; // Passed at TypeCheck time
+      }
+      throw e;
+    }
+
     const interpreter = new Interpreter(program, {}, resolver);
-    
+
     try {
       const result = interpreter.callFunctionSync('main', []);
       // Should fail when trying to call x.func
@@ -96,15 +107,15 @@ export const t283_sync_lambda: TestCase = {
     (ret (Fn (I64) I64))
     (eff !Pure)
     (body (lambda (args (x I64)) (ret I64) (eff !Pure) (body (+ x 1))))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'Lambda') {
       throw new Error(`Expected Lambda, got ${JSON.stringify(result)}`);
     }
@@ -123,15 +134,15 @@ export const t284_sync_constants: TestCase = {
     (ret I64)
     (eff !Pure)
     (body PI)))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 314n) {
       throw new Error(`Expected 314, got ${JSON.stringify(result)}`);
     }
@@ -150,15 +161,15 @@ export const t285_sync_var_from_constant: TestCase = {
     (ret I64)
     (eff !Pure)
     (body (+ X 1))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 43n) {
       throw new Error(`Expected 43, got ${JSON.stringify(result)}`);
     }
@@ -183,15 +194,15 @@ export const t286_sync_parser_trace: TestCase = {
     (ret I64)
     (eff !Pure)
     (body (call parse_def_list))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 42n) {
       throw new Error(`Expected 42, got ${JSON.stringify(result)}`);
     }
@@ -218,15 +229,15 @@ export const t287_sync_depth_counter: TestCase = {
     (ret I64)
     (eff !Pure)
     (body (call deep 5))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 0n) {
       throw new Error(`Expected 0, got ${JSON.stringify(result)}`);
     }
@@ -245,15 +256,15 @@ export const t288_sync_step_counter: TestCase = {
     (ret I64)
     (eff !Pure)
     (body (+ 1 2))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 3n) {
       throw new Error(`Expected 3, got ${JSON.stringify(result)}`);
     }
@@ -275,15 +286,15 @@ export const t289_sync_match_tco: TestCase = {
       (match (Some 42)
         (case (tag "Some" (v)) v)
         (case (tag "None") 0)))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 42n) {
       throw new Error(`Expected 42, got ${JSON.stringify(result)}`);
     }
@@ -306,12 +317,12 @@ export const t290_sync_call_arity_error: TestCase = {
     (ret I64)
     (eff !Pure)
     (body (call f 1 2))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     try {
       const result = interpreter.callFunctionSync('main', []);
@@ -323,4 +334,3 @@ export const t290_sync_call_arity_error: TestCase = {
     }
   }
 };
-

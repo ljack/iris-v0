@@ -186,7 +186,7 @@ import { T125 } from './t125';
 import { T126 } from './t126';
 import { t128 } from './t128';
 import { t129 } from './t129_recursive_types';
-import { 
+import {
   t200_http_parse_response, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
   t209_map_operations, t210_map_contains, t211_map_keys, t212_list_length, t213_list_get,
@@ -243,7 +243,7 @@ import {
   t350_async_net_accept_error, t351_async_net_read_error, t352_async_net_write_error,
   t353_async_net_close_error, t354_async_net_connect_error, t355_async_http_parse_request_error,
   t356_async_http_parse_response_error, t357_async_io_read_file_not_found,
-  t358_async_io_read_dir_not_supported,   t359_async_io_print_other_types, t360_async_cross_module_diagnostic
+  t358_async_io_read_dir_not_supported, t359_async_io_print_other_types, t360_async_cross_module_diagnostic
 } from './t291_async_coverage';
 import {
   t361_call_function_error, t362_call_function_arity_error, t363_no_main_error,
@@ -265,86 +265,98 @@ import {
   t398_async_match_list_nil, t399_async_match_list_cons, t400_async_match_list_cons_two_vars
 } from './t381_value_conversion';
 
+import { tests as t401_tests } from './t390_eval_intrinsics_coverage';
+import {
+  tests as t420_tests,
+} from './t420_async_intrinsics';
+import {
+  t430_async_import_success,
+  t431_async_import_fail,
+} from './t430_async_imports';
+
 export const TESTS = [
-    t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
-    t11, t12, t13, t14, t15, t16, t17, t18, t19, t20,
-    t21, t22, t23, t24, t25, t26, t27, t28, t29, t30,
-    t31, t32, t33, t34, t35, t36, t37, t38, t39, t40,
-    t41, t42, t43, t44, t45, t46, t47, t48, t49, t50,
-    t51, t52, t53, t54, t55, t56, t57, t58, t59, t60,
-    t61, t62, t63, t64, t65, t66, t67, t68, t69, t70,
-    t71, t72, t73, t74, t75, t76, t77, t78, t79, t80,
-    t81, t82, t90, t100, t101, t102, t103, t104, t105,
-    t106, t107, t108, t110, t111, t112, t113, t121, T125, T126, t128, t129,
-    // Coverage improvement tests
-    t200_http_parse_response, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
-    t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
-    t209_map_operations, t210_map_contains, t211_map_keys, t212_list_length, t213_list_get,
-    t214_list_get_out_of_bounds, t215_list_concat, t216_list_unique, t217_tuple_get, t218_record_get,
-    t219_division_by_zero, t220_modulo_by_zero, t221_cons_operation, t222_i64_to_string, t223_i64_from_string,
-    t224_bool_operations, t225_bool_not, t226_comparison_operators, t227_io_read_dir,
-    t228_match_list_nil, t229_match_list_cons, t230_match_tagged_tuple, t231_match_tagged_with_tuple,
-    t232_var_with_dot_notation, t233_tuple_index_access,
-    // Sync evaluation tests
-    t234_sync_str_operations, t235_sync_map_operations, t236_sync_list_operations,
-    t237_sync_tuple_record, t238_sync_bool_operations, t239_sync_comparison,
-    t240_sync_i64_conversions, t241_sync_list_unique, t242_sync_str_advanced,
-    // Network and concurrency tests
-    t243_net_listen, t244_net_accept, t245_net_read_write, t246_net_connect,
-    t247_sys_self, t248_sys_send_recv, t249_http_post, t250_io_file_exists, t251_io_write_file,
-    // Advanced sync tests
-    t252_sync_match_tagged, t253_sync_match_list, t254_sync_match_result, t255_sync_match_option,
-    t256_sync_tco_let, t257_sync_tco_if, t258_sync_tco_call, t259_sync_tuple_access_error,
-    t260_sync_record_field_error, t261_sync_unknown_variable, t262_sync_if_condition_error,
-    t263_sync_arithmetic_error, t264_sync_io_read_file, t265_sync_io_file_exists, t266_sync_io_print,
-    t267_sync_async_intrinsic_error, t268_sync_normalize_literal, t269_sync_bool_ops, t270_sync_not_operator,
-    // Match edge cases
-    t271_match_non_exhaustive, t272_match_wildcard, t273_match_list_cons_two_vars,
-    t274_match_tuple_tagged, t275_match_tuple_tagged_multiple_vars, t276_match_tagged_tuple_payload,
-    t277_match_result_err, t278_match_option_none, t279_match_list_nil, t280_match_no_match_error,
-    // Cross-module and advanced sync tests
-    t281_cross_module_sync, t282_cross_module_resolver_fail, t283_sync_lambda,
-    t284_sync_constants, t285_sync_var_from_constant, t286_sync_parser_trace,
-    t287_sync_depth_counter, t288_sync_step_counter, t289_sync_match_tco, t290_sync_call_arity_error,
-    // Async evaluation tests
-    t291_async_match_tagged_tuple, t292_async_match_list_cons, t293_async_match_list_two_vars,
-    t294_async_match_tuple_tagged, t295_async_match_tuple_multiple_vars, t296_async_match_wildcard,
-    t297_async_match_no_match, t298_async_record, t299_async_tagged, t300_async_tuple,
-    t301_async_list, t302_async_intrinsic, t303_async_let, t304_async_if, t305_async_if_else,
-    t306_async_var_dot_notation, t307_async_var_tuple_index, t308_async_var_error_unknown_field,
-    t309_async_var_error_tuple_index, t310_async_var_error_invalid_access, t311_async_call_unknown_function,
-    t312_async_call_arity_mismatch, t313_async_constants, t314_async_constants_in_expr,
-    t315_async_net_listen, t316_async_net_accept, t317_async_net_read, t318_async_net_write,
-    t319_async_net_close, t320_async_net_connect, t321_async_sys_self, t322_async_sys_spawn,
-    t323_async_sys_send, t324_async_sys_recv, t325_async_sys_sleep, t326_async_http_parse_request,
-    t327_async_http_parse_response, t328_async_http_get, t329_async_http_post, t330_async_io_read_file,
-    t331_async_io_write_file, t332_async_io_file_exists, t333_async_io_read_dir, t334_async_io_print,
-    t335_async_cross_module_call, t336_async_map_value_to_key, t337_async_map_value_to_key_str,
-    t338_async_map_keys, t339_async_unknown_intrinsic, t340_async_i64_from_string_empty,
-    t341_async_i64_to_string_bigint, t342_async_equality_bigint_string, t343_async_math_type_error,
-    t344_async_bool_and_error, t345_async_bool_or_error, t346_async_not_error,
-    t347_async_sys_spawn_error, t348_async_sys_send_error, t349_async_net_listen_error,
-    t350_async_net_accept_error, t351_async_net_read_error, t352_async_net_write_error,
-    t353_async_net_close_error, t354_async_net_connect_error, t355_async_http_parse_request_error,
-    t356_async_http_parse_response_error, t357_async_io_read_file_not_found,
-    t358_async_io_read_dir_not_supported, t359_async_io_print_other_types, t360_async_cross_module_diagnostic,
-    // Error path tests
-    t361_call_function_error, t362_call_function_arity_error, t363_no_main_error,
-    t364_map_invalid_key_type, t365_map_invalid_key_string, t366_async_match_tagged_no_vars,
-    t367_async_match_tagged_tuple_payload, t368_async_match_tagged_single_value,
-    t369_async_cross_module_cache, t370_async_call_with_resolver_no_func,
-    t371_async_call_with_resolver_no_import, t372_async_call_with_resolver_no_program,
-    t373_async_net_listen_failed, t374_async_net_accept_failed, t375_async_net_read_failed,
-    t376_async_net_write_failed, t377_async_net_close_failed, t378_async_net_connect_failed,
-    t379_async_http_get_failed, t380_async_http_post_failed,
-    // Value conversion and async init tests
-    t381_map_tagged_str_key, t382_map_tagged_i64_key, t383_map_tagged_other_key,
-    t384_map_keys_i64_str, t385_async_init_constants, t386_async_init_constants_multiple,
-    t387_async_constants_already_init, t388_async_call_with_dot_notation,
-    t389_async_call_with_tuple_index, t390_async_call_nested_dot, t391_async_call_mixed_dot,
-    t392_async_var_from_env, t393_async_var_shadowing, t394_async_match_result_ok,
-    t395_async_match_result_err, t396_async_match_option_some, t397_async_match_option_none,
-    t398_async_match_list_nil, t399_async_match_list_cons, t400_async_match_list_cons_two_vars,
-    // Advanced/experimental tests (some may fail):
-    // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145
+  t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
+  t11, t12, t13, t14, t15, t16, t17, t18, t19, t20,
+  t21, t22, t23, t24, t25, t26, t27, t28, t29, t30,
+  t31, t32, t33, t34, t35, t36, t37, t38, t39, t40,
+  t41, t42, t43, t44, t45, t46, t47, t48, t49, t50,
+  t51, t52, t53, t54, t55, t56, t57, t58, t59, t60,
+  t61, t62, t63, t64, t65, t66, t67, t68, t69, t70,
+  t71, t72, t73, t74, t75, t76, t77, t78, t79, t80,
+  t81, t82, t90, t100, t101, t102, t103, t104, t105,
+  t106, t107, t108, t110, t111, t112, t113, t121, T125, T126, t128, t129,
+  // Coverage improvement tests
+  t200_http_parse_response, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
+  t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
+  t209_map_operations, t210_map_contains, t211_map_keys, t212_list_length, t213_list_get,
+  t214_list_get_out_of_bounds, t215_list_concat, t216_list_unique, t217_tuple_get, t218_record_get,
+  t219_division_by_zero, t220_modulo_by_zero, t221_cons_operation, t222_i64_to_string, t223_i64_from_string,
+  t224_bool_operations, t225_bool_not, t226_comparison_operators, t227_io_read_dir,
+  t228_match_list_nil, t229_match_list_cons, t230_match_tagged_tuple, t231_match_tagged_with_tuple,
+  t232_var_with_dot_notation, t233_tuple_index_access,
+  // Sync evaluation tests
+  t234_sync_str_operations, t235_sync_map_operations, t236_sync_list_operations,
+  t237_sync_tuple_record, t238_sync_bool_operations, t239_sync_comparison,
+  t240_sync_i64_conversions, t241_sync_list_unique, t242_sync_str_advanced,
+  // Network and concurrency tests
+  t243_net_listen, t244_net_accept, t245_net_read_write, t246_net_connect,
+  t247_sys_self, t248_sys_send_recv, t249_http_post, t250_io_file_exists, t251_io_write_file,
+  // Advanced sync tests
+  t252_sync_match_tagged, t253_sync_match_list, t254_sync_match_result, t255_sync_match_option,
+  t256_sync_tco_let, t257_sync_tco_if, t258_sync_tco_call, t259_sync_tuple_access_error,
+  t260_sync_record_field_error, t261_sync_unknown_variable, t262_sync_if_condition_error,
+  t263_sync_arithmetic_error, t264_sync_io_read_file, t265_sync_io_file_exists, t266_sync_io_print,
+  t267_sync_async_intrinsic_error, t268_sync_normalize_literal, t269_sync_bool_ops, t270_sync_not_operator,
+  // Match edge cases
+  t271_match_non_exhaustive, t272_match_wildcard, t273_match_list_cons_two_vars,
+  t274_match_tuple_tagged, t275_match_tuple_tagged_multiple_vars, t276_match_tagged_tuple_payload,
+  t277_match_result_err, t278_match_option_none, t279_match_list_nil, t280_match_no_match_error,
+  // Cross-module and advanced sync tests
+  t281_cross_module_sync, t282_cross_module_resolver_fail, t283_sync_lambda,
+  t284_sync_constants, t285_sync_var_from_constant, t286_sync_parser_trace,
+  t287_sync_depth_counter, t288_sync_step_counter, t289_sync_match_tco, t290_sync_call_arity_error,
+  // Async evaluation tests
+  t291_async_match_tagged_tuple, t292_async_match_list_cons, t293_async_match_list_two_vars,
+  t294_async_match_tuple_tagged, t295_async_match_tuple_multiple_vars, t296_async_match_wildcard,
+  t297_async_match_no_match, t298_async_record, t299_async_tagged, t300_async_tuple,
+  t301_async_list, t302_async_intrinsic, t303_async_let, t304_async_if, t305_async_if_else,
+  t306_async_var_dot_notation, t307_async_var_tuple_index, t308_async_var_error_unknown_field,
+  t309_async_var_error_tuple_index, t310_async_var_error_invalid_access, t311_async_call_unknown_function,
+  t312_async_call_arity_mismatch, t313_async_constants, t314_async_constants_in_expr,
+  t315_async_net_listen, t316_async_net_accept, t317_async_net_read, t318_async_net_write,
+  t319_async_net_close, t320_async_net_connect, t321_async_sys_self, t322_async_sys_spawn,
+  t323_async_sys_send, t324_async_sys_recv, t325_async_sys_sleep, t326_async_http_parse_request,
+  t327_async_http_parse_response, t328_async_http_get, t329_async_http_post, t330_async_io_read_file,
+  t331_async_io_write_file, t332_async_io_file_exists, t333_async_io_read_dir, t334_async_io_print,
+  t335_async_cross_module_call, t336_async_map_value_to_key, t337_async_map_value_to_key_str,
+  t338_async_map_keys, t339_async_unknown_intrinsic, t340_async_i64_from_string_empty,
+  t341_async_i64_to_string_bigint, t342_async_equality_bigint_string, t343_async_math_type_error,
+  t344_async_bool_and_error, t345_async_bool_or_error, t346_async_not_error,
+  t347_async_sys_spawn_error, t348_async_sys_send_error, t349_async_net_listen_error,
+  t350_async_net_accept_error, t351_async_net_read_error, t352_async_net_write_error,
+  t353_async_net_close_error, t354_async_net_connect_error, t355_async_http_parse_request_error,
+  t356_async_http_parse_response_error, t357_async_io_read_file_not_found,
+  t358_async_io_read_dir_not_supported, t359_async_io_print_other_types, t360_async_cross_module_diagnostic,
+  // Error path tests
+  t361_call_function_error, t362_call_function_arity_error, t363_no_main_error,
+  t364_map_invalid_key_type, t365_map_invalid_key_string, t366_async_match_tagged_no_vars,
+  t367_async_match_tagged_tuple_payload, t368_async_match_tagged_single_value,
+  t369_async_cross_module_cache, t370_async_call_with_resolver_no_func,
+  t371_async_call_with_resolver_no_import, t372_async_call_with_resolver_no_program,
+  t373_async_net_listen_failed, t374_async_net_accept_failed, t375_async_net_read_failed,
+  t376_async_net_write_failed, t377_async_net_close_failed, t378_async_net_connect_failed,
+  t379_async_http_get_failed, t380_async_http_post_failed,
+  // Value conversion and async init tests
+  t381_map_tagged_str_key, t382_map_tagged_i64_key, t383_map_tagged_other_key,
+  t384_map_keys_i64_str, t385_async_init_constants, t386_async_init_constants_multiple,
+  t387_async_constants_already_init, t388_async_call_with_dot_notation,
+  t389_async_call_with_tuple_index, t390_async_call_nested_dot, t391_async_call_mixed_dot,
+  t392_async_var_from_env, t393_async_var_shadowing, t394_async_match_result_ok,
+  t395_async_match_result_err, t396_async_match_option_some, t397_async_match_option_none,
+  t398_async_match_list_nil, t399_async_match_list_cons, t400_async_match_list_cons_two_vars,
+  ...t401_tests,
+  ...t420_tests,
+  t430_async_import_success, t431_async_import_fail,
 ];
+// Advanced/experimental tests (some may fail):
+// t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145

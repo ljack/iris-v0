@@ -260,63 +260,71 @@ export const t397_async_match_option_none: TestCase = {
   name: 'Test 397: async match Option None',
   expect: '0',
   source: `(program
- (module (name "t397") (version 0))
- (defs
-  (deffn (name main)
-    (args)
-    (ret I64)
-    (eff !Pure)
-    (body
-      (match (None)
-        (case (tag "Some" (v)) v)
-        (case (tag "None") 0)))))`
+    (module (name "t397") (version 0))
+    (defs
+      (deffn (name main) (args) (ret I64) (eff !Pure)
+        (body
+          (match (str.index_of "a" "b") ; Returns None
+            (case (tag "Some" (v)) v)
+            (case (tag "None") 0)
+          )
+        )
+      )
+    )
+  )`
 };
 
 export const t398_async_match_list_nil: TestCase = {
   name: 'Test 398: async match list nil',
   expect: '0',
   source: `(program
- (module (name "t398") (version 0))
- (defs
-  (deffn (name main)
-    (args)
-    (ret I64)
-    (eff !Pure)
-    (body
-      (match (list)
-        (case (tag "nil") 0)
-        (case (tag "cons" (h t)) 1)))))`
+    (module (name "t398") (version 0))
+    (defs
+      (deffn (name main) (args) (ret I64) (eff !Pure)
+        (body
+          (match (list)
+            (case (tag "nil") 0)
+            (case (tag "cons" (h t)) 1)
+          )
+        )
+      )
+    )
+  )`
 };
 
 export const t399_async_match_list_cons: TestCase = {
   name: 'Test 399: async match list cons',
   expect: '1',
   source: `(program
- (module (name "t399") (version 0))
- (defs
-  (deffn (name main)
-    (args)
-    (ret I64)
-    (eff !Pure)
-    (body
-      (match (list 1 2 3)
-        (case (tag "nil") 0)
-        (case (tag "cons" (h t)) h)))))`
+    (module (name "t399") (version 0))
+    (defs
+      (deffn (name main) (args) (ret I64) (eff !Pure)
+        (body
+          (match (list 1 2 3)
+            (case (tag "nil") 0)
+            (case (tag "cons" (h t)) h)
+          )
+        )
+      )
+    )
+  )`
 };
 
 export const t400_async_match_list_cons_two_vars: TestCase = {
   name: 'Test 400: async match list cons two vars',
   expect: '2',
   source: `(program
- (module (name "t400") (version 0))
- (defs
-  (deffn (name main)
-    (args)
-    (ret I64)
-    (eff !Pure)
-    (body
-      (match (list 1 2 3)
-        (case (tag "nil") 0)
-        (case (tag "cons" (h t)) (list.length t)))))`
+    (module (name "t400") (version 0))
+    (defs
+      (deffn (name main) (args) (ret I64) (eff !Pure)
+        (body
+          (match (list 1 2 3)
+            (case (tag "nil") 0)
+            (case (tag "cons" (h t)) (list.length t))
+          )
+        )
+      )
+    )
+  )`
 };
 

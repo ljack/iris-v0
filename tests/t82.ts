@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 
 export const t82: TestCase = {
     name: 'Test 82: Enforce bare None',
-    expect: 'ParseError: Unknown operator or special form: None',
+    expect: 'TypeError: Unknown function call: None',
     source: '(program ' +
         ' (module (name "t82") (version 0)) ' +
         ' (defs ' +

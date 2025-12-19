@@ -2,7 +2,22 @@ import { run } from '../src/main';
 import { TESTS } from '../tests';
 import { TestCase } from './test-types';
 
-const tests: TestCase[] = TESTS.sort((a, b) => a.name.localeCompare(b.name));
+const args = process.argv.slice(2);
+let grep: string | undefined;
+const grepIndex = args.indexOf('--grep');
+if (grepIndex !== -1 && grepIndex + 1 < args.length) {
+  grep = args[grepIndex + 1];
+}
+const failOnly = args.includes('--fail-only');
+
+const allTests = TESTS.sort((a, b) => a.name.localeCompare(b.name));
+const tests = grep
+  ? allTests.filter(t => t.name.toLowerCase().includes(grep!.toLowerCase()))
+  : allTests;
+
+if (grep) {
+  console.log(`Running tests matching: "${grep}" (Found ${tests.length})`);
+}
 
 async function main() {
   let passed = 0;
@@ -10,12 +25,11 @@ async function main() {
 
   for (const t of tests) {
     try {
-      console.log(`Running ${t.name}...`);
+      if (!failOnly) console.log(`Running ${t.name}...`);
 
       if ('fn' in t) {
         await t.fn();
         passed++;
-        // Assuming custom tests verify themselves or throw
         continue;
       }
 
@@ -37,20 +51,20 @@ async function main() {
         if (t.expectOutput) {
           const expectedOut = t.expectOutput.join('\n').trim();
           if (output.trim() === expectedOut) {
-            console.log(`✅ PASS ${t.name}`);
+            if (!failOnly) console.log(`✅ PASS ${t.name}`);
             passed++;
           } else {
             console.error(`❌ FAILED ${t.name}: Expected output:\n${expectedOut}\nGot:\n${output.trim()}`);
             failed++;
           }
         } else {
-          console.log(`✅ PASS ${t.name}`);
+          if (!failOnly) console.log(`✅ PASS ${t.name}`);
           passed++;
         }
       } else {
         // Allow updated error message for T17
         if (t.name === 'Test 17: match non-option' && val.startsWith('TypeError: Match target must be Option or Result')) {
-          console.log(`✅ PASS ${t.name} (Error message adjusted)`);
+          if (!failOnly) console.log(`✅ PASS ${t.name} (Error message adjusted)`);
           passed++;
         } else {
           console.error(`❌ FAILED ${t.name}: Expected '${t.expect}', got '${val}'`);
