@@ -1,12 +1,12 @@
 # IRIS v0 - Comprehensive Status Report
 
-**Report Date**: December 16, 2025
+**Report Date**: December 20, 2025
 **Current Version**: 0.5.0 (development, v0.4.0 in CLI)
 **Language**: TypeScript (Node.js runtime)
-- **Tests Passing**: 16/16 Test Suites (All core features covered)
+- **Tests Passing (last run)**: 334 tests
 - **Version**: 0.5.0
 - **Authors**: Antigravity + User (`ljack`)
-- **Last Updated**: 2025-12-17
+- **Last Updated**: 2025-12-20
 
 ---
 
@@ -20,7 +20,8 @@ IRIS v0 is a **functional, deterministic programming language** designed for AI 
 - **Network Features**: All major network intrinsics implemented and functional
 - **HTTP Server**: Demonstrated working with `examples/server.iris`
 - **Module System**: Imports and cross-module function calls working (T90 passes)
-- **Test Coverage**: 96 comprehensive tests covering core functionality
+- **Tool Host**: `deftool` + metadata supported, browser tool registry available
+- **Test Coverage**: 334 tests with ~99% line coverage (last run)
 
 ---
 
@@ -105,7 +106,7 @@ Listening on http://localhost:8080
 ```
 
 ### Test Coverage
-- **96 passing tests** in `tests/` directory
+- **334 passing tests** in `tests/` directory (last run)
 - Tests include T01-T82 (core functionality) plus advanced tests (T90 for modules, T100+ for advanced scenarios)
 - Test categories: basic types, arithmetic, functions, records, pattern matching, effects, I/O, modules
 
@@ -157,7 +158,7 @@ NodeNetwork (implements INetwork)
 ### Version Information
 - **Package Version**: 0.5.0 (in development)
 - **CLI Reported Version**: 0.4.0
-- **Latest Commit**: `2ddc180 - chore: Init v0.5.0-dev` (v0.4 was fully released)
+- **Latest Commit**: `625e941 - Add contributor guidelines`
 
 ### Complete Feature Set (IRIS v0.4)
 
@@ -289,7 +290,7 @@ Content-Type: text/plain
 - ✅ Hello world example
 - ✅ Fibonacci example
 - ✅ HTTP server example
-- ✅ 96 comprehensive unit tests
+- ✅ 334 comprehensive tests (last run)
 - ✅ Module import test (T90)
 
 #### CLI Tool
@@ -391,7 +392,7 @@ interface INetwork {
 
 ## TEST RESULTS SUMMARY
 
-### Overall Status: 96/96 Passing (100%)
+### Overall Status: 334/334 Passing (100%) (last run)
 
 ### Test Categories
 
@@ -428,7 +429,7 @@ interface INetwork {
 ### Build Process
 ```bash
 npm run build    # Compiles TypeScript to dist/
-npm run test     # Runs 96 test suite
+npm run test     # Runs full test suite
 npm run test-cli # CLI-specific tests
 ```
 
@@ -449,9 +450,16 @@ npm run test-cli # CLI-specific tests
 
 ### Build Status
 - ✅ CLI compiles successfully
-- ✅ Core modules compile (some browser-specific files have errors, not used)
+- ✅ Core modules compile
+- ✅ Browser runtime compiles (`src/platform/browser.ts`, `src/web-entry.ts`)
 - ✅ All tests compile and pass
-- ⚠️ Browser support incomplete (TypeScript compilation errors in `src/platform/browser.ts` and `src/web-entry.ts`)
+
+### Host Capability Matrix
+| Backend | FS | Net | Tools | Notes |
+|---------|----|-----|-------|-------|
+| Node.js | ✅ | ✅ | ✅ | Full support via CLI/runtime |
+| Browser | ✅ | ⚠️ | ✅ | Net is mocked; tools via `window.irisTools` |
+| WASM (hosted) | ⚠️ | ⚠️ | ⚠️ | ABI pending; host imports needed |
 
 ---
 
@@ -462,12 +470,12 @@ npm run test-cli # CLI-specific tests
 2. **No async/await**: Server processes one request at a time
 3. **No HTTPS**: Only HTTP supported
 4. **Limited HTTP parsing**: Basic GET/POST only, doesn't handle all edge cases
-5. **Browser support incomplete**: Started but not functional (v0.5 work)
+5. **Browser support partial**: Core runtime works; network is mocked
 6. **No REPL**: Must use files with `iris run`
 
 ### Recommended Next Steps
 1. Implement async/await for concurrent request handling
-2. Complete browser/WebAssembly support
+2. Complete browser/WebAssembly support (define host ABI + real net story)
 3. Add HTTP framework utilities to standard library
 4. Implement SSL/HTTPS support
 5. Create developer documentation and tutorials
@@ -483,7 +491,7 @@ npm run test-cli # CLI-specific tests
 - ✅ Robust CLI tool with 4 commands
 - ✅ Working HTTP server example
 - ✅ All 24 built-in intrinsics implemented
-- ✅ 96/96 tests passing
+- ✅ 334/334 tests passing (last run)
 - ✅ Module system with imports
 - ✅ Production-ready for single-threaded, deterministic workloads
 
