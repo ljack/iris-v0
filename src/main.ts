@@ -1,6 +1,6 @@
 import { Parser, printValue } from './sexp';
 import { TypeChecker } from './typecheck';
-import { Interpreter, IFileSystem, INetwork } from './eval';
+import { Interpreter, IFileSystem, INetwork, IToolHost } from './eval';
 import { ModuleResolver, Program } from './types';
 import { ProcessManager } from './runtime/process';
 
@@ -99,13 +99,13 @@ export function check(source: string, modules: Record<string, string> = {}, debu
 
 // ... other imports
 
-export async function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}, net?: INetwork, args: string[] = [], debug: boolean = false): Promise<string> {
+export async function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}, net?: INetwork, args: string[] = [], debug: boolean = false, tools?: IToolHost): Promise<string> {
     ProcessManager.instance.reset(); // Reset concurrency state for fresh run
     const checked = check(source, modules, debug);
     if (!checked.success) return checked.error;
 
     // 3. Interpret
-    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver, net, undefined, args);
+    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver, net, tools, undefined, args);
     let result;
     try {
         result = await interpreter.evalMain();

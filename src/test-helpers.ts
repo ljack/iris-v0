@@ -79,3 +79,4 @@ export function isWat2WasmAvailable(): boolean {
   }
 }
 
+

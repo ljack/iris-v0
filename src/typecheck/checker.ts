@@ -35,7 +35,7 @@ export class TypeChecker implements TypeCheckerContext {
         for (const def of program.defs) {
             if (def.kind === 'DefConst') {
                 this.constants.set(def.name, def.type);
-            } else if (def.kind === 'DefFn') {
+            } else if (def.kind === 'DefFn' || def.kind === 'DefTool') {
                 const argNames = new Set<string>();
                 for (const a of def.args) {
                     if (argNames.has(a.name)) throw new Error(`TypeError: Duplicate argument name: ${a.name}`);
@@ -78,6 +78,8 @@ export class TypeChecker implements TypeCheckerContext {
                 } else {
                     checkEffectSubtype(this, bodyEff, def.eff, `Function ${def.name}`);
                 }
+            } else if (def.kind === 'DefTool') {
+                // No body to check; signature is validated in the first pass.
             } else if (def.kind === 'TypeDef') {
                 // Nothing to check for body
             }

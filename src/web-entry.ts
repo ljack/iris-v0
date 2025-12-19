@@ -1,11 +1,29 @@
 
 import { run } from './main';
-import { BrowserFileSystem, BrowserNetwork } from './platform/browser';
-import { IFileSystem } from './eval';
+import { BrowserFileSystem, BrowserNetwork, BrowserToolHost } from './platform/browser';
+import { IFileSystem, IToolHost } from './eval';
+import { ToolRegistry } from './runtime/tool-host';
 
 declare var window: any;
 
-export async function runIris(source: string): Promise<string> {
+function resolveToolHost(tools?: ToolRegistry | IToolHost): IToolHost | undefined {
+    if (tools) {
+        if (typeof (tools as IToolHost).callTool === 'function') return tools as IToolHost;
+        return new BrowserToolHost(tools as ToolRegistry);
+    }
+
+    if (typeof window === 'undefined') return undefined;
+
+    const globalHost = (window as any).irisToolHost as IToolHost | undefined;
+    if (globalHost && typeof globalHost.callTool === 'function') return globalHost;
+
+    const registry = (window as any).irisTools as ToolRegistry | undefined;
+    if (registry && typeof registry === 'object') return new BrowserToolHost(registry);
+
+    return undefined;
+}
+
+export async function runIris(source: string, tools?: ToolRegistry | IToolHost): Promise<string> {
     const outputBuffer: string[] = [];
     const originalLog = console.log;
 
@@ -21,7 +39,8 @@ export async function runIris(source: string): Promise<string> {
 
         // We can pass empty modules for now, or pre-load them if needed
         // Explicitly cast fs to IFileSystem to avoid TS confusion with Record type
-        const resultVal = await run(source, fs as IFileSystem, {}, net);
+        const toolHost = resolveToolHost(tools);
+        const resultVal = await run(source, fs as IFileSystem, {}, net, [], false, toolHost);
 
         // Final output is combination of side-effect prints + return value
         if (resultVal.startsWith("RuntimeError:") || resultVal.startsWith("TypeError:") || resultVal.startsWith("ParseError:")) {

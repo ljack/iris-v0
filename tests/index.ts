@@ -91,6 +91,8 @@ export { t112 } from './t112';
 export { t113 } from './t113';
 export { t121 } from './t121';
 export { t129 } from './t129_recursive_types';
+export { t500_llm_metadata } from './t500_llm_metadata';
+export { t501_web_tools } from './t501_web_tools';
 import { t01 } from './t01';
 import { t02 } from './t02';
 import { t03 } from './t03';
@@ -186,8 +188,10 @@ import { T125 } from './t125';
 import { T126 } from './t126';
 import { t128 } from './t128';
 import { t129 } from './t129_recursive_types';
+import { t500_llm_metadata } from './t500_llm_metadata';
+import { t501_web_tools } from './t501_web_tools';
 import {
-  t200_http_parse_response, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
+  t200_http_parse_response, t200_http_parse_response_headers, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
   t209_map_operations, t210_map_contains, t211_map_keys, t212_list_length, t213_list_get,
   t214_list_get_out_of_bounds, t215_list_concat, t216_list_unique, t217_tuple_get, t218_record_get,
@@ -310,7 +314,7 @@ export const TESTS = [
   t81, t82, t90, t100, t101, t102, t103, t104, t105,
   t106, t107, t108, t110, t111, t112, t113, t121, T125, T126, t128, t129,
   // Coverage improvement tests
-  t200_http_parse_response, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
+  t200_http_parse_response, t200_http_parse_response_headers, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
   t209_map_operations, t210_map_contains, t211_map_keys, t212_list_length, t213_list_get,
   t214_list_get_out_of_bounds, t215_list_concat, t216_list_unique, t217_tuple_get, t218_record_get,
@@ -386,7 +390,9 @@ export const TESTS = [
   t394_sexp_coverage,
   t395_typecheck_coverage,
   t396_runtime_coverage,
-  t397_syntax_errors
+  t397_syntax_errors,
+  t500_llm_metadata,
+  t501_web_tools
 ];
 // Advanced/experimental tests (some may fail):
 // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145

@@ -44,7 +44,7 @@ async function run() {
         };
 
         const interpreterCache = new Map<string, Interpreter>();
-        const interp = new Interpreter(program, hostFs, moduleResolver, undefined, interpreterCache);
+        const interp = new Interpreter(program, hostFs, moduleResolver, undefined, undefined, interpreterCache);
 
         const result = interp.callFunctionSync('compile_file', [
             { kind: 'Str', value: fileName },

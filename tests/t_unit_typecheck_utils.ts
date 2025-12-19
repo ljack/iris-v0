@@ -130,5 +130,13 @@ export const t_unit_typesEqual: TestCase = {
         const tupleTag: IrisType = { type: 'Tuple', items: [{ type: 'Str' }, i64] };
         // It checks if ANY variant matches the content (i64).
         if (!typesEqual(mockCtx, u3, tupleTag)) throw new Error('Union vs Tuple(Str, Val) failed');
+
+        // Negative cases to exercise non-matching branches
+        const u4: IrisType = { type: 'Union', variants: { "tag1": bool } };
+        const tupNoMatch: IrisType = { type: 'Tuple', items: [i64] };
+        if (typesEqual(mockCtx, u4, tupNoMatch)) throw new Error('Union vs Tuple(1) should not match');
+
+        const tupNoMatchTag: IrisType = { type: 'Tuple', items: [{ type: 'Str' }, i64] };
+        if (typesEqual(mockCtx, u4, tupNoMatchTag)) throw new Error('Union vs Tuple(Str, Val) should not match');
     }
 };

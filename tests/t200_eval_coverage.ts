@@ -19,6 +19,22 @@ export const t200_http_parse_response: TestCase = {
         (case (tag "Err" (e)) (record (version "") (status 0) (headers (list)) (body ""))))))))`
 };
 
+export const t200_http_parse_response_headers: TestCase = {
+  name: 'Test 200: http.parse_response headers',
+  expect: '(record (body "Body") (headers (list (record (key "X-Test") (val "1")))) (status 200) (version "HTTP/1.1"))',
+  source: `(program
+ (module (name "t200h") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret (Record (version Str) (status I64) (headers (List (Record (key Str) (val Str)))) (body Str)))
+    (eff !Pure)
+    (body
+      (match (http.parse_response "HTTP/1.1 200 OK\\r\\nX-Test: 1\\r\\n\\r\\nBody")
+        (case (tag "Ok" (r)) r)
+        (case (tag "Err" (e)) (record (version "") (status 0) (headers (list)) (body ""))))))))`
+};
+
 export const t201_http_get: TestCase = {
   name: 'Test 201: http.get (mock)',
   expect: 'TypeError: Unknown intrinsic: http.get',
@@ -485,4 +501,3 @@ export const t233_tuple_index_access: TestCase = {
         (let (val t.1)
           val))))))`
 };
-

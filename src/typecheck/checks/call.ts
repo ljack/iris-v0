@@ -47,7 +47,7 @@ export function checkCall(check: CheckFn, ctx: TypeCheckerContext, expr: Expr, e
             if (importDecl && ctx.resolver) {
                 const importedProg = ctx.resolver(importDecl.path);
                 if (importedProg) {
-                    const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
+                    const targetDef = importedProg.defs.find(d => (d.kind === 'DefFn' || d.kind === 'DefTool') && d.name === fname) as any;
                     if (targetDef) {
                         const exportedTypes = new Set(importedProg.defs.filter((d: any) => d.kind === 'TypeDef').map((d: any) => d.name));
                         func = {

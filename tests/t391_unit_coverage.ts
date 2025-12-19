@@ -3,9 +3,18 @@ import { TestCase } from '../src/test-types';
 import { checkLiteral } from '../src/typecheck/checks/literal';
 import { evalConstructor } from '../src/eval/ops/constructors';
 import { evalExpr } from '../src/eval/expr';
+import { evalData } from '../src/eval/ops/data';
+import { evalHttp } from '../src/eval/ops/http';
+import { evalIo } from '../src/eval/ops/io';
+import { evalMath } from '../src/eval/ops/math';
+import { evalNet } from '../src/eval/ops/net';
+import { evalSys } from '../src/eval/ops/sys';
+import { keyToValue, valueToKey } from '../src/eval/utils';
 import { Expr, Value, IrisType, Program, Definition } from '../src/types';
 import { IInterpreter } from '../src/eval/interfaces';
 import { Interpreter } from '../src/eval/interpreter';
+import { MockFileSystem } from '../src/eval/mocks';
+import { check } from '../src/main';
 
 // Mock context for type checking
 const mockCtx: any = {
@@ -348,6 +357,23 @@ async function testEvalExpr() {
         throw e;
     }
 
+    // 11b. Match Option None
+    try {
+        const target: Expr = { kind: 'Literal', value: { kind: 'Option', value: null } };
+        const expr: Expr = {
+            kind: 'Match',
+            target: target,
+            cases: [
+                { tag: 'None', vars: { kind: 'List', items: [] } as any, body: { kind: 'Literal', value: { kind: 'I64', value: 0n } } }
+            ]
+        };
+        const res = await evalExpr(mockInterp, expr);
+        if (res.kind !== 'I64' || res.value !== 0n) throw new Error("Match Option None failed");
+    } catch (e) {
+        console.error('Failed Match Option None:', e);
+        throw e;
+    }
+
     // 12. Match Result Err with Binding
     try {
         const target: Expr = { kind: 'Literal', value: { kind: 'Result', isOk: false, value: { kind: 'Str', value: "oops" } } };
@@ -401,6 +427,307 @@ async function testEvalExpr() {
         console.error('Failed Valid Tuple dot access:', e);
         throw e;
     }
+
+    // 14b. DefTool call via evalExpr
+    mockInterp.functions.set('toolFn', { kind: 'DefTool', name: 'toolFn', args: [], ret: { type: 'I64' }, eff: '!IO' } as any);
+    try {
+        const expr: Expr = { kind: 'Call', fn: 'toolFn', args: [] };
+        await evalExpr(mockInterp, expr);
+        throw new Error("DefTool call should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Tool not implemented')) throw e;
+    }
+
+    // 15. Match list nil
+    try {
+        const expr: Expr = {
+            kind: 'Match',
+            target: { kind: 'Literal', value: { kind: 'List', items: [] } },
+            cases: [
+                { tag: 'nil', vars: { kind: 'List', items: [] } as any, body: { kind: 'Literal', value: { kind: 'I64', value: 1n } } }
+            ]
+        };
+        const res = await evalExpr(mockInterp, expr);
+        if (res.kind !== 'I64' || res.value !== 1n) throw new Error("Match list nil failed");
+    } catch (e) {
+        console.error('Failed Match list nil:', e);
+        throw e;
+    }
+}
+
+async function testEvalOps() {
+    console.log('Testing eval ops coverage...');
+
+    // evalData: str.get out of bounds
+    const strGetNone = evalData('str.get' as any, [{ kind: 'Str', value: 'hi' }, { kind: 'I64', value: 9n }]);
+    if (!strGetNone || strGetNone.kind !== 'Option' || strGetNone.value !== null) throw new Error("str.get out of bounds failed");
+
+    // evalData: cons with tagged nil
+    const consList = evalData('cons' as any, [{ kind: 'I64', value: 1n }, { kind: 'Tagged', tag: 'nil', value: { kind: 'Tuple', items: [] } } as any]);
+    if (!consList || consList.kind !== 'List' || consList.items.length !== 1) throw new Error("cons with tagged nil failed");
+
+    // evalData: cons with list
+    const consTail = evalData('cons' as any, [{ kind: 'I64', value: 1n }, { kind: 'List', items: [{ kind: 'I64', value: 2n }] }]);
+    if (!consTail || consTail.kind !== 'List' || consTail.items.length !== 2) throw new Error("cons with list failed");
+
+    // evalData: cons error
+    try {
+        evalData('cons' as any, [{ kind: 'I64', value: 1n }, { kind: 'I64', value: 2n }]);
+        throw new Error("cons should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('cons arguments')) throw e;
+    }
+
+    // eval utils error paths
+    try {
+        valueToKey({ kind: 'Bool', value: true } as any);
+        throw new Error("valueToKey should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('Invalid map key type')) throw e;
+    }
+
+    const taggedKey = valueToKey({ kind: 'Tagged', tag: 'T', value: { kind: 'I64', value: 1n } } as any);
+    const taggedVal = keyToValue(taggedKey);
+    if (taggedVal.kind !== 'Tagged') throw new Error("Tagged key round trip failed");
+
+    try {
+        keyToValue('Nope:1');
+        throw new Error("keyToValue should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('Invalid map key string')) throw e;
+    }
+    try {
+        keyToValue('Tagged:missing');
+        throw new Error("keyToValue missing colon should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('Invalid tagged key format')) throw e;
+    }
+
+    // evalHttp: parse_response with headers and unknown op
+    const httpOk = evalHttp('http.parse_response' as any, [{ kind: 'Str', value: 'HTTP/1.1 200 OK\\r\\nX-Test: 1\\r\\n\\r\\nBody' }]);
+    if (httpOk.kind !== 'Result' || !httpOk.isOk) throw new Error("http.parse_response with headers failed");
+    try {
+        evalHttp('http.unknown' as any, []);
+        throw new Error("http unknown op should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Unknown http op')) throw e;
+    }
+
+    // evalIo: io.print Bool and unknown op
+    const originalLog = console.log;
+    console.log = () => { };
+    evalIo(mockInterp as any, 'io.print' as any, [{ kind: 'Bool', value: true }]);
+    console.log = originalLog;
+    try {
+        evalIo(mockInterp as any, 'io.read_file' as any, [{ kind: 'I64', value: 1n }]);
+        throw new Error("io.read_file should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('path must be string')) throw e;
+    }
+    try {
+        evalIo(mockInterp as any, 'io.write_file' as any, [{ kind: 'I64', value: 1n }, { kind: 'Str', value: 'x' }]);
+        throw new Error("io.write_file path should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('path must be string')) throw e;
+    }
+    try {
+        evalIo(mockInterp as any, 'io.write_file' as any, [{ kind: 'Str', value: 'x' }, { kind: 'I64', value: 1n }]);
+        throw new Error("io.write_file content should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('content must be string')) throw e;
+    }
+    try {
+        evalIo(mockInterp as any, 'io.file_exists' as any, [{ kind: 'I64', value: 1n }]);
+        throw new Error("io.file_exists should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('path must be string')) throw e;
+    }
+    try {
+        evalIo({ ...mockInterp, fs: { ...mockInterp.fs, readDir: undefined } } as any, 'io.read_dir' as any, [{ kind: 'Str', value: '.' }]);
+    } catch (e) {
+        throw e;
+    }
+    try {
+        const fsBad = { ...mockInterp.fs, readDir: () => null };
+        evalIo({ ...mockInterp, fs: fsBad } as any, 'io.read_dir' as any, [{ kind: 'Str', value: '.' }]);
+    } catch (e) {
+        throw e;
+    }
+    try {
+        evalIo(mockInterp as any, 'io.nope' as any, []);
+        throw new Error("io unknown op should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Unknown io op')) throw e;
+    }
+
+    // evalMath: divide/modulo by zero + unknown op
+    try {
+        evalMath('/' as any, [{ kind: 'I64', value: 1n }, { kind: 'I64', value: 0n }]);
+        throw new Error("division by zero should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Division by zero')) throw e;
+    }
+    try {
+        evalMath('%' as any, [{ kind: 'I64', value: 1n }, { kind: 'I64', value: 0n }]);
+        throw new Error("modulo by zero should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Modulo by zero')) throw e;
+    }
+    try {
+        evalMath('math.nope' as any, []);
+        throw new Error("math unknown op should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Unknown math op')) throw e;
+    }
+
+    // evalNet: arg validation + unknown op
+    try {
+        await evalNet(mockInterp as any, 'net.write' as any, [{ kind: 'Str', value: 'nope' }, { kind: 'Str', value: 'x' }]);
+        throw new Error("net.write should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('net.write expects I64')) throw e;
+    }
+    try {
+        await evalNet(mockInterp as any, 'net.write' as any, [{ kind: 'I64', value: 1n }, { kind: 'I64', value: 2n }]);
+        throw new Error("net.write str should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('net.write expects Str')) throw e;
+    }
+    try {
+        await evalNet(mockInterp as any, 'net.connect' as any, [{ kind: 'I64', value: 1n }, { kind: 'I64', value: 2n }]);
+        throw new Error("net.connect host should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('net.connect expects Str')) throw e;
+    }
+    try {
+        await evalNet(mockInterp as any, 'net.nope' as any, []);
+        throw new Error("net unknown op should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Unknown net op')) throw e;
+    }
+
+    // evalSys: sys.args and unknown op
+    const sysArgs = await evalSys(mockInterp as any, 'sys.args' as any, []);
+    if (sysArgs.kind !== 'List') throw new Error("sys.args failed");
+    try {
+        await evalSys(mockInterp as any, 'sys.spawn' as any, [{ kind: 'I64', value: 1n }]);
+        throw new Error("sys.spawn should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('sys.spawn expects function name')) throw e;
+    }
+    try {
+        await evalSys(mockInterp as any, 'sys.send' as any, [{ kind: 'Str', value: 'x' }, { kind: 'Str', value: 'y' }]);
+        throw new Error("sys.send pid should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('sys.send expects PID')) throw e;
+    }
+    try {
+        await evalSys(mockInterp as any, 'sys.send' as any, [{ kind: 'I64', value: 1n }, { kind: 'I64', value: 2n }]);
+        throw new Error("sys.send msg should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('sys.send expects Msg')) throw e;
+    }
+    try {
+        await evalSys(mockInterp as any, 'sys.sleep' as any, [{ kind: 'Str', value: 'x' }]);
+        throw new Error("sys.sleep should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('sys.sleep expects I64')) throw e;
+    }
+    try {
+        await evalSys(mockInterp as any, 'sys.nope' as any, []);
+        throw new Error("sys unknown op should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Unknown sys op')) throw e;
+    }
+
+    // MockFileSystem readDir filtering
+    const fs = new MockFileSystem({ 'a.txt': '1', 'dir/x.txt': '2' });
+    const listing = fs.readDir('dir');
+    if (!listing || listing.length !== 1 || listing[0] !== 'dir/x.txt') throw new Error("MockFileSystem readDir failed");
+
+    // main resolver parse error branch
+    const badMod = '(program (module (name \"bad\") (version 0)) (defs (deffn (name main))))';
+    const checkRes = check('(program (module (name \"ok\") (version 0)) (defs (deffn (name main) (args) (ret I64) (eff !Pure) (body 0))))', { bad: badMod });
+    if (!checkRes.success) throw new Error("check should succeed for valid program");
+    checkRes.resolver('bad');
+
+    // spawn error logging path
+    const prog: Program = { module: { name: 'p', version: 1 }, imports: [], defs: [] };
+    const interp = new Interpreter(prog, {});
+    interp.spawn('missing');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // DefTool call errors
+    const toolProg: Program = {
+        module: { name: 'tool', version: 1 },
+        imports: [],
+        defs: [
+            {
+                kind: 'DefTool',
+                name: 'toolFn',
+                args: [],
+                ret: { type: 'I64' },
+                eff: '!IO'
+            } as any
+        ]
+    };
+    const toolInterp = new Interpreter(toolProg, {});
+    toolInterp.functions.set('toolFn', toolProg.defs[0] as any);
+    try {
+        await toolInterp.callFunction('toolFn', []);
+        throw new Error("DefTool call should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('Tool not implemented')) throw e;
+    }
+    try {
+        toolInterp.callFunctionSync('toolFn', []);
+        throw new Error("DefTool call sync should have failed");
+    } catch (e: any) {
+        if (!e.message.includes('Tool not implemented')) throw e;
+    }
+
+    // DefTool main should error
+    const mainToolProg: Program = {
+        module: { name: 'toolmain', version: 1 },
+        imports: [],
+        defs: [
+            { kind: 'DefTool', name: 'main', args: [], ret: { type: 'I64' }, eff: '!IO' } as any
+        ]
+    };
+    const mainToolInterp = new Interpreter(mainToolProg, {});
+    mainToolInterp.functions.set('main', mainToolProg.defs[0] as any);
+    try {
+        await mainToolInterp.evalMain();
+        throw new Error("Main tool should fail");
+    } catch (e: any) {
+        if (!e.message.includes('Main must be a function')) throw e;
+    }
+
+    // DefTool host execution
+    const toolHost = {
+        callTool: async (_name: string, _args: Value[]) => ({ kind: 'I64', value: 7n } as Value),
+        callToolSync: (_name: string, _args: Value[]) => ({ kind: 'I64', value: 7n } as Value)
+    };
+    const execProg: Program = {
+        module: { name: 'tool_exec', version: 1 },
+        imports: [],
+        defs: [
+            { kind: 'DefTool', name: 'toolFn', args: [], ret: { type: 'I64' }, eff: '!IO' } as any,
+            {
+                kind: 'DefFn',
+                name: 'main',
+                args: [],
+                ret: { type: 'I64' },
+                eff: '!IO',
+                body: { kind: 'Call', fn: 'toolFn', args: [] }
+            }
+        ]
+    };
+    const execInterp = new Interpreter(execProg, {}, undefined, undefined, toolHost);
+    execInterp.functions.set('toolFn', execProg.defs[0] as any);
+    execInterp.functions.set('main', execProg.defs[1] as any);
+    const execRes = await execInterp.evalMain();
+    if (execRes.kind !== 'I64' || execRes.value !== 7n) throw new Error("Tool host execution failed");
 }
 
 function testEvalConstructor() {
@@ -544,6 +871,7 @@ export const t391_unit_coverage: TestCase = {
     fn: async () => {
         testCheckLiteral();
         await testEvalExpr();
+        await testEvalOps();
         testEvalConstructor();
         await testInterpreterCoverage();
         testInterpreterSyncCoverage();

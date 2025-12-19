@@ -100,6 +100,7 @@ Some, None, Ok, Err, List
 - ✅ Effect tracking (!Pure, !IO, !Net, !Any)
 - ✅ Records with field access
 - ✅ Function definitions
+- ✅ Tool definitions (deftool)
 - ✅ Let-bindings
 - ✅ If-then-else
 
@@ -115,6 +116,15 @@ Some, None, Ok, Err, List
 - ✅ !Infer for automatic computation
 - ✅ Effect constraints on functions
 - ✅ Proper propagation through calls
+
+### Tools & Metadata
+```
+(deftool (name add) (args (a I64) (b I64)) (ret I64) (eff !IO)
+  (doc "Adds two numbers")
+  (requires "a and b fit in I64")
+  (ensures "returns a + b")
+  (caps (FS READ) (NET CONNECT)))
+```
 
 ## File Structure
 

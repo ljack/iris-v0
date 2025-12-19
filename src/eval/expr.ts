@@ -83,7 +83,7 @@ export async function evalExpr(ctx: IInterpreter, expr: Expr, env?: LinkedEnv): 
                 if (importDecl && ctx.resolver) {
                     const importedProg = ctx.resolver(importDecl.path);
                     if (importedProg) {
-                        const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
+                        const targetDef = importedProg.defs.find(d => (d.kind === 'DefFn' || d.kind === 'DefTool') && d.name === fname) as any;
                         if (targetDef) {
                             func = targetDef;
                         }
@@ -129,6 +129,10 @@ export async function evalExpr(ctx: IInterpreter, expr: Expr, env?: LinkedEnv): 
                 }
             }
 
+            if (func.kind === 'DefTool') {
+                if (!ctx.tools) throw new Error(`Tool not implemented: ${expr.fn}`);
+                return ctx.tools.callTool(expr.fn, args);
+            }
             if (args.length !== func.args.length) throw new Error(`Arity mismatch for ${expr.fn}`);
 
             // Create new env for function body

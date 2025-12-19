@@ -15,14 +15,20 @@ export interface INetwork {
     connect(host: string, port: number): Promise<number | null>;
 }
 
-import { Program, Definition, Value, ModuleResolver } from '../types';
+import { Program, Definition, FunctionLikeDef, Value, ModuleResolver } from '../types';
+
+export interface IToolHost {
+    callTool(name: string, args: Value[]): Promise<Value>;
+    callToolSync?: (name: string, args: Value[]) => Value;
+}
 
 export interface IInterpreter {
     program: Program;
-    functions: Map<string, Definition & { kind: 'DefFn' }>;
+    functions: Map<string, FunctionLikeDef>;
     constants: Map<string, Value>;
     fs: IFileSystem;
     net: INetwork;
+    tools?: IToolHost;
     resolver?: ModuleResolver;
     pid: number;
     args: string[];

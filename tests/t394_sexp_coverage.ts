@@ -2,7 +2,8 @@
 import { TestCase } from '../src/test-types';
 import { tokenize } from '../src/sexp/lexer';
 import { Parser } from '../src/sexp/parser';
-import { parseType } from '../src/sexp/parse-type';
+import { parseEffect, parseType } from '../src/sexp/parse-type';
+import { printValue } from '../src/sexp/printer';
 
 export const t394_sexp_coverage: TestCase = {
     name: 'Test 394: SExp Coverage',
@@ -61,6 +62,14 @@ export const t394_sexp_coverage: TestCase = {
         const inputBadImp = `(program (module (name "a") (version 1)) (imports (import "f")))`;
         try { new Parser(inputBadImp).parse(); throw new Error("Import alias fail"); } catch (e: any) { if (!e.message.includes('Import must have alias')) throw e; }
 
+        // 7b. skipSExp non-list branch
+        const pSkipAtom = new Parser('atom');
+        pSkipAtom.skipSExp();
+
+        // 7c. Debug logging path
+        const pDebug = new Parser('(program (module (name "dbg") (version 1)) (defs))', true);
+        pDebug.parse();
+
         // --- parse-expr special forms ---
 
         // 8. list-of
@@ -86,6 +95,24 @@ export const t394_sexp_coverage: TestCase = {
         } catch (e: any) {
             if (!e.message.includes('Unexpected token')) throw new Error("Wrong error unexpected token: " + e.message);
         }
+
+        // 11b. Grouped tuple expression (head not Symbol)
+        const pTupleGroup = new Parser('(1 2)');
+        const exprTupleGroup = pTupleGroup.parseExpr();
+        if (exprTupleGroup.kind !== 'Tuple') throw new Error("Grouped tuple parse failed");
+
+        // 11b.1 nil literal
+        const pNil = new Parser('nil');
+        const exprNil = pNil.parseExpr();
+        if (exprNil.kind !== 'Literal') throw new Error("nil parse failed");
+
+        // 11c. tuple.* and record.* intrinsic parsing
+        const pTupleOp = new Parser('(tuple.size (tuple 1))');
+        const exprTupleOp = pTupleOp.parseExpr();
+        if (exprTupleOp.kind !== 'Intrinsic') throw new Error("tuple.* intrinsic parse failed");
+        const pRecordOp = new Parser('(record.size (record))');
+        const exprRecordOp = pRecordOp.parseExpr();
+        if (exprRecordOp.kind !== 'Intrinsic') throw new Error("record.* intrinsic parse failed");
 
         // --- parse-type Coverage ---
 
@@ -145,6 +172,56 @@ export const t394_sexp_coverage: TestCase = {
             throw new Error("Should fail invalid type atom");
         } catch (e: any) {
             if (!e.message.includes('Unexpected token in type')) throw new Error("Wrong error invalid type atom: " + e.message);
+        }
+
+        // --- parse-type symbol branches ---
+        const pSymRecord = new Parser('Record (a I64))');
+        const tSymRecord = parseType(pSymRecord);
+        if (tSymRecord.type !== 'Record') throw new Error("Symbol Record type failed");
+
+        const pSymUnion = new Parser('Union (tag "A" I64))');
+        const tSymUnion = parseType(pSymUnion);
+        if (tSymUnion.type !== 'Union') throw new Error("Symbol Union type failed");
+
+        // --- parse-effect errors ---
+        const pBadEff = new Parser('!Nope');
+        try {
+            parseEffect(pBadEff);
+            throw new Error("Should fail unknown effect");
+        } catch (e: any) {
+            if (!e.message.includes('Unknown effect')) throw new Error("Wrong error unknown effect: " + e.message);
+        }
+
+        const pMissingEff = new Parser('I64');
+        try {
+            parseEffect(pMissingEff);
+            throw new Error("Should fail missing effect");
+        } catch (e: any) {
+            if (!e.message.includes('Expected effect')) throw new Error("Wrong error missing effect: " + e.message);
+        }
+
+        // --- printer fallback ---
+        const unknownPrinted = printValue({ kind: 'WeirdKind' } as any);
+        if (!unknownPrinted.startsWith('UnknownValue')) throw new Error("Unknown value print failed");
+        const mapPrinted = printValue({ kind: 'Map', value: new Map() } as any);
+        if (mapPrinted !== '(map)') throw new Error("Map print failed");
+
+        // --- parser metadata edge cases ---
+        const inputMetaEdges = `
+        (program
+          (module (name "meta") (version 1))
+          (defs
+            (defconst (name C) (type I64) (doc "const") (value 1))
+            (deffn (name f) (args) (ret I64) (eff !Pure)
+              ((nested)) (doc "x") (body 0))
+            (unknowndef (name bad))
+          )
+        )`;
+        try {
+            new Parser(inputMetaEdges).parse();
+            throw new Error("Should fail unknown definition kind");
+        } catch (e: any) {
+            if (!e.message.includes('Unknown definition kind')) throw new Error("Wrong error unknown def: " + e.message);
         }
 
         console.log("SExp coverage tests passed");

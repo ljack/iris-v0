@@ -21,6 +21,17 @@ export interface Import {
 
 export type ModuleDecl = { name: string; version: number };
 
+export type DocMetadata = {
+  doc?: string;
+  requires?: string;
+  ensures?: string;
+};
+
+export type Capability = {
+  name: string;
+  type: IrisType;
+};
+
 // AST
 export interface Program {
   module: ModuleDecl;
@@ -31,7 +42,7 @@ export interface Program {
 export type ModuleResolver = (path: string) => Program | undefined;
 
 export type Definition =
-  | { kind: 'DefConst'; name: string; type: IrisType; value: Expr }
+  | { kind: 'DefConst'; name: string; type: IrisType; value: Expr; doc?: string }
   | {
     kind: 'DefFn';
     name: string;
@@ -39,8 +50,25 @@ export type Definition =
     ret: IrisType;
     eff: IrisEffect;
     body: Expr;
+    doc?: string;
+    requires?: string;
+    ensures?: string;
+    caps?: Capability[];
   }
-  | { kind: 'TypeDef'; name: string; type: IrisType };
+  | {
+    kind: 'DefTool';
+    name: string;
+    args: { name: string; type: IrisType }[];
+    ret: IrisType;
+    eff: IrisEffect;
+    doc?: string;
+    requires?: string;
+    ensures?: string;
+    caps?: Capability[];
+  }
+  | { kind: 'TypeDef'; name: string; type: IrisType; doc?: string };
+
+export type FunctionLikeDef = Extract<Definition, { kind: 'DefFn' | 'DefTool' }>;
 
 export type Expr =
   | { kind: 'Literal'; value: Value }

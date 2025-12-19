@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.23% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>41/47</span>
+                <span class='fraction'>47/47</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">64.7% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/17</span>
+                <span class='fraction'>19/19</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.23% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>41/47</span>
+                <span class='fraction'>47/47</span>
             </div>
         
             
@@ -116,47 +116,47 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">&nbsp;
 import { Value, IntrinsicOp } from '../../types';
 import { InterpreterContext } from '../context';
@@ -167,14 +167,14 @@ export async function evalSys(ctx: InterpreterContext, op: IntrinsicOp, args: Va
         return { kind: 'I64', value: BigInt(ctx.pid) };
     }
 &nbsp;
-    if (op === 'sys.args') <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >        const argsList = ctx.args.map(a =&gt; ({ kind: 'Str', value: a } as Value));</span>
-<span class="cstat-no" title="statement not covered" >        return { kind: 'List', items: argsList };</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
+    if (op === 'sys.args') {
+        const argsList = ctx.args.map(a =&gt; ({ kind: 'Str', value: a } as Value));
+        return { kind: 'List', items: argsList };
+    }
 &nbsp;
     if (op === 'sys.spawn') {
         const fnName = args[0];
-        if (fnName.kind !== 'Str') <span class="branch-0 cbranch-no" title="branch not covered" >throw new Error("sys.spawn expects function name (Str)");</span>
+        if (fnName.kind !== 'Str') throw new Error("sys.spawn expects function name (Str)");
 &nbsp;
         const childPid = ctx.spawn(fnName.value);
         return { kind: 'I64', value: BigInt(childPid) };
@@ -183,8 +183,8 @@ export async function evalSys(ctx: InterpreterContext, op: IntrinsicOp, args: Va
     if (op === 'sys.send') {
         const pid = args[0];
         const msg = args[1];
-        if (pid.kind !== 'I64') <span class="branch-0 cbranch-no" title="branch not covered" >throw new Error("sys.send expects PID (I64)");</span>
-        if (msg.kind !== 'Str') <span class="branch-0 cbranch-no" title="branch not covered" >throw new Error("sys.send expects Msg (Str)");</span>
+        if (pid.kind !== 'I64') throw new Error("sys.send expects PID (I64)");
+        if (msg.kind !== 'Str') throw new Error("sys.send expects Msg (Str)");
 &nbsp;
         const sent = ProcessManager.instance.send(Number(pid.value), msg.value);
         return { kind: 'Bool', value: sent };
@@ -197,13 +197,13 @@ export async function evalSys(ctx: InterpreterContext, op: IntrinsicOp, args: Va
 &nbsp;
     if (op === 'sys.sleep') {
         const ms = args[0];
-        if (ms.kind !== 'I64') <span class="branch-0 cbranch-no" title="branch not covered" >throw new Error("sys.sleep expects I64 ms");</span>
+        if (ms.kind !== 'I64') throw new Error("sys.sleep expects I64 ms");
         await new Promise(resolve =&gt; setTimeout(resolve, Number(ms.value)));
         return { kind: 'Bool', value: true };
     }
-<span class="cstat-no" title="statement not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span>
-<span class="cstat-no" title="statement not covered" >    throw new Error(`Unknown sys op: ${op}`);</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+&nbsp;
+    throw new Error(`Unknown sys op: ${op}`);
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -211,7 +211,7 @@ export async function evalSys(ctx: InterpreterContext, op: IntrinsicOp, args: Va
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-19T15:06:05.062Z
+                at 2025-12-19T21:32:11.060Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

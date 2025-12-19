@@ -60,7 +60,7 @@
         main {
             flex: 1;
             display: flex;
-            height: calc(100vh - 50px);
+            min-height: 0;
         }
 
         #editor-container {
@@ -111,6 +111,31 @@
         .error {
             color: #f48771;
         }
+
+        #tools-help {
+            padding: 12px 20px;
+            border-top: 1px solid #333;
+            background: #202022;
+            color: #bbb;
+            font-size: 0.85rem;
+        }
+
+        #tools-help pre {
+            margin: 8px 0 0;
+            padding: 10px;
+            background: #1b1b1d;
+            border: 1px solid #2f2f2f;
+            color: #cfcfcf;
+            white-space: pre-wrap;
+        }
+
+        .tool-toggle {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #cfcfcf;
+        }
     </style>
 </head>
 
@@ -119,6 +144,7 @@
         <h1>IRIS Playground <span style="font-size: 0.8em; color: #666; margin-left: 10px;">v0.5-dev</span></h1>
         <div class="controls">
             <span id="loading">Running...</span>
+            <label class="tool-toggle"><input type="checkbox" id="toolToggle"> Enable tools</label>
             <button id="runBtn">Run ▶</button>
         </div>
     </header>
@@ -129,6 +155,20 @@
             <pre id="output">Ready.</pre>
         </div>
     </main>
+    <section id="tools-help">
+        <div>Tools let IRIS call host-provided functions. Toggle "Enable tools" to expose them.</div>
+        <pre>(program
+  (module (name "tools") (version 0))
+  (defs
+    (deftool (name add) (args (a I64) (b I64)) (ret I64) (eff !IO)
+      (doc "Adds two numbers"))
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body (call add 2 5))
+    )
+  )
+)</pre>
+        <div>Optional metadata tags: (doc "..."), (requires "..."), (ensures "..."), (caps (FS READ))</div>
+    </section>
 
     <!-- IRIS Runtime Bundle -->
     <script src="iris.js"></script>
@@ -188,7 +228,8 @@
                 },
                 keywords: [
                     'program', 'module', 'imports', 'import', 'defs',
-                    'deffn', 'defconst', 'name', 'version', 'args', 'ret', 'eff', 'body',
+                    'deffn', 'deftool', 'deftype', 'defconst', 'name', 'version', 'args', 'ret', 'eff', 'body',
+                    'doc', 'requires', 'ensures', 'caps',
                     'let', 'if', 'call', 'match', 'case', 'tag'
                 ],
                 intrinsics: [
@@ -227,6 +268,24 @@
             const runBtn = document.getElementById('runBtn');
             const output = document.getElementById('output');
             const loading = document.getElementById('loading');
+            const toolToggle = document.getElementById('toolToggle');
+
+            const TOOL_REGISTRY = {
+                add: (a, b) => a + b,
+                now_ms: () => Date.now(),
+                echo: (value) => value
+            };
+
+            function syncToolToggle() {
+                if (toolToggle.checked) {
+                    window.irisTools = TOOL_REGISTRY;
+                } else {
+                    delete window.irisTools;
+                }
+            }
+
+            toolToggle.addEventListener('change', syncToolToggle);
+            syncToolToggle();
 
             runBtn.addEventListener('click', async () => {
                 const source = editor.getValue();

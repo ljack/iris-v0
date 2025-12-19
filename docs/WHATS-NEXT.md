@@ -25,6 +25,7 @@
 - [x] Self-hosting compiler (Phases 1-5 Verified: Lexer, Parser, TypeChecker, TS/WASM Codegen, Pipeline Integration)
 - ⚠️ Tuple types implemented but need more exhaustive tests
 - ⚠️ Module system needs circular import detection polish
+- ⚠️ Tool host docs and examples need expansion (deftool + metadata)
 
 ---
 
@@ -127,7 +128,7 @@ Create comprehensive documentation, tutorials, and example programs
 ### What You'd Do
 1. Write IRIS language tutorial (10 pages)
 2. Create 5-10 example programs (fibonacci, web server, etc.)
-3. Write API documentation
+3. Write API documentation (include tool host + deftool metadata)
 4. Create video walkthrough (optional)
 5. Write contribution guide
 6. Create troubleshooting guide

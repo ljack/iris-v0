@@ -154,24 +154,6 @@ export function typesEqual(ctx: TypeCheckerContext, t1: IrisType, t2: IrisType):
         return t1.eff === t2.eff;
     }
 
-    if (t1.type === 'Union') {
-        if (t2.type === 'Tuple' && (t2 as any).items.length === 2 && (t2 as any).items[0].type === 'Str') {
-            const content = (t2 as any).items[1];
-            for (const variantType of Object.values((t1 as any).variants)) {
-                if (typesEqual(ctx, variantType as IrisType, content)) return true;
-            }
-        }
-        if (t2.type === 'Union') {
-            const v1 = (t1 as any).variants;
-            const v2 = (t2 as any).variants;
-            for (const [tag, type] of Object.entries(v2)) {
-                if (!v1[tag]) return false;
-                if (!typesEqual(ctx, v1[tag] as IrisType, type as IrisType)) return false;
-            }
-            return true;
-        }
-    }
-
     return false;
 }
 

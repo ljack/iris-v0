@@ -1,16 +1,17 @@
 
-import { Program, Definition, Value, ModuleResolver, LinkedEnv } from '../types';
-import { IFileSystem, INetwork, IInterpreter } from './interfaces';
+import { Program, Definition, FunctionLikeDef, Value, ModuleResolver, LinkedEnv } from '../types';
+import { IFileSystem, INetwork, IInterpreter, IToolHost } from './interfaces';
 import { MockFileSystem, MockNetwork } from './mocks';
 import { evalExpr } from './expr';
 import { evalExprSync } from './sync';
 import { ProcessManager } from '../runtime/process';
 
 export class Interpreter implements IInterpreter {
-    public functions = new Map<string, Definition & { kind: 'DefFn' }>();
+    public functions = new Map<string, FunctionLikeDef>();
     public constants = new Map<string, Value>();
     public fs: IFileSystem;
     public net: INetwork;
+    public tools?: IToolHost;
     public pid: number;
     public args: string[] = [];
 
@@ -21,6 +22,7 @@ export class Interpreter implements IInterpreter {
         fs: Record<string, string> | IFileSystem = {},
         public resolver?: ModuleResolver,
         net?: INetwork,
+        tools?: IToolHost,
         cache?: Map<string, Interpreter>,
         args: string[] = []
     ) {
@@ -35,19 +37,20 @@ export class Interpreter implements IInterpreter {
             this.fs = new MockFileSystem(fs as Record<string, string>);
         }
         this.net = net || new MockNetwork();
+        this.tools = tools;
 
         this.pid = ProcessManager.instance.getNextPid();
         ProcessManager.instance.register(this.pid);
 
         for (const def of program.defs) {
-            if (def.kind === 'DefFn') {
+            if (def.kind === 'DefFn' || def.kind === 'DefTool') {
                 this.functions.set(def.name, def);
             }
         }
     }
 
     createInterpreter(program: Program): IInterpreter {
-        return new Interpreter(program, this.fs, this.resolver, this.net, this.interpreterCache, this.args);
+        return new Interpreter(program, this.fs, this.resolver, this.net, this.tools, this.interpreterCache, this.args);
     }
 
     getInterpreter(path: string): IInterpreter | undefined {
@@ -56,7 +59,7 @@ export class Interpreter implements IInterpreter {
 
     spawn(fnName: string): number {
         // Create detached interpreter
-        const child = new Interpreter(this.program, this.fs, this.resolver, this.net, undefined, this.args);
+        const child = new Interpreter(this.program, this.fs, this.resolver, this.net, this.tools, undefined, this.args);
         const childPid = child.pid;
 
         // Fire and forget (detached)
@@ -74,6 +77,7 @@ export class Interpreter implements IInterpreter {
     async evalMain(): Promise<Value> {
         const main = this.functions.get('main');
         if (!main) throw new Error("No main function defined");
+        if (main.kind !== 'DefFn') throw new Error("Main must be a function");
 
         if (main.eff === '!Pure' || main.eff === '!IO') {
             this.initConstantsSync();
@@ -88,6 +92,10 @@ export class Interpreter implements IInterpreter {
         await this.initConstants();
         const func = this.functions.get(name);
         if (!func) throw new Error(`Unknown function: ${name}`);
+        if (func.kind === 'DefTool') {
+            if (!this.tools) throw new Error(`Tool not implemented: ${name}`);
+            return this.tools.callTool(name, args);
+        }
         if (args.length !== func.args.length) throw new Error(`Arity mismatch call ${name}`);
 
         let env: LinkedEnv | undefined = undefined;
@@ -101,6 +109,10 @@ export class Interpreter implements IInterpreter {
         this.initConstantsSync();
         const func = this.functions.get(name);
         if (!func) throw new Error(`Unknown function: ${name}`);
+        if (func.kind === 'DefTool') {
+            if (!this.tools?.callToolSync) throw new Error(`Tool not implemented: ${name}`);
+            return this.tools.callToolSync(name, args);
+        }
         if (args.length !== func.args.length) throw new Error(`Arity mismatch call ${name}`);
 
         let env: LinkedEnv | undefined = undefined;

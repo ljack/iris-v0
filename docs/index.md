@@ -156,6 +156,25 @@ iris run server.iris
 
 ---
 
+## 🧰 Tool Host (Optional)
+
+IRIS can call host-provided tools (handy for LLM agents and integrations). In the browser playground, set `window.irisTools` to expose functions.
+
+```lisp
+(program
+  (module (name "tools") (version 0))
+  (defs
+    (deftool (name add) (args (a I64) (b I64)) (ret I64) (eff !IO)
+      (doc "Adds two numbers"))
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body (call add 2 5))
+    )
+  )
+)
+```
+
+---
+
 ## 📚 Documentation
 - **[Specification (v0.4)](https://github.com/ljack/iris-v0/blob/master/IRIS-v0.4.md)**
 - **[GitHub Repository](https://github.com/ljack/iris-v0)**

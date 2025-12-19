@@ -1,5 +1,7 @@
 
-import { IFileSystem, INetwork } from '../eval';
+import { IFileSystem, INetwork, IToolHost } from '../eval';
+import { ToolRegistry, jsToValue, valueToJs } from '../runtime/tool-host';
+import { Value } from '../types';
 
 export class BrowserFileSystem implements IFileSystem {
     private files: Map<string, string> = new Map();
@@ -62,5 +64,23 @@ export class BrowserNetwork implements INetwork {
     async close(handle: number): Promise<boolean> {
         console.log(`[BrowserNet] Closed handle ${handle}`);
         return true;
+    }
+}
+
+export class BrowserToolHost implements IToolHost {
+    constructor(private tools: ToolRegistry = {}) { }
+
+    async callTool(name: string, args: Value[]): Promise<Value> {
+        const fn = this.tools[name];
+        if (!fn) throw new Error(`Tool not found: ${name}`);
+        const result = await fn(...args.map(valueToJs));
+        return jsToValue(result);
+    }
+
+    callToolSync(name: string, args: Value[]): Value {
+        const fn = this.tools[name];
+        if (!fn) throw new Error(`Tool not found: ${name}`);
+        const result = fn(...args.map(valueToJs));
+        return jsToValue(result);
     }
 }

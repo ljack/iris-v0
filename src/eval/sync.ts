@@ -97,7 +97,7 @@ export function evalExprSync(ctx: IInterpreter, expr: Expr, env?: LinkedEnv): Va
                     if (importDecl && ctx.resolver) {
                         const importedProg = ctx.resolver(importDecl.path);
                         if (importedProg) {
-                            const targetDef = importedProg.defs.find(d => d.kind === 'DefFn' && d.name === fname) as any;
+                            const targetDef = importedProg.defs.find(d => (d.kind === 'DefFn' || d.kind === 'DefTool') && d.name === fname) as any;
                             if (targetDef) {
                                 func = targetDef;
                             }
@@ -137,6 +137,10 @@ export function evalExprSync(ctx: IInterpreter, expr: Expr, env?: LinkedEnv): Va
                     return evalIntrinsicSync(ctx, currentExpr.fn as any, args);
                 }
 
+                if (func.kind === 'DefTool') {
+                    if (!(ctx as any).tools?.callToolSync) throw new Error(`Tool not implemented: ${currentExpr.fn}`);
+                    return (ctx as any).tools.callToolSync(currentExpr.fn, args);
+                }
                 if (args.length !== func.args.length) throw new Error(`Arity mismatch error call ${currentExpr.fn} expected ${func.args.length} args, got ${args.length} `);
 
                 let newEnv: LinkedEnv | undefined = undefined;

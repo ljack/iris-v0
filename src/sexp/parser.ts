@@ -1,5 +1,5 @@
 
-import { Program, Definition, Expr, IrisType, IrisEffect, Import } from '../types';
+import { Program, Definition, Expr, IrisType, IrisEffect, Import, Capability } from '../types';
 import { Token } from './types';
 import { tokenize } from './lexer';
 import { ParserContext } from './context';
@@ -99,6 +99,54 @@ export class Parser implements ParserContext {
         return { module: moduleDecl, imports, defs };
     }
 
+    private parseMetaSection(
+        meta: { doc?: string; requires?: string; ensures?: string; caps?: Capability[] },
+        allowed: { doc?: boolean; requires?: boolean; ensures?: boolean; caps?: boolean }
+    ) {
+        const save = this.pos;
+        this.expect('LParen');
+        const tagTok = this.peek();
+        if (tagTok.kind !== 'Symbol') {
+            this.pos = save;
+            this.skipSExp();
+            return;
+        }
+        const tag = this.expectSymbol();
+
+        if (tag === 'doc' && allowed.doc) {
+            meta.doc = this.expectString();
+            this.expect('RParen');
+            return;
+        }
+        if (tag === 'requires' && allowed.requires) {
+            meta.requires = this.expectString();
+            this.expect('RParen');
+            return;
+        }
+        if (tag === 'ensures' && allowed.ensures) {
+            meta.ensures = this.expectString();
+            this.expect('RParen');
+            return;
+        }
+        if (tag === 'caps' && allowed.caps) {
+            const caps: Capability[] = [];
+            while (!this.check('RParen')) {
+                this.expect('LParen');
+                const name = this.expectSymbol();
+                const type = parseType(this);
+                this.expect('RParen');
+                caps.push({ name, type });
+            }
+            this.expect('RParen');
+            meta.caps = caps;
+            return;
+        }
+
+        // Unknown or unsupported metadata tag; skip it.
+        this.pos = save;
+        this.skipSExp();
+    }
+
     private parseDefinition(): Definition {
         this.expect('LParen');
         const kind = this.expectSymbol();
@@ -106,9 +154,21 @@ export class Parser implements ParserContext {
         if (kind === 'defconst') {
             this.expect('LParen'); this.expectSymbol('name'); const name = this.expectSymbol(); this.expect('RParen');
             this.expect('LParen'); this.expectSymbol('type'); const type = parseType(this); this.expect('RParen');
+            const meta: { doc?: string } = {};
+            while (this.check('LParen')) {
+                const save = this.pos;
+                this.expect('LParen');
+                const tag = this.peek();
+                if (tag.kind === 'Symbol' && tag.value === 'value') {
+                    this.pos = save;
+                    break;
+                }
+                this.pos = save;
+                this.parseMetaSection(meta, { doc: true });
+            }
             this.expect('LParen'); this.expectSymbol('value'); const value = parseExpr(this); this.expect('RParen');
             this.expect('RParen');
-            return { kind: 'DefConst', name, type, value };
+            return { kind: 'DefConst', name, type, value, doc: meta.doc };
         } else if (kind === 'deffn') {
             this.expect('LParen'); this.expectSymbol('name'); const name = this.expectSymbol(); this.expect('RParen');
 
@@ -126,6 +186,7 @@ export class Parser implements ParserContext {
             this.expect('LParen'); this.expectSymbol('ret'); const ret = parseType(this); this.expect('RParen');
             this.expect('LParen'); this.expectSymbol('eff'); const eff = parseEffect(this); this.expect('RParen');
 
+            const meta: { doc?: string; requires?: string; ensures?: string; caps?: Capability[] } = {};
             while (this.check('LParen')) {
                 const save = this.pos;
                 this.expect('LParen');
@@ -135,18 +196,46 @@ export class Parser implements ParserContext {
                     break;
                 }
                 this.pos = save;
-                this.skipSExp();
+                this.parseMetaSection(meta, { doc: true, requires: true, ensures: true, caps: true });
             }
 
             this.expect('LParen'); this.expectSymbol('body'); const body = parseExpr(this); this.expect('RParen');
             this.expect('RParen');
 
-            return { kind: 'DefFn', name, args, ret, eff, body };
-        } else if (kind === 'type') {
+            return { kind: 'DefFn', name, args, ret, eff, body, ...meta };
+        } else if (kind === 'deftool') {
+            this.expect('LParen'); this.expectSymbol('name'); const name = this.expectSymbol(); this.expect('RParen');
+
+            this.expect('LParen'); this.expectSymbol('args');
+            const args: { name: string, type: IrisType }[] = [];
+            while (!this.check('RParen')) {
+                this.expect('LParen');
+                const argName = this.expectSymbol();
+                const argType = parseType(this);
+                this.expect('RParen');
+                args.push({ name: argName, type: argType });
+            }
+            this.expect('RParen');
+
+            this.expect('LParen'); this.expectSymbol('ret'); const ret = parseType(this); this.expect('RParen');
+            this.expect('LParen'); this.expectSymbol('eff'); const eff = parseEffect(this); this.expect('RParen');
+
+            const meta: { doc?: string; requires?: string; ensures?: string; caps?: Capability[] } = {};
+            while (this.check('LParen')) {
+                this.parseMetaSection(meta, { doc: true, requires: true, ensures: true, caps: true });
+            }
+            this.expect('RParen');
+
+            return { kind: 'DefTool', name, args, ret, eff, ...meta };
+        } else if (kind === 'type' || kind === 'deftype') {
             const name = this.expectSymbol();
             const type = parseType(this);
+            const meta: { doc?: string } = {};
+            while (this.check('LParen')) {
+                this.parseMetaSection(meta, { doc: true });
+            }
             this.expect('RParen');
-            return { kind: 'TypeDef', name, type };
+            return { kind: 'TypeDef', name, type, doc: meta.doc };
         } else {
             throw new Error(`Unknown definition kind: ${kind}`);
         }

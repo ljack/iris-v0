@@ -42,7 +42,7 @@ async function main() {
     };
 
     const interpreterCache = new Map<string, Interpreter>();
-    const interp = new Interpreter(program, hostFs, moduleResolver, undefined, interpreterCache);
+    const interp = new Interpreter(program, hostFs, moduleResolver, undefined, undefined, interpreterCache);
 
     try {
         console.log("Calling compile_fileSync('examples/hello.iris', 'wasm')...");

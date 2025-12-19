@@ -26,7 +26,7 @@ export function parseType(ctx: ParserContext): IrisType {
             ctx.expect('RParen');
             return { type: 'Union', variants };
         }
-        if (w === 'Record') {
+        if (w === 'Record' || w === 'record') {
             const fields: Record<string, IrisType> = {};
             while (!ctx.check('RParen')) {
                 ctx.expect('LParen');
@@ -64,7 +64,7 @@ export function parseType(ctx: ParserContext): IrisType {
             ctx.expect('RParen');
             return { type: 'List', inner };
         }
-        if (tMap === 'Record') {
+        if (tMap === 'Record' || tMap === 'record') {
             // (Record (f1 T1) (f2 T2))
             const fields: Record<string, IrisType> = {};
             while (!ctx.check('RParen')) {
