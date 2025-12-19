@@ -144,6 +144,10 @@ iris-v0/
 └── tsconfig.json        # TypeScript configuration
 ```
 
+## Contributor Guide
+
+- See `AGENTS.md` for repo-specific contributor guidelines.
+
 ## Architecture
 
 ### Pipeline
