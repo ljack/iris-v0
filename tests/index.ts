@@ -206,12 +206,18 @@ import {
   t247_sys_self, t248_sys_send_recv, t249_http_post, t250_io_file_exists, t251_io_write_file
 } from './t243_network_concurrency';
 import {
-  t252_sync_match_tagged, t253_sync_match_list, t254_sync_match_result, t255_sync_match_option,
-  t256_sync_tco_let, t257_sync_tco_if, t258_sync_tco_call, t259_sync_tuple_access_error,
+  t252_sync_match_tagged, t253_sync_match_list, t254_sync_match_result, t255_sync_match_option
+} from './t252_sync_match';
+import {
+  t256_sync_tco_let, t257_sync_tco_if, t258_sync_tco_call,
+  t268_sync_normalize_literal, t269_sync_bool_ops, t270_sync_not_operator
+} from './t256_sync_control_flow';
+import {
+  t259_sync_tuple_access_error,
   t260_sync_record_field_error, t261_sync_unknown_variable, t262_sync_if_condition_error,
   t263_sync_arithmetic_error, t264_sync_io_read_file, t265_sync_io_file_exists, t266_sync_io_print,
-  t267_sync_async_intrinsic_error, t268_sync_normalize_literal, t269_sync_bool_ops, t270_sync_not_operator
-} from './t252_advanced_sync';
+  t267_sync_async_intrinsic_error
+} from './t259_sync_errors';
 import {
   t271_match_non_exhaustive, t272_match_wildcard, t273_match_list_cons_two_vars,
   t274_match_tuple_tagged, t275_match_tuple_tagged_multiple_vars, t276_match_tagged_tuple_payload,
@@ -229,11 +235,16 @@ import {
   t301_async_list, t302_async_intrinsic, t303_async_let, t304_async_if, t305_async_if_else,
   t306_async_var_dot_notation, t307_async_var_tuple_index, t308_async_var_error_unknown_field,
   t309_async_var_error_tuple_index, t310_async_var_error_invalid_access, t311_async_call_unknown_function,
-  t312_async_call_arity_mismatch, t313_async_constants, t314_async_constants_in_expr,
+  t312_async_call_arity_mismatch, t313_async_constants, t314_async_constants_in_expr
+} from './t291_async_basics';
+import {
   t315_async_net_listen, t316_async_net_accept, t317_async_net_read, t318_async_net_write,
   t319_async_net_close, t320_async_net_connect, t321_async_sys_self, t322_async_sys_spawn,
   t323_async_sys_send, t324_async_sys_recv, t325_async_sys_sleep, t326_async_http_parse_request,
-  t327_async_http_parse_response, t328_async_http_get, t329_async_http_post, t330_async_io_read_file,
+  t327_async_http_parse_response, t328_async_http_get, t329_async_http_post
+} from './t315_async_sys_net';
+import {
+  t330_async_io_read_file,
   t331_async_io_write_file, t332_async_io_file_exists, t333_async_io_read_dir, t334_async_io_print,
   t335_async_cross_module_call, t336_async_map_value_to_key, t337_async_map_value_to_key_str,
   t338_async_map_keys, t339_async_unknown_intrinsic, t340_async_i64_from_string_empty,
@@ -244,17 +255,22 @@ import {
   t353_async_net_close_error, t354_async_net_connect_error, t355_async_http_parse_request_error,
   t356_async_http_parse_response_error, t357_async_io_read_file_not_found,
   t358_async_io_read_dir_not_supported, t359_async_io_print_other_types, t360_async_cross_module_diagnostic
-} from './t291_async_coverage';
+} from './t330_async_io_errors';
 import {
   t361_call_function_error, t362_call_function_arity_error, t363_no_main_error,
+  t370_async_call_with_resolver_no_func, t371_async_call_with_resolver_no_import,
+  t372_async_call_with_resolver_no_program
+} from './t361_call_errors';
+import {
   t364_map_invalid_key_type, t365_map_invalid_key_string, t366_async_match_tagged_no_vars,
-  t367_async_match_tagged_tuple_payload, t368_async_match_tagged_single_value,
-  t369_async_cross_module_cache, t370_async_call_with_resolver_no_func,
-  t371_async_call_with_resolver_no_import, t372_async_call_with_resolver_no_program,
+  t367_async_match_tagged_tuple_payload, t368_async_match_tagged_single_value
+} from './t364_map_and_match';
+import {
+  t369_async_cross_module_cache,
   t373_async_net_listen_failed, t374_async_net_accept_failed, t375_async_net_read_failed,
   t376_async_net_write_failed, t377_async_net_close_failed, t378_async_net_connect_failed,
   t379_async_http_get_failed, t380_async_http_post_failed
-} from './t361_error_paths';
+} from './t373_async_failures';
 import {
   t381_map_tagged_str_key, t382_map_tagged_i64_key, t383_map_tagged_other_key,
   t384_map_keys_i64_str, t385_async_init_constants, t386_async_init_constants_multiple,
