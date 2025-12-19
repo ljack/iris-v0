@@ -51,7 +51,7 @@ export const t365_map_invalid_key_string: TestCase = {
 
 export const t366_async_match_tagged_no_vars: TestCase = {
   name: 'Test 366: async match tagged no vars',
-  expect: 'ParseError: Expected RParen at 6:18, got Str',
+  expect: "ParseError: Expected RParen at 6:18, got Str 'Some'",
   source: `(program
  (module (name "t366") (version 0))
  (defs

@@ -81,7 +81,7 @@
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
                     (let (p2 (call base.parser_consume p))
-                         (tuple p2 (tag "nil" (record)))  
+                         (tuple p2 (list))  
                     )
                     (let (res (call parse_expr p))
                          (let (p2 (tuple.get res 0))
@@ -187,7 +187,7 @@
         (body
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
-                    (tuple (call base.parser_consume p) (tag "nil" (record)))
+                    (tuple (call base.parser_consume p) (list))
                     (let (res_case (call parse_match_case p))
                         (let (p2 (tuple.get res_case 0))
                         (let (c (tuple.get res_case 1))
@@ -228,7 +228,7 @@
         (body
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
-                    (tuple p (tag "nil" (record)))
+                    (tuple p (list))
                     (if (= t.kind "IDENT")
                         (let (p2 (call base.parser_consume p))
                             (let (res (call parse_vars_loop p2))
@@ -238,7 +238,7 @@
                                 ))
                             )
                         )
-                        (tuple p (tag "nil" (record)))
+                        (tuple p (list))
                     )
                 )
             )
@@ -266,7 +266,7 @@
         (body
             (let (t (call base.parser_peek p))
                 (if (= t.kind "RPAREN")
-                    (tuple (call base.parser_consume p) (tag "nil" (record)))
+                    (tuple (call base.parser_consume p) (list))
                     (let (p2 (call base.parser_consume p)) ;; skip lparen
                     (let (t_name (call base.parser_peek p2))
                         (let (p3 (call base.parser_consume p2)) ;; skip name

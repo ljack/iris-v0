@@ -386,5 +386,10 @@ function evalIntrinsicSync(ctx: IInterpreter, op: IntrinsicOp, args: Value[]): V
         throw new Error(`Cannot call async intrinsic ${op} from synchronous evaluation path`);
     }
 
+    if (op === 'sys.args') {
+        const argsList = ctx.args.map(a => ({ kind: 'Str', value: a } as Value));
+        return { kind: 'List', items: argsList };
+    }
+
     throw new Error(`Unknown intrinsic or not implemented in Sync path: ${op} `);
 }

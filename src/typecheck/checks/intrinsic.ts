@@ -108,6 +108,10 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
             if (msg.type !== 'Str') throw new Error("sys.send expects Str msg");
             return { type: { type: 'Bool' }, eff: joinedEff };
         }
+        if (expr.op === 'sys.args') {
+            if (argTypes.length !== 0) throw new Error("sys.args expects 0 arguments");
+            return { type: { type: 'List', inner: { type: 'Str' } }, eff: joinedEff };
+        }
     }
 
     if (expr.op.startsWith('net.')) {

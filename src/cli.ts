@@ -14,6 +14,9 @@ Commands:
   check <file>  Type-check an IRIS program
   version       Show version
   help          Show this help message
+
+Options:
+  --debug       Enable debug logging
 `);
 }
 
@@ -63,13 +66,6 @@ class NodeNetwork implements INetwork {
                 this.sockets.set(id, sock);
                 this.setupSocket(id, sock);
 
-                // Check if anyone waiting for accept
-                // Get server handle. Wait, we need to know WHICH server this sock belongs to.
-                // net.createServer callback doesn't give server instance easily unless captured?
-                // Actually server instance is `server`.
-                // We need to map `server` instance to `serverId`.
-                // Inefficient search? Or reverse map?
-                // Let's store serverId on server object?
                 const serverId = (server as any)._irisId;
                 if (!serverId) return; // Should not happen
 
@@ -162,11 +158,6 @@ class NodeNetwork implements INetwork {
         });
     }
 
-    /*
-     * Note: This `read` implementation is simplistic.
-     * It waits for ANY chunk. 
-     * Or consumes buffer.
-     */
     async read(handle: number): Promise<string | null> {
         const sock = this.sockets.get(handle);
         if (!sock) return null;
@@ -212,8 +203,11 @@ class NodeNetwork implements INetwork {
 }
 
 export async function cli(args: string[]) {
-    const command = args[0];
-    const file = args[1];
+    const debug = args.includes('--debug');
+    const cleanArgs = args.filter(a => a !== '--debug');
+
+    const command = cleanArgs[0];
+    const file = cleanArgs[1];
 
     if (!command || command === 'help') {
         printHelp();
@@ -279,40 +273,16 @@ export async function cli(args: string[]) {
         };
 
         const nodeNet = new NodeNetwork();
-        // Hook `Interpreter` creation in `run`. 
-        // `run` method in `main.ts` creates Interpreter, but it does NOT expose a way to inject `net` dependency yet?
-        // Wait, I didn't update `run` to accept `INetwork`.
-        // I should update `eval.ts` Interpreter constructor to take `net` (done).
-        // I should update `main.ts` `run` to take `net`.
 
-        // Wait, `run` in `main.ts` takes `fsMap`. It should also take `net` or `services`.
-        // I will assume for now I will modify `main.ts` AGAIN or just instantiate Interpreter manually here?
-        // `run` does: Parse -> Typecheck -> Interpret.
-        // I should update `run`.
-
-        // For now, I will use `run` but I need to pass `net`.
-        // I'll update `main.ts` signature before running this code.
-        // Assuming `main.ts` handles it. Or I duplicate logic here?
-        // Duplicating logic here is safer for `cli` specific dependency injection.
-
-        const result = check(source, modules);
+        const result = check(source, modules, debug);
         if (!result.success) {
             console.error(result.error);
             process.exit(1);
         }
 
-        // Manual interpretation instead of calling `run` (or update `run`). 
-        // Let's instantiate Interpreter directly.
-        // We need `Interpreter` import.
-        // `Interpreter` is exported from `eval`.
-        // But `main.ts` exports `run` which does everything.
-        // If I update `run` signature in `main.ts` I can pass `net`.
-        // Let's assume I will update `main.ts` next.
-
-        // But wait, I'm writing `cli.ts` NOW.
-        // I'll use `(run as any)(source, nodeFs, modules, nodeNet)` and fix `main.ts` to match.
-
-        console.log(await (run as any)(source, nodeFs, modules, nodeNet));
+        const programArgs = cleanArgs.slice(2);
+        const runResult = await run(source, nodeFs, modules, nodeNet, programArgs, debug);
+        console.log(runResult);
 
     } else {
         console.error(`Unknown command: ${command}`);

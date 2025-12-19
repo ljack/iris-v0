@@ -27,8 +27,7 @@
           (case (tag "Record" (r)) (call collect_record_fields_locals r.fields))
           (case (tag "_" ()) (list))
         )
-      )
-    )
+      ))
 
     (deffn (name collect_expr_list_locals) (args (l (List ast.Expr))) (ret (List Str)) (eff !Pure)
       (body
@@ -108,7 +107,7 @@
         (let (alloc "(func $alloc (export \"alloc\") (param $size i64) (result i64)\n  (local $ptr i64)\n  (local.set $ptr (i64.extend_i32_u (i32.load (i32.const 0))))\n  (if (i64.eqz (local.get $ptr)) (then (local.set $ptr (i64.const 4))))\n  (i32.store (i32.const 0) (i32.add (i32.wrap_i64 (local.get $ptr)) (i32.wrap_i64 (local.get $size))))\n  (local.get $ptr)\n)\n")
         (let (defs (call gen_defs p.progDefs))
           (str.concat "(module\n" (str.concat imports (str.concat alloc (str.concat defs "\n)\n"))))
-        )))
+        ))))
       )
     )
   )

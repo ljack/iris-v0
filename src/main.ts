@@ -4,25 +4,15 @@ import { Interpreter, IFileSystem, INetwork } from './eval';
 import { ModuleResolver, Program } from './types';
 import { ProcessManager } from './runtime/process';
 
-// Helper to find imports without parsing everything?
-// We need to parse to find imports.
-function getImports(source: string): string[] {
-    try {
-        const parser = new Parser(source);
-        const prog = parser.parse();
-        return prog.imports.map(i => i.path);
-    } catch {
-        return [];
-    }
-}
+
 
 
 // Helper to encapsulate program + resolver for interpreter
 type CheckResult = { success: true, program: Program, resolver: ModuleResolver } | { success: false, error: string };
 
-export function check(source: string, modules: Record<string, string> = {}): CheckResult {
+export function check(source: string, modules: Record<string, string> = {}, debug: boolean = false): CheckResult {
     // 1. Parse
-    const parser = new Parser(source);
+    const parser = new Parser(source, debug);
     let program;
     try {
         program = parser.parse();
@@ -51,7 +41,9 @@ export function check(source: string, modules: Record<string, string> = {}): Che
             const src = modules[path];
             if (src) {
                 try {
-                    const p = new Parser(src);
+                    // Note: Module parsing also uses debug? Maybe specific flag?
+                    // For now inherit debug flag.
+                    const p = new Parser(src, debug);
                     const pr = p.parse();
                     for (const i of pr.imports) {
                         dfs(i.path);
@@ -79,7 +71,7 @@ export function check(source: string, modules: Record<string, string> = {}): Che
         const modSource = modules[path];
         if (!modSource) return undefined;
         try {
-            const p = new Parser(modSource);
+            const p = new Parser(modSource, debug);
             const pr = p.parse();
             cache.set(path, pr);
             return pr;
@@ -107,13 +99,13 @@ export function check(source: string, modules: Record<string, string> = {}): Che
 
 // ... other imports
 
-export async function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}, net?: INetwork): Promise<string> {
+export async function run(source: string, fsMap: Record<string, string> | IFileSystem = {}, modules: Record<string, string> = {}, net?: INetwork, args: string[] = [], debug: boolean = false): Promise<string> {
     ProcessManager.instance.reset(); // Reset concurrency state for fresh run
-    const checked = check(source, modules);
+    const checked = check(source, modules, debug);
     if (!checked.success) return checked.error;
 
     // 3. Interpret
-    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver, net);
+    const interpreter = new Interpreter(checked.program, fsMap, checked.resolver, net, undefined, args);
     let result;
     try {
         result = await interpreter.evalMain();

@@ -8,6 +8,11 @@ export async function evalSys(ctx: InterpreterContext, op: IntrinsicOp, args: Va
         return { kind: 'I64', value: BigInt(ctx.pid) };
     }
 
+    if (op === 'sys.args') {
+        const argsList = ctx.args.map(a => ({ kind: 'Str', value: a } as Value));
+        return { kind: 'List', items: argsList };
+    }
+
     if (op === 'sys.spawn') {
         const fnName = args[0];
         if (fnName.kind !== 'Str') throw new Error("sys.spawn expects function name (Str)");

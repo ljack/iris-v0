@@ -25,6 +25,7 @@ export interface IInterpreter {
     net: INetwork;
     resolver?: ModuleResolver;
     pid: number;
+    args: string[];
 
     callFunction(name: string, args: Value[]): Promise<Value>;
     spawn(fnName: string): number;

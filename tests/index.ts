@@ -290,6 +290,13 @@ import {
   t431_async_import_fail,
 } from './t430_async_imports';
 
+import { t391_unit_coverage } from './t391_unit_coverage';
+import { t392_sync_coverage } from './t392_sync_coverage';
+import { t393_ops_coverage } from './t393_ops_coverage';
+import { t394_sexp_coverage } from './t394_sexp_coverage';
+import { t395_typecheck_coverage } from './t395_typecheck_coverage';
+import { t396_runtime_coverage } from './t396_runtime_coverage';
+
 export const TESTS = [
   t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
   t11, t12, t13, t14, t15, t16, t17, t18, t19, t20,
@@ -373,6 +380,11 @@ export const TESTS = [
   ...t401_tests,
   ...t420_tests,
   t430_async_import_success, t431_async_import_fail,
+  t391_unit_coverage,
+  t392_sync_coverage,
+  t394_sexp_coverage,
+  t395_typecheck_coverage,
+  t396_runtime_coverage,
 ];
 // Advanced/experimental tests (some may fail):
 // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145

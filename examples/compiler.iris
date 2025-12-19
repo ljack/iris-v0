@@ -1,55 +1,35 @@
 (program
   (module (name "compiler") (version 1))
   (imports
+    (import "sys" (as "sys"))
     (import "io" (as "io"))
-    (import "str" (as "str"))
     (import "list" (as "list"))
-    (import "lexer" (as "lexer"))
-    (import "parser" (as "parser"))
-    (import "typecheck" (as "typecheck"))
-    (import "codegen" (as "codegen"))
-    (import "codegen_wasm" (as "codegen_wasm"))
+    (import "compiler_lib" (as "clib"))
   )
   (defs
-    ;; Define Result type for compatibility if needed or use from imports if exposed?
-    ;; Result is generic intrinsic type, so we use structural types matching what imports return
-    ;; Note: typecheck.type_check returns Result IrisType Str
-    ;; io.read_file returns Result Str Str
-    
-    (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
+    (deffn (name main) (args) (ret I64) (eff !IO)
         (body
-            (let (read_res (io.read_file path))
-                (match read_res
-                    (case (tag "Err" (msg)) (tag "Err" (str.concat "File error: " msg)))
-                    (case (tag "Ok" (source))
-                        ;; 1. Tokenize
-                        (let (tokens (lexer.tokenize source))
-                            ;; 2. Parse
-                            (let (ast (parser.parse tokens))
-                                ;; 3. Type Check
-                                (let (tc_res (typecheck.type_check_program ast))
-                                        (match tc_res
-                                            (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
-                                            (case (tag "Ok" (ignore))
-                                                (if (str.contains target "wasm")
-                                                    (tag "Ok" (call codegen_wasm.codegen_module ast))
-                                                    (tag "Ok" (call codegen.codegen ast))
-                                                )
+            (let (args (sys.args))
+                (if (< (list.length args) 1)
+                    (let (_ (io.print "Usage: compile_file <file> [target]")) 1)
+                    (let (file_opt (list.get args 0))
+                        (match file_opt
+                            (case (tag "None") 1)
+                            (case (tag "Some" (file))
+                                (let (target_opt (list.get args 1))
+                                    (let (target (match target_opt (case (tag "Some" (t)) t) (case (tag "None") "wasm")))
+                                        (let (res (call clib.compile_file file target))
+                                            (match res
+                                                (case (tag "Ok" (out)) (let (_ (io.print out)) 0))
+                                                (case (tag "Err" (msg)) (let (_ (io.print msg)) 1))
                                             )
                                         )
                                     )
                                 )
                             )
                         )
+                    )
                 )
-            )
-        )
-    )
-
-    (deffn (name main) (args) (ret I64) (eff !IO)
-        (body
-            (let (_ (io.print "Usage: compile_file(path, target)"))
-                0
             )
         )
     )

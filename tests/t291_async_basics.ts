@@ -130,7 +130,7 @@ export const t298_async_record: TestCase = {
 
 export const t299_async_tagged: TestCase = {
   name: 'Test 299: async tagged creation',
-  expect: 'ParseError: Expected RParen at 6:18, got Str',
+  expect: "ParseError: Expected RParen at 6:18, got Str 'Some'",
   source: `(program
  (module (name "t299") (version 0))
  (defs

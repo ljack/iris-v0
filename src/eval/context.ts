@@ -10,6 +10,7 @@ export interface InterpreterContext {
     net: INetwork;
     resolver?: ModuleResolver;
     pid: number;
+    args: string[];
 
     // Capability to spawn a new process/interpreter
     spawn(fnName: string): number;

@@ -9,9 +9,17 @@ import { parseExpr } from './parse-expr';
 export class Parser implements ParserContext {
     private tokens: Token[];
     private pos = 0;
+    public debug = false;
 
-    constructor(input: string) {
+    constructor(input: string, debug: boolean = false) {
         this.tokens = tokenize(input);
+        this.debug = debug;
+    }
+
+    public log(msg: string) {
+        if (this.debug) {
+            console.log(`[Parser] ${msg}`);
+        }
     }
 
     parse(): Program {
@@ -23,8 +31,11 @@ export class Parser implements ParserContext {
         const defs: Definition[] = [];
 
         while (!this.check('RParen')) {
+            this.log(`Parsing section loop. Peek: ${this.peek().kind} '${(this.peek() as any).value || ''}'`);
             this.expect('LParen');
             const section = this.expectSymbol();
+            this.log(`Start section: ${section}`);
+
             if (section === 'module') {
                 this.expect('LParen');
                 this.expectSymbol('name');
@@ -36,7 +47,9 @@ export class Parser implements ParserContext {
                 this.expect('RParen');
                 this.expect('RParen');
                 moduleDecl = { name, version };
+                this.log(`Parsed module: ${name} v${version}`);
             } else if (section === 'imports') {
+                this.log('Parsing imports...');
                 while (!this.check('RParen')) {
                     this.expect('LParen');
                     this.expectSymbol('import');
@@ -54,12 +67,22 @@ export class Parser implements ParserContext {
                     imports.push({ path, alias });
                 }
                 this.expect('RParen');
+                this.log(`Parsed ${imports.length} imports`);
             } else if (section === 'defs') {
+                this.log('Parsing defs...');
                 while (!this.check('RParen')) {
+                    const t = this.peek();
+                    this.log(`Parsing definition. Peek: ${t.kind} '${(t as any).value || ''}' at ${t.line}:${t.col}`);
+                    if (t.kind === 'RParen') {
+                        this.log("Saw RParen explicitly in loop check (should not happen due to while condition)");
+                    }
                     defs.push(this.parseDefinition());
                 }
+                const endT = this.peek();
+                this.log(`Finished parsing defs. Peek is: ${endT.kind} at ${endT.line}:${endT.col}`);
                 this.expect('RParen');
             } else {
+                this.log(`Unknown section: ${section}`);
                 throw new Error(`Unknown program section: ${section} at line ${this.tokens[this.pos].line}`);
             }
         }
@@ -144,7 +167,7 @@ export class Parser implements ParserContext {
         const t = this.peek();
         // console.log(`Expect ${kind} vs ${t.kind} at ${t.line}:${t.col}`);
         if (t.kind !== kind) {
-            throw new Error(`Expected ${kind} at ${t.line}:${t.col}, got ${t.kind}`);
+            throw new Error(`Expected ${kind} at ${t.line}:${t.col}, got ${t.kind} '${(t as any).value || ''}'`);
         }
         this.consume();
     }

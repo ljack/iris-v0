@@ -12,6 +12,7 @@ export class Interpreter implements IInterpreter {
     public fs: IFileSystem;
     public net: INetwork;
     public pid: number;
+    public args: string[] = [];
 
     private interpreterCache: Map<string, Interpreter> = new Map();
 
@@ -20,8 +21,10 @@ export class Interpreter implements IInterpreter {
         fs: Record<string, string> | IFileSystem = {},
         public resolver?: ModuleResolver,
         net?: INetwork,
-        cache?: Map<string, Interpreter>
+        cache?: Map<string, Interpreter>,
+        args: string[] = []
     ) {
+        this.args = args;
         if (cache) this.interpreterCache = cache;
         this.interpreterCache.set(this.program.module.name, this);
 
@@ -44,7 +47,7 @@ export class Interpreter implements IInterpreter {
     }
 
     createInterpreter(program: Program): IInterpreter {
-        return new Interpreter(program, this.fs, this.resolver, this.net, this.interpreterCache);
+        return new Interpreter(program, this.fs, this.resolver, this.net, this.interpreterCache, this.args);
     }
 
     getInterpreter(path: string): IInterpreter | undefined {
@@ -53,7 +56,7 @@ export class Interpreter implements IInterpreter {
 
     spawn(fnName: string): number {
         // Create detached interpreter
-        const child = new Interpreter(this.program, this.fs, this.resolver, this.net);
+        const child = new Interpreter(this.program, this.fs, this.resolver, this.net, undefined, this.args);
         const childPid = child.pid;
 
         // Fire and forget (detached)

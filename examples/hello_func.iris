@@ -1,0 +1,16 @@
+(program
+  (module (name "hello") (version 0))
+  (defs
+
+    (deffn (name hello) (args) (ret I64) (eff !IO)
+      (body 
+        (io.print "Hello from CLI and function!")
+      )
+    )
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body 
+        (call hello)
+      )
+    )
+  )
+)

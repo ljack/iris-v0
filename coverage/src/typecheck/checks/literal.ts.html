@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">40% </span>
+                <span class="strong">93.33% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>12/30</span>
+                <span class='fraction'>28/30</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">70% </span>
+                <span class="strong">96% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/10</span>
+                <span class='fraction'>24/25</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">40% </span>
+                <span class="strong">93.33% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>12/30</span>
+                <span class='fraction'>28/30</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -97,62 +97,62 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">829x</span>
-<span class="cline-any cline-yes">829x</span>
-<span class="cline-any cline-yes">829x</span>
-<span class="cline-any cline-yes">829x</span>
-<span class="cline-any cline-yes">829x</span>
-<span class="cline-any cline-yes">829x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">842x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">843x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">&nbsp;
 import { Expr, IrisType, IrisEffect } from '../../types';
 import { TypeCheckerContext, CheckFn } from '../context';
 &nbsp;
 export function checkLiteral(check: CheckFn, ctx: TypeCheckerContext, expr: Expr, env: Map&lt;string, IrisType&gt;, expectedType?: IrisType): { type: IrisType, eff: IrisEffect } {
-    if (expr.kind !== 'Literal') <span class="branch-0 cbranch-no" title="branch not covered" >throw new Error("Internal: checkLiteral called on non-Literal");</span>
+    if (expr.kind !== 'Literal') throw new Error("Internal: checkLiteral called on non-Literal");
     const val = expr.value;
     if (val.kind === 'I64') return { type: { type: 'I64' }, eff: '!Pure' };
     if (val.kind === 'Bool') return { type: { type: 'Bool' }, eff: '!Pure' };
     if (val.kind === 'Str') return { type: { type: 'Str' }, eff: '!Pure' };
     if (val.kind === 'Option') {
-        if (val.value === null) return { type: { type: 'Option', inner: { type: 'I64' } }, eff: '!Pure' };<span class="branch-0 cbranch-no" title="branch not covered" > // Default None type</span>
-<span class="cstat-no" title="statement not covered" >        const inner = check(ctx, { kind: 'Literal', value: val.value } as Expr, env);</span>
-<span class="cstat-no" title="statement not covered" >        return { type: { type: 'Option', inner: inner.type }, eff: inner.eff };</span>
+        if (val.value === null) return { type: { type: 'Option', inner: { type: 'I64' } }, eff: '!Pure' }; // Default None type
+        const inner = check(ctx, { kind: 'Literal', value: val.value } as Expr, env);
+        return { type: { type: 'Option', inner: inner.type }, eff: inner.eff };
+    }
+    if (val.kind === 'Result') {
+        const v = check(ctx, { kind: 'Literal', value: val.value } as Expr, env);
+        // Generous Result type
+        return { type: { type: 'Result', ok: val.isOk ? v.type : { type: 'Str' }, err: val.isOk ? { type: 'Str' } : v.type }, eff: v.eff };
+    }
+    if (val.kind === 'List') {
+        if (expectedType &amp;&amp; expectedType.type === 'List') {
+            return { type: expectedType, eff: '!Pure' };
+        }
+<span class="cstat-no" title="statement not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >        return { type: { type: 'List', inner: { type: 'I64' } }, eff: '!Pure' };</span></span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >    if (val.kind === 'Result') {</span></span>
-<span class="cstat-no" title="statement not covered" >        const v = check(ctx, { kind: 'Literal', value: val.value } as Expr, env);</span>
-<span class="cstat-no" title="statement not covered" >        // Generous Result type</span>
-<span class="cstat-no" title="statement not covered" >        return { type: { type: 'Result', ok: val.isOk ? v.type : { type: 'Str' }, err: val.isOk ? { type: 'Str' } : v.type }, eff: v.eff };</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >    if (val.kind === 'List') {</span>
-<span class="cstat-no" title="statement not covered" >        if (expectedType &amp;&amp; expectedType.type === 'List') {</span>
-<span class="cstat-no" title="statement not covered" >            return { type: expectedType, eff: '!Pure' };</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        return { type: { type: 'List', inner: { type: 'I64' } }, eff: '!Pure' };</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >    if (val.kind === 'Tuple') return { type: { type: 'Tuple', items: [] }, eff: '!Pure' };</span>
-<span class="cstat-no" title="statement not covered" >    if (val.kind === 'Record') return { type: { type: 'Record', fields: {} }, eff: '!Pure' };</span>
-<span class="cstat-no" title="statement not covered" >    throw new Error(`Unknown literal kind: ${(val as any).kind}`);</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+    if (val.kind === 'Tuple') return { type: { type: 'Tuple', items: [] }, eff: '!Pure' };
+    if (val.kind === 'Record') return { type: { type: 'Record', fields: {} }, eff: '!Pure' };
+    throw new Error(`Unknown literal kind: ${(val as any).kind}`);
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -160,7 +160,7 @@ export function checkLiteral(check: CheckFn, ctx: TypeCheckerContext, expr: Expr
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-19T01:19:37.670Z
+                at 2025-12-19T15:06:05.062Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

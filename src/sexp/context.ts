@@ -10,4 +10,6 @@ export interface ParserContext {
     expectString(): string;
     expectInt(): bigint;
     skipSExp(): void;
+    debug?: boolean;
+    log(msg: string): void;
 }
