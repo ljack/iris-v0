@@ -9,7 +9,7 @@ export const t369_async_cross_module_cache: TestCase = {
     expect: '30',
     source: `(program
  (module (name "t369") (version 0))
- (imports (import (path "mod") (alias "m")))
+ (imports (import "mod" (as "m")))
  (defs
   (deffn (name main)
     (args)
@@ -17,7 +17,7 @@ export const t369_async_cross_module_cache: TestCase = {
     (eff !Pure)
     (body
       (let (x (call m.add 10 20))
-        (call m.add x 0)))))`,
+        (call m.add x 0))))))`,
     modules: {
         'mod': `(program
  (module (name "mod") (version 0))
@@ -40,7 +40,7 @@ export const t373_async_net_listen_failed: TestCase = {
     (args)
     (ret (Result I64 Str))
     (eff !Net)
-    (body (net.listen 8080))))`;
+    (body (net.listen 8080)))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -82,7 +82,7 @@ export const t374_async_net_accept_failed: TestCase = {
     (body
       (match (net.listen 8080)
         (case (tag "Ok" (server)) (net.accept server))
-        (case (tag "Err" (e)) (Err e)))))`;
+        (case (tag "Err" (e)) (Err e)))))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -127,7 +127,7 @@ export const t375_async_net_read_failed: TestCase = {
           (match (net.accept server)
             (case (tag "Ok" (client)) (net.read client))
             (case (tag "Err" (e)) (Err e))))
-        (case (tag "Err" (e)) (Err e)))))`;
+        (case (tag "Err" (e)) (Err e)))))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -172,7 +172,7 @@ export const t376_async_net_write_failed: TestCase = {
           (match (net.accept server)
             (case (tag "Ok" (client)) (net.write client "data"))
             (case (tag "Err" (e)) (Err e))))
-        (case (tag "Err" (e)) (Err e)))))`;
+        (case (tag "Err" (e)) (Err e)))))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -214,7 +214,7 @@ export const t377_async_net_close_failed: TestCase = {
     (body
       (match (net.listen 8080)
         (case (tag "Ok" (server)) (net.close server))
-        (case (tag "Err" (e)) (Err e)))))`;
+        (case (tag "Err" (e)) (Err e)))))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -253,7 +253,7 @@ export const t378_async_net_connect_failed: TestCase = {
     (args)
     (ret (Result I64 Str))
     (eff !Net)
-    (body (net.connect "example.com" 80))))`;
+    (body (net.connect "example.com" 80)))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -284,40 +284,26 @@ export const t378_async_net_connect_failed: TestCase = {
 
 export const t379_async_http_get_failed: TestCase = {
     name: 'Test 379: async http.get failed',
-    fn: async () => {
-        const source = `(program
+    expect: 'TypeError: Unknown intrinsic: http.get',
+    source: `(program
  (module (name "t379") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret (Result (Record (version Str) (status I64) (headers (List (Record (key Str) (val Str)))) (body Str)) Str))
     (eff !Net)
-    (body (http.get "http://invalid-url-that-fails.test"))))`;
-
-        const result = await run(source);
-        // http.get may fail, so we just check it returns Result
-        if (!result.includes('Result') && !result.includes('isOk')) {
-            throw new Error(`Expected Result, got ${result}`);
-        }
-    }
+    (body (http.get "http://invalid-url-that-fails.test")))))`
 };
 
 export const t380_async_http_post_failed: TestCase = {
     name: 'Test 380: async http.post failed',
-    fn: async () => {
-        const source = `(program
+    expect: 'TypeError: Unknown intrinsic: http.post',
+    source: `(program
  (module (name "t380") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret (Result (Record (version Str) (status I64) (headers (List (Record (key Str) (val Str)))) (body Str)) Str))
     (eff !Net)
-    (body (http.post "http://invalid-url-that-fails.test" "data"))))`;
-
-        const result = await run(source);
-        // http.post may fail, so we just check it returns Result
-        if (!result.includes('Result') && !result.includes('isOk')) {
-            throw new Error(`Expected Result, got ${result}`);
-        }
-    }
+    (body (http.post "http://invalid-url-that-fails.test" "data")))))`
 };

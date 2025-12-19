@@ -60,6 +60,7 @@ export function fmt(ctx: TypeCheckerContext, t: IrisType): string {
         case 'Map': return `(Map ${fmt(ctx, t.key)} ${fmt(ctx, t.value)})`;
         case 'Record': return `(Record ${Object.keys(t.fields).map(k => `(${k} ${fmt(ctx, t.fields[k])})`).join(' ')})`;
         case 'Union': return `(Union ${Object.keys(t.variants).map(k => `(tag "${k}" ${fmt(ctx, t.variants[k])})`).join(' ')})`;
+        case 'Fn': return `(Fn (${t.args.map(a => fmt(ctx, a)).join(' ')}) ${fmt(ctx, t.ret)})`; // Should we show Effect? Maybe.
         default: return 'Unknown';
     }
 }
@@ -141,6 +142,15 @@ export function typesEqual(ctx: TypeCheckerContext, t1: IrisType, t2: IrisType):
             if (!typesEqual(ctx, i1[i], i2[i])) return false;
         }
         return true;
+    }
+
+    if (t1.type === 'Fn' && t2.type === 'Fn') {
+        if (t1.args.length !== t2.args.length) return false;
+        for (let i = 0; i < t1.args.length; i++) {
+            if (!typesEqual(ctx, t1.args[i], t2.args[i])) return false;
+        }
+        if (!typesEqual(ctx, t1.ret, t2.ret)) return false;
+        return t1.eff === t2.eff;
     }
 
     if (t1.type === 'Union') {

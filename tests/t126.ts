@@ -8,7 +8,7 @@ const LIST_STR_TEST = `
     (deffn (name main) (args) (ret (Tuple I64 I64 I64 I64 I64)) (eff !Pure)
       (body
         (let (l (list 1 2 3))
-          (let (len (list.len l))
+          (let (len (list.length l))
             (let (first (list.get l 0))
               (let (second (list.get l 1))
                 (let (missing (list.get l 5))
@@ -35,7 +35,7 @@ const LIST_STR_TEST = `
 `;
 
 export const T126: TestCase = {
-    name: 'List and Str Utils',
-    source: LIST_STR_TEST,
-    expect: "(tuple 3 1 2 -1 5)"
+  name: 'List and Str Utils',
+  source: LIST_STR_TEST,
+  expect: "(tuple 3 1 2 -1 5)"
 };

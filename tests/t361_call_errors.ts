@@ -12,7 +12,7 @@ export const t361_call_function_error: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body 42)))`;
+    (body 42))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -50,7 +50,7 @@ export const t362_call_function_arity_error: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body 42)))`;
+    (body 42))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -83,7 +83,7 @@ export const t363_no_main_error: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body 42)))`;
+    (body 42))))`;
 
         const { Interpreter } = await import('../src/eval');
         const { Parser } = await import('../src/sexp');
@@ -108,16 +108,16 @@ export const t363_no_main_error: TestCase = {
 
 export const t370_async_call_with_resolver_no_func: TestCase = {
     name: 'Test 370: async call with resolver no func',
-    expect: 'RuntimeError: Unknown function',
+    expect: 'TypeError: Unknown function call: m.nonexistent',
     source: `(program
  (module (name "t370") (version 0))
- (imports (import (path "mod") (alias "m")))
+ (imports (import "mod" (as "m")))
  (defs
   (deffn (name main)
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call m.nonexistent))))`,
+    (body (call m.nonexistent)))))`,
     modules: {
         'mod': `(program
  (module (name "mod") (version 0))
@@ -126,13 +126,13 @@ export const t370_async_call_with_resolver_no_func: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body 42)))`
+    (body 42))))`
     }
 };
 
 export const t371_async_call_with_resolver_no_import: TestCase = {
     name: 'Test 371: async call with resolver no import',
-    expect: 'RuntimeError: Unknown function',
+    expect: 'TypeError: Unknown function call: m.func',
     source: `(program
  (module (name "t371") (version 0))
  (defs
@@ -140,19 +140,19 @@ export const t371_async_call_with_resolver_no_import: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call m.func))))`
+    (body (call m.func)))))`
 };
 
 export const t372_async_call_with_resolver_no_program: TestCase = {
     name: 'Test 372: async call with resolver no program',
-    expect: 'RuntimeError: Unknown function',
+    expect: 'TypeError: Unknown function call: m.func',
     source: `(program
  (module (name "t372") (version 0))
- (imports (import (path "nonexistent") (alias "m")))
+ (imports (import "nonexistent" (as "m")))
  (defs
   (deffn (name main)
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call m.func))))`
+    (body (call m.func)))))`
 };

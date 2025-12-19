@@ -1,7 +1,7 @@
 
 import { Expr, MatchCase, IntrinsicOp, Value } from '../types';
 import { ParserContext } from './context';
-import { parseType } from './parse-type';
+import { parseType, parseEffect } from './parse-type';
 
 export function parseExpr(ctx: ParserContext): Expr {
     const token = ctx.peek();
@@ -44,6 +44,25 @@ export function parseExpr(ctx: ParserContext): Expr {
             const body = parseExpr(ctx);
             ctx.expect('RParen');
             return { kind: 'Let', name, value: val, body };
+        }
+        if (op === 'lambda') {
+            // (lambda (args (x T) ...) (ret T) (eff !E) (body E))
+            ctx.expect('LParen'); ctx.expectSymbol('args');
+            const args: { name: string, type: any }[] = [];
+            while (!ctx.check('RParen')) {
+                ctx.expect('LParen');
+                const argName = ctx.expectSymbol();
+                const argType = parseType(ctx);
+                ctx.expect('RParen');
+                args.push({ name: argName, type: argType });
+            }
+            ctx.expect('RParen');
+
+            ctx.expect('LParen'); ctx.expectSymbol('ret'); const ret = parseType(ctx); ctx.expect('RParen');
+            ctx.expect('LParen'); ctx.expectSymbol('eff'); const eff = parseEffect(ctx); ctx.expect('RParen');
+            ctx.expect('LParen'); ctx.expectSymbol('body'); const body = parseExpr(ctx); ctx.expect('RParen');
+
+            return { kind: 'Lambda', args, ret, eff, body };
         }
         if (op === 'record') {
             // (record (k v) ...)

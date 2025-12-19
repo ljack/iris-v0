@@ -125,16 +125,24 @@ export class Parser implements ParserContext {
         return parseExpr(this);
     }
 
-    public peek() { if (this.pos >= this.tokens.length) return { kind: 'EOF', line: 0, col: 0 } as Token; return this.tokens[this.pos]; }
-    public consume() { this.pos++; }
+    public peek() {
+        if (this.pos >= this.tokens.length) return { kind: 'EOF', line: 0, col: 0 } as Token;
+        return this.tokens[this.pos];
+    }
+    public consume() {
+        // console.log(`Consume: ${this.tokens[this.pos]?.kind} '${(this.tokens[this.pos] as any)?.value || ''}'`);
+        this.pos++;
+    }
 
     public check(kind: Token['kind']): boolean {
         const t = this.peek();
+        // console.log(`Check ${kind} vs ${t.kind}`);
         return t.kind === kind;
     }
 
     public expect(kind: Token['kind']) {
         const t = this.peek();
+        // console.log(`Expect ${kind} vs ${t.kind} at ${t.line}:${t.col}`);
         if (t.kind !== kind) {
             throw new Error(`Expected ${kind} at ${t.line}:${t.col}, got ${t.kind}`);
         }

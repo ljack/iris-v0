@@ -220,8 +220,8 @@ import {
 } from './t259_sync_errors';
 import {
   t271_match_non_exhaustive, t272_match_wildcard, t273_match_list_cons_two_vars,
-  t274_match_tuple_tagged, t275_match_tuple_tagged_multiple_vars, t276_match_tagged_tuple_payload,
-  t277_match_result_err, t278_match_option_none, t279_match_list_nil, t280_match_no_match_error
+  t274_match_tuple_tagged, t275_match_tuple_tagged_vars, t276_match_tagged_with_tuple,
+  t277_match_result_err, t278_match_option_none, t279_match_list_nil, t280_match_no_case
 } from './t271_match_edge_cases';
 import {
   t281_cross_module_sync, t282_cross_module_resolver_fail, t283_sync_lambda,
@@ -325,8 +325,8 @@ export const TESTS = [
   t267_sync_async_intrinsic_error, t268_sync_normalize_literal, t269_sync_bool_ops, t270_sync_not_operator,
   // Match edge cases
   t271_match_non_exhaustive, t272_match_wildcard, t273_match_list_cons_two_vars,
-  t274_match_tuple_tagged, t275_match_tuple_tagged_multiple_vars, t276_match_tagged_tuple_payload,
-  t277_match_result_err, t278_match_option_none, t279_match_list_nil, t280_match_no_match_error,
+  t274_match_tuple_tagged, t275_match_tuple_tagged_vars, t276_match_tagged_with_tuple,
+  t277_match_result_err, t278_match_option_none, t279_match_list_nil, t280_match_no_case,
   // Cross-module and advanced sync tests
   t281_cross_module_sync, t282_cross_module_resolver_fail, t283_sync_lambda,
   t284_sync_constants, t285_sync_var_from_constant, t286_sync_parser_trace,

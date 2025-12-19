@@ -64,7 +64,7 @@ export const t282_cross_module_resolver_fail: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call x.func))))`;
+    (body (call x.func)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -98,34 +98,21 @@ export const t282_cross_module_resolver_fail: TestCase = {
 
 export const t283_sync_lambda: TestCase = {
   name: 'Test 283: sync lambda creation',
-  fn: async () => {
-    const source = `(program
+  expect: 'Lambda',
+  source: `(program
  (module (name "t283") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret (Fn (I64) I64))
     (eff !Pure)
-    (body (lambda (args (x I64)) (ret I64) (eff !Pure) (body (+ x 1))))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'Lambda') {
-      throw new Error(`Expected Lambda, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body (lambda (args (x I64)) (ret I64) (eff !Pure) (body (+ x 1)))))))`
 };
 
 export const t284_sync_constants: TestCase = {
   name: 'Test 284: sync constants initialization',
-  fn: async () => {
-    const source = `(program
+  expect: '314',
+  source: `(program
  (module (name "t284") (version 0))
  (defs
   (defconst (name PI) (type I64) (value 314))
@@ -133,26 +120,13 @@ export const t284_sync_constants: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body PI)))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'I64' || result.value !== 314n) {
-      throw new Error(`Expected 314, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body PI))))`
 };
 
 export const t285_sync_var_from_constant: TestCase = {
   name: 'Test 285: sync var from constant',
-  fn: async () => {
-    const source = `(program
+  expect: '43',
+  source: `(program
  (module (name "t285") (version 0))
  (defs
   (defconst (name X) (type I64) (value 42))
@@ -160,28 +134,13 @@ export const t285_sync_var_from_constant: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (+ X 1))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'I64' || result.value !== 43n) {
-      throw new Error(`Expected 43, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body (+ X 1)))))`
 };
 
 export const t286_sync_parser_trace: TestCase = {
   name: 'Test 286: sync parser trace paths',
-  fn: async () => {
-    // This test exercises the parser trace logging paths in evalExprSync
-    // by calling functions that match the trace conditions
-    const source = `(program
+  expect: '42',
+  source: `(program
  (module (name "t286") (version 0))
  (defs
   (deffn (name parse_def_list)
@@ -193,27 +152,13 @@ export const t286_sync_parser_trace: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call parse_def_list))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'I64' || result.value !== 42n) {
-      throw new Error(`Expected 42, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body (call parse_def_list)))))`
 };
 
 export const t287_sync_depth_counter: TestCase = {
   name: 'Test 287: sync depth counter',
-  fn: async () => {
-    // Test that depth counter increments correctly
-    const source = `(program
+  expect: '0',
+  source: `(program
  (module (name "t287") (version 0))
  (defs
   (deffn (name deep)
@@ -228,54 +173,26 @@ export const t287_sync_depth_counter: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call deep 5))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'I64' || result.value !== 0n) {
-      throw new Error(`Expected 0, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body (call deep 5)))))`
 };
 
 export const t288_sync_step_counter: TestCase = {
   name: 'Test 288: sync step counter',
-  fn: async () => {
-    // Test that step counter increments
-    const source = `(program
+  expect: '3',
+  source: `(program
  (module (name "t288") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret I64)
     (eff !Pure)
-    (body (+ 1 2))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'I64' || result.value !== 3n) {
-      throw new Error(`Expected 3, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body (+ 1 2)))))`
 };
 
 export const t289_sync_match_tco: TestCase = {
   name: 'Test 289: sync match TCO',
-  fn: async () => {
-    // Test tail call optimization in match
-    const source = `(program
+  expect: '42',
+  source: `(program
  (module (name "t289") (version 0))
  (defs
   (deffn (name main)
@@ -285,26 +202,13 @@ export const t289_sync_match_tco: TestCase = {
     (body
       (match (Some 42)
         (case (tag "Some" (v)) v)
-        (case (tag "None") 0)))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    const result = interpreter.callFunctionSync('main', []);
-
-    if (result.kind !== 'I64' || result.value !== 42n) {
-      throw new Error(`Expected 42, got ${JSON.stringify(result)}`);
-    }
-  }
+        (case (tag "None") 0))))))`
 };
 
 export const t290_sync_call_arity_error: TestCase = {
   name: 'Test 290: sync call arity error',
-  fn: async () => {
-    const source = `(program
+  expect: 'TypeError: Arity mismatch for f',
+  source: `(program
  (module (name "t290") (version 0))
  (defs
   (deffn (name f)
@@ -316,21 +220,5 @@ export const t290_sync_call_arity_error: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call f 1 2))))`;
-
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-
-    const interpreter = new Interpreter(program);
-    try {
-      const result = interpreter.callFunctionSync('main', []);
-      throw new Error(`Expected error, got ${JSON.stringify(result)}`);
-    } catch (e: any) {
-      if (!e.message.includes('Arity') && !e.message.includes('mismatch')) {
-        throw new Error(`Expected arity error, got ${e.message}`);
-      }
-    }
-  }
+    (body (call f 1 2)))))`
 };

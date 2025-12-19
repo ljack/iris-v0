@@ -51,7 +51,7 @@ export function evalIo(ctx: InterpreterContext, op: IntrinsicOp, args: Value[]):
         } else if (val.kind === 'I64' || val.kind === 'Bool') {
             console.log(val.value.toString());
         } else {
-            console.log(JSON.stringify(val));
+            console.log(JSON.stringify(val, (k, v) => typeof v === 'bigint' ? v.toString() : v));
         }
         return { kind: 'I64', value: 0n };
     }

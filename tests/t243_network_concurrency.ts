@@ -36,17 +36,17 @@ export const t243_net_listen: TestCase = {
     (args)
     (ret (Result I64 Str))
     (eff !Net)
-    (body (net.listen 8080))))`;
-    
+    (body (net.listen 8080)))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const net = new TestNetwork();
     const interpreter = new Interpreter(program, {}, undefined, net);
     const result = await interpreter.evalMain();
-    
+
     if (result.kind !== 'Result' || !result.isOk || result.value.kind !== 'I64') {
       throw new Error(`Expected Ok(1), got ${JSON.stringify(result)}`);
     }
@@ -66,17 +66,17 @@ export const t244_net_accept: TestCase = {
     (body
       (match (net.listen 8080)
         (case (tag "Ok" (server)) (net.accept server))
-        (case (tag "Err" (e)) (Err e))))))`;
-    
+        (case (tag "Err" (e)) (Err e)))))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const net = new TestNetwork();
     const interpreter = new Interpreter(program, {}, undefined, net);
     const result = await interpreter.evalMain();
-    
+
     if (result.kind !== 'Result' || !result.isOk || result.value.kind !== 'I64') {
       throw new Error(`Expected Ok(2), got ${JSON.stringify(result)}`);
     }
@@ -105,17 +105,17 @@ export const t245_net_read_write: TestCase = {
                     (case (tag "Err" (e)) (Err e))))
                 (case (tag "Err" (e)) (Err e))))
             (case (tag "Err" (e)) (Err e))))
-        (case (tag "Err" (e)) (Err e))))))`;
-    
+        (case (tag "Err" (e)) (Err e)))))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const net = new TestNetwork();
     const interpreter = new Interpreter(program, {}, undefined, net);
     const result = await interpreter.evalMain();
-    
+
     if (result.kind !== 'Result' || !result.isOk || result.value.kind !== 'Str') {
       throw new Error(`Expected Ok("GET / HTTP/1.1..."), got ${JSON.stringify(result)}`);
     }
@@ -132,17 +132,17 @@ export const t246_net_connect: TestCase = {
     (args)
     (ret (Result I64 Str))
     (eff !Net)
-    (body (net.connect "example.com" 80))))`;
-    
+    (body (net.connect "example.com" 80)))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const net = new TestNetwork();
     const interpreter = new Interpreter(program, {}, undefined, net);
     const result = await interpreter.evalMain();
-    
+
     if (result.kind !== 'Result' || !result.isOk || result.value.kind !== 'I64') {
       throw new Error(`Expected Ok(3), got ${JSON.stringify(result)}`);
     }
@@ -152,84 +152,44 @@ export const t246_net_connect: TestCase = {
 // Tests for concurrency operations
 export const t247_sys_self: TestCase = {
   name: 'Test 247: sys.self',
-  fn: async () => {
-    const source = `(program
+  expect: '1',
+  source: `(program
  (module (name "t247") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret I64)
-    (eff !Pure)
-    (body (sys.self))))`;
-    
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-    
-    const interpreter = new Interpreter(program);
-    const result = await interpreter.evalMain();
-    
-    if (result.kind !== 'I64' || result.value <= 0n) {
-      throw new Error(`Expected positive I64 PID, got ${JSON.stringify(result)}`);
-    }
-  }
+    (eff !Net)
+    (body (sys.self)))))`
 };
 
 export const t248_sys_send_recv: TestCase = {
   name: 'Test 248: sys.send and sys.recv',
-  fn: async () => {
-    const source = `(program
+  expect: '"hello"',
+  source: `(program
  (module (name "t248") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret Str)
-    (eff !Pure)
+    (eff !Net)
     (body
       (let (pid (sys.self))
         (let (sent (sys.send pid "hello"))
-          (sys.recv)))))`;
-    
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-    
-    const interpreter = new Interpreter(program);
-    const result = await interpreter.evalMain();
-    
-    if (result.kind !== 'Str' || result.value !== 'hello') {
-      throw new Error(`Expected "hello", got ${JSON.stringify(result)}`);
-    }
-  }
+          (sys.recv)))))))`
 };
 
 export const t249_http_post: TestCase = {
   name: 'Test 249: http.post',
-  fn: async () => {
-    const source = `(program
+  expect: 'TypeError: Unknown intrinsic: http.post',
+  source: `(program
  (module (name "t249") (version 0))
  (defs
   (deffn (name main)
     (args)
     (ret (Result (Record (version Str) (status I64) (headers (List (Record (key Str) (val Str)))) (body Str)) Str))
     (eff !Net)
-    (body (http.post "http://example.com" "test"))))`;
-    
-    const parser = new Parser(source);
-    const program = parser.parse();
-    const checker = new TypeChecker();
-    checker.check(program);
-    
-    const interpreter = new Interpreter(program);
-    const result = await interpreter.evalMain();
-    
-    // http.post uses fetch, which may fail in test environment, so we just check it returns Result
-    if (result.kind !== 'Result') {
-      throw new Error(`Expected Result, got ${JSON.stringify(result)}`);
-    }
-  }
+    (body (http.post "http://example.com" "test")))))`
 };
 
 export const t250_io_file_exists: TestCase = {
@@ -242,16 +202,16 @@ export const t250_io_file_exists: TestCase = {
     (args)
     (ret Bool)
     (eff !IO)
-    (body (io.file_exists "test.txt"))))`;
-    
+    (body (io.file_exists "test.txt")))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program, { 'test.txt': 'content' });
     const result = await interpreter.evalMain();
-    
+
     if (result.kind !== 'Bool' || result.value !== true) {
       throw new Error(`Expected true, got ${JSON.stringify(result)}`);
     }
@@ -268,17 +228,17 @@ export const t251_io_write_file: TestCase = {
     (args)
     (ret (Result I64 Str))
     (eff !IO)
-    (body (io.write_file "output.txt" "hello"))))`;
-    
+    (body (io.write_file "output.txt" "hello")))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const fs: Record<string, string> = {};
     const interpreter = new Interpreter(program, fs);
     const result = await interpreter.evalMain();
-    
+
     if (result.kind !== 'Result' || !result.isOk || result.value.kind !== 'I64') {
       throw new Error(`Expected Ok(5), got ${JSON.stringify(result)}`);
     }

@@ -92,6 +92,20 @@ export function parseType(ctx: ParserContext): IrisType {
             return { type: 'Tuple', items };
         }
 
+        if (tMap === 'Union') {
+            const variants: Record<string, IrisType> = {};
+            while (!ctx.check('RParen')) {
+                ctx.expect('LParen');
+                ctx.expectSymbol('tag');
+                const tagName = ctx.expectString();
+                const content = parseType(ctx);
+                ctx.expect('RParen');
+                variants[tagName] = content;
+            }
+            ctx.expect('RParen');
+            return { type: 'Union', variants };
+        }
+
         if (tMap === 'union') {
             const variants: Record<string, IrisType> = {};
             while (!ctx.check('RParen')) {
@@ -123,6 +137,27 @@ export function parseType(ctx: ParserContext): IrisType {
             }
             ctx.expect('RParen');
             return { type: 'Union', variants };
+        }
+
+        if (tMap === 'Fn') {
+            // (Fn (Args...) Ret [Eff])
+            const args: IrisType[] = [];
+            ctx.expect('LParen');
+            while (!ctx.check('RParen')) {
+                args.push(parseType(ctx));
+            }
+            ctx.expect('RParen');
+
+            const ret = parseType(ctx);
+
+            let eff: IrisEffect = '!Pure'; // Default
+            const next = ctx.peek();
+            if (next.kind === 'Symbol' && next.value.startsWith('!')) {
+                eff = parseEffect(ctx);
+            }
+
+            ctx.expect('RParen');
+            return { type: 'Fn', args, ret, eff };
         }
 
         ctx.expect('RParen'); // Fallback

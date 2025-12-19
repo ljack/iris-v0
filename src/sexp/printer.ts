@@ -25,6 +25,7 @@ export function printValue(v: Value): string {
         }
         case 'Map': return `(map)`; // Simplified for now
         case 'Tagged': return `(tag "${v.tag}" ${printValue(v.value)})`;
+        case 'Lambda': return "Lambda";
     }
     return `UnknownValue(${(v as any).kind})`;
 

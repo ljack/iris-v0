@@ -1,7 +1,7 @@
 
 import { Expr, IrisType, IrisEffect } from '../types';
 import { TypeCheckerContext } from './context';
-import { checkLiteral, checkControl, checkData, checkCall, checkIntrinsic } from './checks';
+import { checkLiteral, checkControl, checkLambda, checkData, checkCall, checkIntrinsic } from './checks';
 
 export function checkExprFull(ctx: TypeCheckerContext, expr: Expr, env: Map<string, IrisType>, expectedType?: IrisType): { type: IrisType, eff: IrisEffect } {
     switch (expr.kind) {
@@ -23,6 +23,8 @@ export function checkExprFull(ctx: TypeCheckerContext, expr: Expr, env: Map<stri
             return checkData(checkExprFull, ctx, expr, env, expectedType);
 
         case 'Intrinsic': return checkIntrinsic(checkExprFull, ctx, expr, env, expectedType);
+
+        case 'Lambda': return checkLambda(checkExprFull, ctx, expr, env, expectedType);
 
         default:
             throw new Error(`Unimplemented check for ${(expr as any).kind}`);

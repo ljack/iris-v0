@@ -21,15 +21,15 @@ export const t234_sync_str_operations: TestCase = {
     (ret Str)
     (eff !Pure)
     (body (call test_str)))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('test_str', []);
-    
+
     if (result.kind !== 'Str' || result.value !== 'helloworld') {
       throw new Error(`Expected "helloworld", got ${JSON.stringify(result)}`);
     }
@@ -47,7 +47,7 @@ export const t235_sync_map_operations: TestCase = {
     (ret (Option I64))
     (eff !Pure)
     (body
-      (let (m (map.make))
+      (let (m (map.make "witness" 0))
         (let (m2 (map.put m "key" 42))
           (map.get m2 "key")))))
   (deffn (name main)
@@ -55,15 +55,15 @@ export const t235_sync_map_operations: TestCase = {
     (ret (Option I64))
     (eff !Pure)
     (body (call test_map)))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('test_map', []);
-    
+
     if (result.kind !== 'Option' || result.value === null || result.value.kind !== 'I64' || result.value.value !== 42n) {
       throw new Error(`Expected Some(42), got ${JSON.stringify(result)}`);
     }
@@ -86,15 +86,15 @@ export const t236_sync_list_operations: TestCase = {
     (ret I64)
     (eff !Pure)
     (body (call test_list)))))`;
-    
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('test_list', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 3n) {
       throw new Error(`Expected 3, got ${JSON.stringify(result)}`);
     }
@@ -121,16 +121,16 @@ export const t237_sync_tuple_record: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (+ (call test_tuple) (call test_record)))))`;
-    
+    (body (+ (call test_tuple) (call test_record))))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 44n) {
       throw new Error(`Expected 44, got ${JSON.stringify(result)}`);
     }
@@ -157,16 +157,16 @@ export const t238_sync_bool_operations: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (&& (call test_bool) (call test_not)))))`;
-    
+    (body (&& (call test_bool) (call test_not))))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'Bool' || result.value !== true) {
       throw new Error(`Expected true, got ${JSON.stringify(result)}`);
     }
@@ -193,16 +193,16 @@ export const t239_sync_comparison: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (&& (call test_ge) (call test_gt)))))`;
-    
+    (body (&& (call test_ge) (call test_gt))))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'Bool' || result.value !== true) {
       throw new Error(`Expected true, got ${JSON.stringify(result)}`);
     }
@@ -229,16 +229,16 @@ export const t240_sync_i64_conversions: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (= (call test_to_string) "42"))))`;
-    
+    (body (= (call test_to_string) "42")))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('main', []);
-    
+
     if (result.kind !== 'Bool' || result.value !== true) {
       throw new Error(`Expected true, got ${JSON.stringify(result)}`);
     }
@@ -260,16 +260,16 @@ export const t241_sync_list_unique: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call test_unique))))`;
-    
+    (body (call test_unique)))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('test_unique', []);
-    
+
     if (result.kind !== 'I64' || result.value !== 3n) {
       throw new Error(`Expected 3, got ${JSON.stringify(result)}`);
     }
@@ -296,16 +296,16 @@ export const t242_sync_str_advanced: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (call test_str_ops))))`;
-    
+    (body (call test_str_ops)))))`;
+
     const parser = new Parser(source);
     const program = parser.parse();
     const checker = new TypeChecker();
     checker.check(program);
-    
+
     const interpreter = new Interpreter(program);
     const result = interpreter.callFunctionSync('test_str_ops', []);
-    
+
     if (result.kind !== 'Bool' || result.value !== true) {
       throw new Error(`Expected true, got ${JSON.stringify(result)}`);
     }

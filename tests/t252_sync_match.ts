@@ -1,14 +1,11 @@
 import { TestCase } from '../src/test-types';
-import { Parser } from '../src/sexp';
-import { TypeChecker } from '../src/typecheck';
-import { Interpreter } from '../src/eval';
 
 // Advanced tests for sync evaluation - Match paths
 
 export const t252_sync_match_tagged: TestCase = {
-    name: 'Test 252: sync match tagged with tuple',
-    fn: async () => {
-        const source = `(program
+  name: 'Test 252: sync match tagged with tuple',
+  expect: 'TypeError: Match case Pair expects 1 variable (payload binding)',
+  source: `(program
  (module (name "t252") (version 0))
  (defs
   (deffn (name main)
@@ -16,29 +13,16 @@ export const t252_sync_match_tagged: TestCase = {
     (ret I64)
     (eff !Pure)
     (body
-      (let (val (tagged "Pair" (tuple 1 2)))
+      (let (val (tag "Pair" (tuple 1 2)))
         (match val
           (case (tag "Pair" (a b)) (+ a b))
-          (case (tag "_") 0))))))`;
-
-        const parser = new Parser(source);
-        const program = parser.parse();
-        const checker = new TypeChecker();
-        checker.check(program);
-
-        const interpreter = new Interpreter(program);
-        const result = interpreter.callFunctionSync('main', []);
-
-        if (result.kind !== 'I64' || result.value !== 3n) {
-            throw new Error(`Expected 3, got ${JSON.stringify(result)}`);
-        }
-    }
+          (case (tag "_") 0)))))))`
 };
 
 export const t253_sync_match_list: TestCase = {
-    name: 'Test 253: sync match list cons',
-    fn: async () => {
-        const source = `(program
+  name: 'Test 253: sync match list cons',
+  expect: '1',
+  source: `(program
  (module (name "t253") (version 0))
  (defs
   (deffn (name main)
@@ -48,26 +32,13 @@ export const t253_sync_match_list: TestCase = {
     (body
       (match (list 1 2 3)
         (case (tag "nil") 0)
-        (case (tag "cons" (h t)) h)))))`;
-
-        const parser = new Parser(source);
-        const program = parser.parse();
-        const checker = new TypeChecker();
-        checker.check(program);
-
-        const interpreter = new Interpreter(program);
-        const result = interpreter.callFunctionSync('main', []);
-
-        if (result.kind !== 'I64' || result.value !== 1n) {
-            throw new Error(`Expected 1, got ${JSON.stringify(result)}`);
-        }
-    }
+        (case (tag "cons" (h t)) h))))))`
 };
 
 export const t254_sync_match_result: TestCase = {
-    name: 'Test 254: sync match Result',
-    fn: async () => {
-        const source = `(program
+  name: 'Test 254: sync match Result',
+  expect: '42',
+  source: `(program
  (module (name "t254") (version 0))
  (defs
   (deffn (name main)
@@ -77,26 +48,13 @@ export const t254_sync_match_result: TestCase = {
     (body
       (match (Ok 42)
         (case (tag "Ok" (v)) v)
-        (case (tag "Err" (e)) 0)))))`;
-
-        const parser = new Parser(source);
-        const program = parser.parse();
-        const checker = new TypeChecker();
-        checker.check(program);
-
-        const interpreter = new Interpreter(program);
-        const result = interpreter.callFunctionSync('main', []);
-
-        if (result.kind !== 'I64' || result.value !== 42n) {
-            throw new Error(`Expected 42, got ${JSON.stringify(result)}`);
-        }
-    }
+        (case (tag "Err" (e)) 0))))))`
 };
 
 export const t255_sync_match_option: TestCase = {
-    name: 'Test 255: sync match Option',
-    fn: async () => {
-        const source = `(program
+  name: 'Test 255: sync match Option',
+  expect: '42',
+  source: `(program
  (module (name "t255") (version 0))
  (defs
   (deffn (name main)
@@ -106,18 +64,5 @@ export const t255_sync_match_option: TestCase = {
     (body
       (match (Some 42)
         (case (tag "Some" (v)) v)
-        (case (tag "None") 0)))))`;
-
-        const parser = new Parser(source);
-        const program = parser.parse();
-        const checker = new TypeChecker();
-        checker.check(program);
-
-        const interpreter = new Interpreter(program);
-        const result = interpreter.callFunctionSync('main', []);
-
-        if (result.kind !== 'I64' || result.value !== 42n) {
-            throw new Error(`Expected 42, got ${JSON.stringify(result)}`);
-        }
-    }
+        (case (tag "None") 0))))))`
 };

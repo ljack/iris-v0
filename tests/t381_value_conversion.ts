@@ -14,10 +14,10 @@ export const t381_map_tagged_str_key: TestCase = {
     (ret (Option I64))
     (eff !Pure)
     (body
-      (let (m (map.make))
-        (let (val (tagged "Str" "hello"))
+      (let (m (map.make (tag "Str" "") 0))
+        (let (val (tag "Str" "hello"))
           (let (m2 (map.put m val 100))
-            (map.get m2 val))))))`
+            (map.get m2 val))))))))`
 };
 
 export const t382_map_tagged_i64_key: TestCase = {
@@ -31,15 +31,15 @@ export const t382_map_tagged_i64_key: TestCase = {
     (ret (Option I64))
     (eff !Pure)
     (body
-      (let (m (map.make))
-        (let (val (tagged "I64" 42))
+      (let (m (map.make (tag "I64" 0) 0))
+        (let (val (tag "I64" 42))
           (let (m2 (map.put m val 100))
-            (map.get m2 val))))))`
+            (map.get m2 val))))))))`
 };
 
 export const t383_map_tagged_other_key: TestCase = {
   name: 'Test 383: map tagged other key',
-  expect: 'RuntimeError: Invalid map key type',
+  expect: '(Some 100)',
   source: `(program
  (module (name "t383") (version 0))
  (defs
@@ -48,26 +48,32 @@ export const t383_map_tagged_other_key: TestCase = {
     (ret (Option I64))
     (eff !Pure)
     (body
-      (let (m (map.make))
-        (let (val (tagged "Some" 42))
-          (map.put m val 100)))))`
+      (let (m (map.make (tag "Some" 0) 0))
+        (let (val (tag "Some" 42))
+          (let (m2 (map.put m val 100))
+             (map.get m2 val))))))))`,
 };
 
 export const t384_map_keys_i64_str: TestCase = {
   name: 'Test 384: map.keys with I64 and Str',
-  expect: '(list 42 "key")',
+  expect: '(list (tag "I64" 42) (tag "Str" "key"))',
   source: `(program
  (module (name "t384") (version 0))
  (defs
+  (deffn (name make_poly_map)
+    (args (w (Union (tag "I64" I64) (tag "Str" Str))))
+    (ret (Map (Union (tag "I64" I64) (tag "Str" Str)) I64))
+    (eff !Pure)
+    (body (map.make w 0)))
   (deffn (name main)
     (args)
     (ret (List (Union (tag "I64" I64) (tag "Str" Str))))
     (eff !Pure)
     (body
-      (let (m (map.make))
-        (let (m2 (map.put m 42 1))
-          (let (m3 (map.put m2 "key" 2))
-            (map.keys m3))))))`
+      (let (m (call make_poly_map (tag "I64" 0)))
+        (let (m2 (map.put m (tag "I64" 42) 1))
+          (let (m3 (map.put m2 (tag "Str" "key") 2))
+            (map.keys m3))))))))`
 };
 
 export const t385_async_init_constants: TestCase = {
@@ -81,7 +87,7 @@ export const t385_async_init_constants: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body PI)))`
+    (body PI))))`
 };
 
 export const t386_async_init_constants_multiple: TestCase = {
@@ -96,7 +102,7 @@ export const t386_async_init_constants_multiple: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (+ X Y))))`
+    (body (+ X Y)))))`
 };
 
 export const t387_async_constants_already_init: TestCase = {
@@ -110,7 +116,7 @@ export const t387_async_constants_already_init: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body X)))`
+    (body X))))`
 };
 
 export const t388_async_call_with_dot_notation: TestCase = {
@@ -125,7 +131,7 @@ export const t388_async_call_with_dot_notation: TestCase = {
     (eff !Pure)
     (body
       (let (r (record (x (record (y 30)))))
-        r.x.y)))`
+        r.x.y)))))`
 };
 
 export const t389_async_call_with_tuple_index: TestCase = {
@@ -140,7 +146,7 @@ export const t389_async_call_with_tuple_index: TestCase = {
     (eff !Pure)
     (body
       (let (t (tuple 1 2 3))
-        t.1)))`
+        t.1)))))`
 };
 
 export const t390_async_call_nested_dot: TestCase = {
@@ -155,7 +161,7 @@ export const t390_async_call_nested_dot: TestCase = {
     (eff !Pure)
     (body
       (let (r (record (a (record (b (record (c 42)))))))
-        r.a.b.c)))`
+        r.a.b.c)))))`
 };
 
 export const t391_async_call_mixed_dot: TestCase = {
@@ -171,7 +177,7 @@ export const t391_async_call_mixed_dot: TestCase = {
     (body
       (let (r (record (items (tuple 1 2 3))))
         (let (t r.items)
-          t.2)))`
+          t.2))))))`
 };
 
 export const t392_async_var_from_env: TestCase = {
@@ -189,7 +195,7 @@ export const t392_async_var_from_env: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call f 42))))`
+    (body (call f 42)))))`
 };
 
 export const t393_async_var_shadowing: TestCase = {
@@ -205,7 +211,7 @@ export const t393_async_var_shadowing: TestCase = {
     (body
       (let (x 10)
         (let (x 20)
-          x)))))`
+          x))))))`
 };
 
 export const t394_async_match_result_ok: TestCase = {
@@ -221,7 +227,7 @@ export const t394_async_match_result_ok: TestCase = {
     (body
       (match (Ok 42)
         (case (tag "Ok" (v)) v)
-        (case (tag "Err" (e)) 0)))))`
+        (case (tag "Err" (e)) 0))))))`
 };
 
 export const t395_async_match_result_err: TestCase = {
@@ -237,7 +243,7 @@ export const t395_async_match_result_err: TestCase = {
     (body
       (match (Err "error")
         (case (tag "Ok" (v)) v)
-        (case (tag "Err" (e)) 0)))))`
+        (case (tag "Err" (e)) 0))))))`
 };
 
 export const t396_async_match_option_some: TestCase = {
@@ -253,7 +259,7 @@ export const t396_async_match_option_some: TestCase = {
     (body
       (match (Some 42)
         (case (tag "Some" (v)) v)
-        (case (tag "None") 0)))))`
+        (case (tag "None") 0))))))`
 };
 
 export const t397_async_match_option_none: TestCase = {

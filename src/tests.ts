@@ -72,6 +72,14 @@ async function main() {
         }
       }
     } catch (e: any) {
+      if ('expect' in t && t.expect && (t.expect.startsWith('TypeError:') || t.expect.startsWith('RuntimeError:') || t.expect.startsWith('ParseError:') || t.expect.startsWith('Exception:'))) {
+        const cleanExpect = t.expect.replace(/^Exception: /, '');
+        if (e.message.includes(cleanExpect) || e.message === cleanExpect) {
+          if (!failOnly) console.log(`✅ PASS ${t.name} (Exception matched)`);
+          passed++;
+          continue;
+        }
+      }
       console.error(`❌ FAILED ${t.name}: Exception: ${e.message}`);
       failed++;
     }

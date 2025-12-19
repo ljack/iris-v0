@@ -26,7 +26,7 @@ const MAP_TEST = `
                              (case (tag "Some" (x)) x) 
                              (case (tag "None") -1))
                            has-a
-                           (list.len keys)
+                           (list.length keys)
                         )
                       )
                     )
