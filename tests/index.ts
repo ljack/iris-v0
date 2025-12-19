@@ -296,6 +296,7 @@ import { t393_ops_coverage } from './t393_ops_coverage';
 import { t394_sexp_coverage } from './t394_sexp_coverage';
 import { t395_typecheck_coverage } from './t395_typecheck_coverage';
 import { t396_runtime_coverage } from './t396_runtime_coverage';
+import { t397_syntax_errors } from './t397_syntax_errors';
 
 export const TESTS = [
   t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
@@ -385,6 +386,7 @@ export const TESTS = [
   t394_sexp_coverage,
   t395_typecheck_coverage,
   t396_runtime_coverage,
+  t397_syntax_errors
 ];
 // Advanced/experimental tests (some may fail):
 // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145

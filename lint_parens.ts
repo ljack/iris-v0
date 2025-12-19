@@ -1,91 +1,120 @@
 
 import * as fs from 'fs';
-import * as path from 'path';
 
-function checkParens(file: string): boolean {
-    const content = fs.readFileSync(file, 'utf-8');
-    let balance = 0;
+function lint(file: string) {
+    const content = fs.readFileSync(file, 'utf8');
     const lines = content.split('\n');
-    let error = false;
+    let depth = 0;
 
-    // Filter out comments (lines starting with ;) 
-    // And handle inline comments?
-    // Simplified checker: just count ( and ) ignoring strings and comments
+    // Stack to track open sections: 'program', 'defs', 'deffn', 'body', etc.
+    // Each item: { name: string, line: number, col: number, depth: number }
+    const stack: { name: string, line: number, col: number, depth: number }[] = [];
 
-    // We'll use a simple state machine
     let inString = false;
-    let inComment = false;
-    let escaped = false;
+    let escape = false;
 
-    for (let i = 0; i < content.length; i++) {
-        const char = content[i];
-
-        if (inComment) {
-            if (char === '\n') inComment = false;
-            continue;
+    // Helper to log context
+    const logContext = (l: number, c: number, char: string, action: string) => {
+        // Only log major structure changes or depth 0 events
+        if (depth <= 2 || stack.length <= 2) {
+            const scope = stack.length > 0 ? stack[stack.length - 1].name : 'TOP';
+            console.log(`[Line ${l + 1}:${c + 1}] ${action} '${char}' | Depth: ${depth} | Scope: ${scope}`);
         }
+    };
 
-        if (inString) {
-            if (escaped) {
-                escaped = false;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+
+            if (inString) {
+                if (escape) {
+                    escape = false;
+                } else if (char === '\\') {
+                    escape = true;
+                } else if (char === '"') {
+                    inString = false;
+                }
                 continue;
             }
-            if (char === '\\') {
-                escaped = true;
-                continue;
+
+            if (char === ';') {
+                // Comment start, ignore rest of line
+                // Determine if it is ; or ;;
+                // In Iris: ; is comment to EOL. 
+                break;
             }
+
             if (char === '"') {
-                inString = false;
+                inString = true;
+                continue;
             }
-            continue;
-        }
 
-        if (char === ';') {
-            inComment = true;
-            continue;
-        }
+            if (char === '(') {
 
-        if (char === '"') {
-            inString = true;
-            continue;
-        }
+                // Try to peek ahead to see what form this is
+                let k = j + 1;
+                while (k < line.length && /\s/.test(line[k])) k++;
+                let formName = '';
+                while (k < line.length && /[a-zA-Z0-9_!.]/.test(line[k])) {
+                    formName += line[k];
+                    k++;
+                }
 
-        if (char === '(') balance++;
-        if (char === ')') balance--;
+                if (formName) {
+                    stack.push({ name: formName, line: i, col: j, depth: depth + 1 });
+                    logContext(i, j, char, `OPEN (${formName})`);
+                } else {
+                    // Just a generic list/paren
+                    // stack.push({ name: 'list', line: i, col: j, depth: depth });
+                }
 
-        if (balance < 0) {
-            console.error(`Error: Unexpected closing parenthesis in ${file} at index ${i}`);
-            return false;
-        }
+                depth++;
 
-        if (char === '\n') {
-            console.log(`Line ${content.substring(0, i).split('\n').length - 1}: Balance ${balance}`);
+            } else if (char === ')') {
+                // Check if we are closing a specific named section
+                if (stack.length > 0 && stack[stack.length - 1].depth === depth) {
+                    const closed = stack.pop();
+                    logContext(i, j, char, `CLOSE (${closed?.name})`);
+
+                    // CRITICAL: If we just closed 'defs' or 'program' prematurely
+                    if (closed?.name === 'defs') {
+                        console.log(`\n⚠️  [Line ${i + 1}:${j + 1}] 'defs' section CLOSED here.`);
+                    }
+                    if (closed?.name === 'program') {
+                        console.log(`\n⚠️  [Line ${i + 1}:${j + 1}] 'program' section CLOSED here.`);
+                    }
+                }
+
+                depth--;
+
+                if (depth < 0) {
+                    console.error(`\n❌ ERROR: Extra Closing Parenthesis at Line ${i + 1}:${j + 1}`);
+                    return;
+                }
+
+                if (depth === 0) {
+                    console.log(`\nℹ️  [Line ${i + 1}:${j + 1}] Reached Depth 0 (Top Level).`);
+                }
+            }
         }
     }
 
-    if (balance !== 0) {
-        console.error(`Error: Unbalanced parentheses in ${file}. Final balance: ${balance}`);
-        return false;
-    }
-    return true;
-}
-
-const target = process.argv[2];
-if (target) {
-    if (!checkParens(target)) process.exit(1);
-    console.log("Parentheses balanced.");
-} else {
-    const dir = 'examples';
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.iris'));
-    let pass = true;
-    for (const f of files) {
-        if (!checkParens(path.join(dir, f))) {
-            pass = false;
+    if (depth > 0) {
+        console.error(`\n❌ ERROR: Unbalanced Parentheses. Final Depth: ${depth}`);
+        if (stack.length > 0) {
+            console.log("Unclosed sections:");
+            stack.forEach(s => console.log(` - ${s.name} (started at ${s.line + 1}:${s.col + 1})`));
         }
-    }
-    if (pass) {
-        console.log('All Iris files have balanced parentheses.');
     } else {
-        process.exit(1);
+        console.log("\n✅ Parentheses Balance Check Passed.");
     }
 }
+
+const file = process.argv[2];
+if (!file) {
+    console.log("Usage: ts-node lint_parens.ts <file>");
+    process.exit(1);
+}
+
+lint(file);

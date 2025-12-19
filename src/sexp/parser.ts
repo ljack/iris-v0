@@ -10,6 +10,7 @@ export class Parser implements ParserContext {
     private tokens: Token[];
     private pos = 0;
     public debug = false;
+    private lastClosedSection: { name: string, line: number, col: number } | null = null;
 
     constructor(input: string, debug: boolean = false) {
         this.tokens = tokenize(input);
@@ -48,6 +49,7 @@ export class Parser implements ParserContext {
                 this.expect('RParen');
                 moduleDecl = { name, version };
                 this.log(`Parsed module: ${name} v${version}`);
+                this.lastClosedSection = { name: 'module', line: this.tokens[this.pos - 1].line, col: this.tokens[this.pos - 1].col };
             } else if (section === 'imports') {
                 this.log('Parsing imports...');
                 while (!this.check('RParen')) {
@@ -68,6 +70,7 @@ export class Parser implements ParserContext {
                 }
                 this.expect('RParen');
                 this.log(`Parsed ${imports.length} imports`);
+                this.lastClosedSection = { name: 'imports', line: this.tokens[this.pos - 1].line, col: this.tokens[this.pos - 1].col };
             } else if (section === 'defs') {
                 this.log('Parsing defs...');
                 while (!this.check('RParen')) {
@@ -81,9 +84,14 @@ export class Parser implements ParserContext {
                 const endT = this.peek();
                 this.log(`Finished parsing defs. Peek is: ${endT.kind} at ${endT.line}:${endT.col}`);
                 this.expect('RParen');
+                this.lastClosedSection = { name: 'defs', line: this.tokens[this.pos - 1].line, col: this.tokens[this.pos - 1].col };
             } else {
                 this.log(`Unknown section: ${section}`);
-                throw new Error(`Unknown program section: ${section} at line ${this.tokens[this.pos].line}`);
+                let msg = `Unknown program section: ${section} at line ${this.tokens[this.pos].line}`;
+                if (this.lastClosedSection) {
+                    msg += `. Note: Previous section '${this.lastClosedSection.name}' closed at ${this.lastClosedSection.line}:${this.lastClosedSection.col}`;
+                }
+                throw new Error(msg);
             }
         }
 

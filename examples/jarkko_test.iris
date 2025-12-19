@@ -13,6 +13,37 @@
   )
   (defs
  
+  (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
+        (body
+            (let (read_res (io.read_file path))
+                (match read_res
+                    (case (tag "Err" (msg)) (tag "Err" (str.concat "File error: " msg)))
+                    (case (tag "Ok" (source))
+                        ;; 1. Tokenize
+                        (let (tokens (lexer.tokenize source))
+                            ;; 2. Parse
+                            (let (ast (parser.parse tokens))
+                                ;; 3. Type Check
+                                (let (tc_res (typecheck.type_check_program ast))
+                                        (match tc_res
+                                            (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
+                                            (case (tag "Ok" (ignore))
+                                                (if (str.contains target "wasm")
+                                                    (tag "Ok" (call codegen_wasm.codegen_module ast))
+                                                    (tag "Ok" (call codegen.codegen ast))
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    
+    
     (deffn (name main) (args) (ret I64) (eff !IO)
         (body
             (let (args (sys.args))
