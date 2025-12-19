@@ -44,6 +44,7 @@ export function resolve(ctx: TypeCheckerContext, t: IrisType): IrisType {
 }
 
 export function fmt(ctx: TypeCheckerContext, t: IrisType): string {
+    if (!t) return 'undefined';
     if (t.type === 'Named') return t.name;
 
     const resolved = resolve(ctx, t);

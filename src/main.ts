@@ -16,46 +16,6 @@ function getImports(source: string): string[] {
     }
 }
 
-function checkCircularImports(entryPath: string, modules: Record<string, string>) {
-    const visited = new Set<string>();
-    const recursionStack = new Set<string>();
-
-    function dfs(path: string) {
-        if (recursionStack.has(path)) {
-            // Found a cycle!
-            // We need to reconstruct the path for the error message?
-            // "Cycle detected: modB -> modA ..." (simplification)
-            // The path is implicit in recursionStack, but Set iteration order matches insertion in JS.
-            // Let's find the cycle start.
-            const stack = Array.from(recursionStack);
-            const cycleStart = stack.indexOf(path);
-            const cycle = stack.slice(cycleStart).concat(path).join(' -> ');
-            throw new Error(`Circular import detected: ${cycle}`);
-        }
-        if (visited.has(path)) return;
-
-        visited.add(path);
-        recursionStack.add(path);
-
-        const source = modules[path];
-        if (source) {
-            const imports = getImports(source);
-            for (const imp of imports) {
-                dfs(imp);
-            }
-        }
-
-        recursionStack.delete(path);
-    }
-
-    // We don't check entryPath itself usually if it's "source" argument (not in modules map),
-    // but the Source imports modules which might cycle.
-    // The entry source is passed separately.
-    // Let's assume entry imports X.
-    // But we need to parse entry too.
-    return; // logic moved to run()
-}
-
 
 // Helper to encapsulate program + resolver for interpreter
 type CheckResult = { success: true, program: Program, resolver: ModuleResolver } | { success: false, error: string };

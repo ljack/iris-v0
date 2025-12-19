@@ -11,9 +11,15 @@ if (grepIndex !== -1 && grepIndex + 1 < args.length) {
 const failOnly = args.includes('--fail-only');
 
 const allTests = TESTS.sort((a, b) => a.name.localeCompare(b.name));
-const tests = grep
-  ? allTests.filter(t => t.name.toLowerCase().includes(grep!.toLowerCase()))
-  : allTests;
+import { t_unit_fmt, t_unit_typesEqual } from '../tests/t_unit_typecheck_utils';
+
+const tests: TestCase[] = [
+  t_unit_fmt,
+  t_unit_typesEqual,
+  ...(grep
+    ? allTests.filter(t => t.name.toLowerCase().includes(grep!.toLowerCase()))
+    : allTests)
+];
 
 if (grep) {
   console.log(`Running tests matching: "${grep}" (Found ${tests.length})`);
