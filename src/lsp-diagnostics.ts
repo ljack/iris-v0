@@ -1,9 +1,12 @@
 import {
   Diagnostic,
+  DiagnosticRelatedInformation,
   DiagnosticSeverity,
+  Location,
   Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { Expr, Program, SourceSpan } from "./types";
 
 type IrisErrorKind = "ParseError" | "TypeError" | "RuntimeError" | "InternalError";
 
@@ -30,6 +33,19 @@ export function buildDiagnostic(
   };
 }
 
+export function buildDiagnosticsForError(
+  errorMsg: string,
+  textDocument: TextDocument,
+  program?: Program,
+): Diagnostic[] {
+  const primary = buildDiagnostic(errorMsg, textDocument);
+  const extras = buildRelatedDiagnostics(errorMsg, textDocument, program);
+  if (extras.related.length > 0) {
+    primary.relatedInformation = extras.related;
+  }
+  return [primary, ...extras.diagnostics];
+}
+
 function detectErrorKind(errorMsg: string): IrisErrorKind {
   if (errorMsg.startsWith("ParseError:")) return "ParseError";
   if (errorMsg.startsWith("TypeError:")) return "TypeError";
@@ -53,6 +69,81 @@ function codeForKind(kind: IrisErrorKind): string {
     case "InternalError":
       return "IRIS_INTERNAL";
   }
+}
+
+function buildRelatedDiagnostics(
+  errorMsg: string,
+  textDocument: TextDocument,
+  program?: Program,
+): { related: DiagnosticRelatedInformation[]; diagnostics: Diagnostic[] } {
+  const related: DiagnosticRelatedInformation[] = [];
+  const diagnostics: Diagnostic[] = [];
+
+  if (!program) {
+    return { related, diagnostics };
+  }
+
+    const returnMismatch = errorMsg.match(/Function ([A-Za-z0-9_!?\\.-]+) return type mismatch/);
+    if (returnMismatch) {
+      const fnName = returnMismatch[1];
+      const def = program.defs.find(
+        (d) =>
+          (d.kind === "DefFn" || d.kind === "DefTool") &&
+          d.name === fnName,
+      );
+    if (def?.nameSpan) {
+      const range = spanToRange(def.nameSpan);
+      related.push({
+        location: Location.create(textDocument.uri, range),
+        message: `Function name: ${fnName}`,
+      });
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Return type mismatch in ${fnName}`,
+        source: "iris",
+        code: "IRIS_RETURN_NAME",
+      });
+    }
+
+    const bodySpan =
+      def && def.kind === "DefFn" ? extractExprSpan(def.body) : undefined;
+    if (bodySpan) {
+      const range = spanToRange(bodySpan);
+      related.push({
+        location: Location.create(textDocument.uri, range),
+        message: `Return value for ${fnName}`,
+      });
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Return value for ${fnName}`,
+        source: "iris",
+        code: "IRIS_RETURN_VALUE",
+      });
+    }
+  }
+
+  return { related, diagnostics };
+}
+
+function extractExprSpan(expr: Expr): SourceSpan | undefined {
+  const direct = (expr as { span?: SourceSpan }).span;
+  if (direct) return direct;
+  if (expr.kind === "Call") {
+    return expr.fnSpan;
+  }
+  return undefined;
+}
+
+function spanToRange(span: SourceSpan): Range {
+  const line = Math.max(0, span.line - 1);
+  const startChar = Math.max(0, span.col - 1);
+  const endChar = Math.max(startChar + 1, startChar + span.len);
+  return {
+    start: { line, character: startChar },
+    end: { line, character: endChar },
+  };
 }
 
 function inferRangeFromError(

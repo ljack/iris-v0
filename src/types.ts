@@ -79,7 +79,7 @@ export type Definition =
 export type FunctionLikeDef = Extract<Definition, { kind: 'DefFn' | 'DefTool' }>;
 
 export type Expr =
-  | { kind: 'Literal'; value: Value }
+  | { kind: 'Literal'; value: Value; span?: SourceSpan }
   | { kind: 'Var'; name: string; span?: SourceSpan }
   | { kind: 'Let'; name: string; value: Expr; body: Expr }
   | { kind: 'If'; cond: Expr; then: Expr; else: Expr }

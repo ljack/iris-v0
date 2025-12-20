@@ -5,14 +5,16 @@ import { parseType, parseEffect } from './parse-type';
 
 export function parseExpr(ctx: ParserContext): Expr {
     const token = ctx.peek();
-    const tokenSpan = (t: { line: number; col: number; value?: string }): SourceSpan | undefined => {
-        if (!t.value) return { line: t.line, col: t.col, len: 1 };
-        return { line: t.line, col: t.col, len: t.value.length };
+    const tokenSpan = (t: { line: number; col: number; value?: unknown }): SourceSpan | undefined => {
+        if (typeof t.value === 'string') {
+            return { line: t.line, col: t.col, len: t.value.length };
+        }
+        return { line: t.line, col: t.col, len: 1 };
     };
 
-    if (token.kind === 'Int') { ctx.consume(); return { kind: 'Literal', value: { kind: 'I64', value: token.value } }; }
-    if (token.kind === 'Bool') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Bool', value: token.value } }; }
-    if (token.kind === 'Str') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Str', value: token.value } }; }
+    if (token.kind === 'Int') { ctx.consume(); return { kind: 'Literal', value: { kind: 'I64', value: token.value }, span: tokenSpan(token) }; }
+    if (token.kind === 'Bool') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Bool', value: token.value }, span: tokenSpan(token) }; }
+    if (token.kind === 'Str') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Str', value: token.value }, span: tokenSpan(token) }; }
     if (token.kind === 'Symbol') {
         if (token.value === 'None') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Option', value: null } }; }
         if (token.value === 'nil') { ctx.consume(); return { kind: 'Literal', value: { kind: 'List', items: [] } }; }

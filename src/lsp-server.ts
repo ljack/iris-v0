@@ -20,7 +20,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { check } from "./main";
 import path from "path";
 import fs from "fs";
-import { buildDiagnostic } from "./lsp-diagnostics";
+import { buildDiagnosticsForError } from "./lsp-diagnostics";
 import { collectIrisFiles, uriToPath } from "./lsp-workspace";
 import { pathToFileURL } from "url";
 import { Parser } from "./sexp/parser";
@@ -36,6 +36,7 @@ let workspaceRoots: string[] = [];
 let clientSupportsWatch = false;
 const definitionIndex = new Map<string, Location[]>();
 const definitionsByUri = new Map<string, Set<string>>();
+const programsByUri = new Map<string, Program>();
 
 connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
@@ -201,11 +202,13 @@ function computeDiagnostics(textDocument: TextDocument): Diagnostic[] {
     const result = check(text, {}, false);
     if (!result.success) {
       const errorMsg = result.error as string;
-      return [buildDiagnostic(errorMsg, textDocument)];
+      const program = programsByUri.get(textDocument.uri);
+      return buildDiagnosticsForError(errorMsg, textDocument, program);
     }
     return [];
   } catch (e: any) {
-    return [buildDiagnostic(`InternalError: ${e.message}`, textDocument)];
+    const program = programsByUri.get(textDocument.uri);
+    return buildDiagnosticsForError(`InternalError: ${e.message}`, textDocument, program);
   }
 }
 
@@ -283,6 +286,7 @@ function updateIndexForUri(uri: string, text: string): void {
   if (!program) {
     return;
   }
+  programsByUri.set(uri, program);
   const defs = new Set<string>();
   for (const def of program.defs) {
     if (!def.nameSpan) continue;
@@ -312,6 +316,7 @@ function removeIndexForUri(uri: string): void {
     }
   }
   definitionsByUri.delete(uri);
+  programsByUri.delete(uri);
 }
 
 function parseProgram(text: string): Program | null {

@@ -1,6 +1,6 @@
 import { TestCase } from '../src/test-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { buildDiagnostic } from '../src/lsp-diagnostics';
+import { buildDiagnostic, buildDiagnosticsForError } from '../src/lsp-diagnostics';
 
 export const t_unit_lsp_diagnostics: TestCase = {
   name: 'Unit: LSP diagnostics range',
@@ -59,13 +59,43 @@ export const t_unit_lsp_diagnostics: TestCase = {
       );
     }
 
-    const fnMismatch = buildDiagnostic(
+    const programDoc = TextDocument.create('file:///program.iris', 'iris', 1, source);
+    const spanFor = (needle: string) => {
+      const idx = source.indexOf(needle);
+      if (idx === -1) {
+        throw new Error(`Missing needle ${needle}`);
+      }
+      const prefix = source.slice(0, idx);
+      const lines = prefix.split('\n');
+      const line = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+      return { line, col, len: needle.length };
+    };
+    const fnDiagnostics = buildDiagnosticsForError(
       'TypeError: Function broken return type mismatch: Expected I64, got Str',
-      doc,
+      programDoc,
+      {
+        module: { name: 'test', version: 1 },
+        imports: [],
+        defs: [
+          {
+            kind: 'DefFn',
+            name: 'broken',
+            nameSpan: spanFor('broken'),
+            args: [],
+            ret: { type: 'I64' },
+            eff: '!Pure',
+            body: { kind: 'Literal', value: { kind: 'Str', value: 'oops' }, span: spanFor('"oops"') },
+          },
+        ],
+      },
     );
-    const fnText = doc.getText(fnMismatch.range);
+    const fnText = programDoc.getText(fnDiagnostics[0].range);
     if (fnText !== 'broken') {
       throw new Error(`Expected to highlight 'broken', got '${fnText}'`);
+    }
+    if (fnDiagnostics.length < 2) {
+      throw new Error('Expected extra diagnostics for return mismatch');
     }
 
     const spanError = buildDiagnostic(
