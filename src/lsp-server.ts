@@ -10,11 +10,11 @@ import {
   CompletionItem,
   CompletionItemKind,
   Diagnostic,
-  DiagnosticSeverity,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { check } from "./main";
+import { buildDiagnostic } from "./lsp-diagnostics";
 
 // Create LSP connection
 const connection = createConnection(ProposedFeatures.all);
@@ -118,59 +118,29 @@ documents.onDidChangeContent((change) => {
   validateIrisDocument(change.document);
 });
 
+// Also validate when document is opened
+documents.onDidOpen((event) => {
+  validateIrisDocument(event.document);
+});
+
 // Validate IRIS document using the actual parser and type checker
 async function validateIrisDocument(textDocument: TextDocument): Promise<void> {
   const text = textDocument.getText();
   const diagnostics: Diagnostic[] = [];
 
-  // Run the IRIS parser and type checker
-  const result = check(text, {}, false);
+  try {
+    // Run the IRIS parser and type checker
+    const result = check(text, {}, false);
 
-  if (!result.success) {
-    // Parse the error message to extract useful information
-    const errorMsg = result.error;
-    const lines = text.split("\n");
-
-    // Try to determine error location from message
-    // Most errors will be at the end of the file or at a specific location
-    let line = lines.length - 1;
-    let character = 0;
-
-    // Look for line numbers in error messages (e.g., "at line 5")
-    const lineMatch = errorMsg.match(/line (\d+)/i);
-    if (lineMatch) {
-      line = parseInt(lineMatch[1], 10) - 1; // Convert to 0-based
+    if (!result.success) {
+      // Parse the error message to extract useful information
+      const errorMsg = result.error as string;
+      diagnostics.push(buildDiagnostic(errorMsg, textDocument));
     }
-
-    // Determine severity based on error type
-    let severity = DiagnosticSeverity.Error;
-    let errorType = "Error";
-
-    if (errorMsg.startsWith("ParseError:")) {
-      errorType = "Parse Error";
-      severity = DiagnosticSeverity.Error;
-    } else if (errorMsg.startsWith("TypeError:")) {
-      errorType = "Type Error";
-      severity = DiagnosticSeverity.Error;
-    } else if (errorMsg.startsWith("RuntimeError:")) {
-      errorType = "Runtime Error";
-      severity = DiagnosticSeverity.Error;
-    }
-
-    // Get the actual error message without the prefix
-    const cleanMessage = errorMsg.replace(
-      /^(ParseError|TypeError|RuntimeError):\s*/,
-      "",
-    );
-
+  } catch (e: any) {
+    // If there's an unexpected error, report it as a diagnostic
     diagnostics.push({
-      severity,
-      range: {
-        start: { line, character },
-        end: { line, character: lines[line]?.length || 100 },
-      },
-      message: cleanMessage,
-      source: `iris-${errorType.toLowerCase().replace(" ", "-")}`,
+      ...buildDiagnostic(`InternalError: ${e.message}`, textDocument),
     });
   }
 

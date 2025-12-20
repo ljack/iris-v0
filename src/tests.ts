@@ -12,10 +12,12 @@ const failOnly = args.includes('--fail-only');
 
 const allTests = TESTS.sort((a, b) => a.name.localeCompare(b.name));
 import { t_unit_fmt, t_unit_typesEqual } from '../tests/t_unit_typecheck_utils';
+import { t_unit_lsp_diagnostics } from '../tests/t_unit_lsp_diagnostics';
 
 const tests: TestCase[] = [
   t_unit_fmt,
   t_unit_typesEqual,
+  t_unit_lsp_diagnostics,
   ...(grep
     ? allTests.filter(t => t.name.toLowerCase().includes(grep!.toLowerCase()))
     : allTests)
