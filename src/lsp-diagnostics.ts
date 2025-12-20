@@ -7,7 +7,8 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 type IrisErrorKind = "ParseError" | "TypeError" | "RuntimeError" | "InternalError";
 
-const IDENT_CHARS = /[A-Za-z0-9_!?-]/;
+const IDENT_CHARS = /[A-Za-z0-9_!?\\.-]/;
+const TOKEN_PATTERN = /[A-Za-z0-9_!?\\.-]+/;
 
 export function buildDiagnostic(
   errorMsg: string,
@@ -106,14 +107,19 @@ function parseLineCol(
 }
 
 function extractTokenCandidate(errorMsg: string): string | null {
+  if (/Match (target|arms)/i.test(errorMsg)) {
+    return "match";
+  }
+
   const patterns = [
-    /Unknown variable: ([A-Za-z0-9_!?-]+)/,
-    /Unknown function call: ([A-Za-z0-9_!?-]+)/,
-    /Arity mismatch for ([A-Za-z0-9_!?-]+)/,
-    /Duplicate argument name: ([A-Za-z0-9_!?-]+)/,
-    /Unknown field ([A-Za-z0-9_!?-]+)/,
-    /Cannot access field ([A-Za-z0-9_!?-]+)/,
-    /no variant ([A-Za-z0-9_!?-]+)/,
+    new RegExp(`Function (${TOKEN_PATTERN.source})`),
+    new RegExp(`Unknown variable: (${TOKEN_PATTERN.source})`),
+    new RegExp(`Unknown function call: (${TOKEN_PATTERN.source})`),
+    new RegExp(`Arity mismatch for (${TOKEN_PATTERN.source})`),
+    new RegExp(`Duplicate argument name: (${TOKEN_PATTERN.source})`),
+    new RegExp(`Unknown field (${TOKEN_PATTERN.source})`),
+    new RegExp(`Cannot access field (${TOKEN_PATTERN.source})`),
+    new RegExp(`no variant (${TOKEN_PATTERN.source})`, "i"),
   ];
 
   for (const pattern of patterns) {

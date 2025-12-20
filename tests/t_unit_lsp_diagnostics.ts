@@ -12,7 +12,20 @@ export const t_unit_lsp_diagnostics: TestCase = {
       '      (args (x I64))',
       '      (ret I64)',
       '      (eff !Pure)',
-      '      (body (call bar x))))',
+      '      (body (call bar x)))',
+      '    )',
+      '    (deffn (name broken)',
+      '      (args)',
+      '      (ret I64)',
+      '      (eff !Pure)',
+      '      (body \"oops\"))',
+      '    )',
+      '    (deffn (name uses_lexer)',
+      '      (args)',
+      '      (ret I64)',
+      '      (eff !Pure)',
+      '      (body (call lexer.tokenize)))',
+      '    )',
       '  )',
       ')',
     ].join('\n');
@@ -25,6 +38,17 @@ export const t_unit_lsp_diagnostics: TestCase = {
       throw new Error(`Expected to highlight 'bar', got '${unknownVarText}'`);
     }
 
+    const unknownCall = buildDiagnostic(
+      'TypeError: Unknown function call: lexer.tokenize',
+      doc,
+    );
+    const unknownCallText = doc.getText(unknownCall.range);
+    if (unknownCallText !== 'lexer.tokenize') {
+      throw new Error(
+        `Expected to highlight 'lexer.tokenize', got '${unknownCallText}'`,
+      );
+    }
+
     const parseError = buildDiagnostic('ParseError: Unexpected character \'@\' at 2:3', doc);
     if (parseError.range.start.line !== 1) {
       throw new Error(`Expected line 2 for parse error, got ${parseError.range.start.line + 1}`);
@@ -33,6 +57,15 @@ export const t_unit_lsp_diagnostics: TestCase = {
       throw new Error(
         `Expected column 3 for parse error, got ${parseError.range.start.character + 1}`,
       );
+    }
+
+    const fnMismatch = buildDiagnostic(
+      'TypeError: Function broken return type mismatch: Expected I64, got Str',
+      doc,
+    );
+    const fnText = doc.getText(fnMismatch.range);
+    if (fnText !== 'broken') {
+      throw new Error(`Expected to highlight 'broken', got '${fnText}'`);
     }
   },
 };
