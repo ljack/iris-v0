@@ -11,7 +11,7 @@
     )
 
     (deffn (name get_arg) (args (l (List ast.Expr)) (i I64)) (ret ast.Expr) (eff !Pure)
-        (body 
+        (body
             (match (list.get l i)
                 (case (tag "Some" (e)) e)
                 (case (tag "None") (tag "Literal" (tag "I64" 0)))
@@ -78,7 +78,7 @@
                     (let (h_code (call codegen_expr h))
                         (match t
                             (case (tag "nil") h_code)
-                            (case (tag "cons" (_)) (str.concat h_code (str.concat ", " (call gen_call_args t))))
+                            (case (tag "cons" (_ t)) (str.concat h_code (str.concat ", " (call gen_call_args t))))
                         )
                     )
                 )
