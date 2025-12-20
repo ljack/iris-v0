@@ -21,7 +21,7 @@ import { check } from "./main";
 import path from "path";
 import fs from "fs";
 import { buildDiagnosticsForError } from "./lsp-diagnostics";
-import { collectIrisFiles, uriToPath } from "./lsp-workspace";
+import { collectIrisFiles, uriToPath, resolveImportFile } from "./lsp-workspace";
 import { pathToFileURL } from "url";
 import { Parser } from "./sexp/parser";
 import { Program, SourceSpan } from "./types";
@@ -37,6 +37,7 @@ let clientSupportsWatch = false;
 const definitionIndex = new Map<string, Location[]>();
 const definitionsByUri = new Map<string, Set<string>>();
 const programsByUri = new Map<string, Program>();
+const qualifiedDefinitionsByUri = new Map<string, Map<string, Location[]>>();
 
 connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
@@ -173,6 +174,14 @@ connection.onDefinition((params) => {
   if (!name) {
     return null;
   }
+  const byUri = qualifiedDefinitionsByUri.get(params.textDocument.uri);
+  if (byUri && name.includes(".")) {
+    const qualified = byUri.get(name);
+    if (qualified && qualified.length > 0) {
+      return qualified;
+    }
+  }
+
   const candidates = new Set<string>();
   candidates.add(name);
   if (name.includes(".")) {
@@ -300,6 +309,7 @@ function updateIndexForUri(uri: string, text: string): void {
   if (defs.size > 0) {
     definitionsByUri.set(uri, defs);
   }
+  indexImportedDefinitions(uri, program);
 }
 
 function removeIndexForUri(uri: string): void {
@@ -317,6 +327,7 @@ function removeIndexForUri(uri: string): void {
   }
   definitionsByUri.delete(uri);
   programsByUri.delete(uri);
+  qualifiedDefinitionsByUri.delete(uri);
 }
 
 function parseProgram(text: string): Program | null {
@@ -325,6 +336,46 @@ function parseProgram(text: string): Program | null {
     return parser.parse();
   } catch {
     return null;
+  }
+}
+
+function indexImportedDefinitions(uri: string, program: Program): void {
+  const filePath = uriToPath(uri);
+  if (!filePath || workspaceRoots.length === 0) {
+    return;
+  }
+
+  const byUri = new Map<string, Location[]>();
+
+  for (const imp of program.imports) {
+    const resolved = resolveImportFile(imp.path, filePath, workspaceRoots);
+    if (!resolved) {
+      continue;
+    }
+    let text = "";
+    try {
+      text = fs.readFileSync(resolved, "utf8");
+    } catch {
+      continue;
+    }
+    const importedProgram = parseProgram(text);
+    if (!importedProgram) {
+      continue;
+    }
+    const importedUri = pathToFileURL(resolved).toString();
+    for (const def of importedProgram.defs) {
+      if (!def.nameSpan) continue;
+      const range = spanToRange(def.nameSpan);
+      const location: Location = { uri: importedUri, range };
+      const qualifiedName = `${imp.alias}.${def.name}`;
+      const existing = byUri.get(qualifiedName) || [];
+      existing.push(location);
+      byUri.set(qualifiedName, existing);
+    }
+  }
+
+  if (byUri.size > 0) {
+    qualifiedDefinitionsByUri.set(uri, byUri);
   }
 }
 

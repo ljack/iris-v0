@@ -14,12 +14,14 @@ const allTests = TESTS.sort((a, b) => a.name.localeCompare(b.name));
 import { t_unit_fmt, t_unit_typesEqual } from '../tests/t_unit_typecheck_utils';
 import { t_unit_lsp_diagnostics } from '../tests/t_unit_lsp_diagnostics';
 import { t_unit_lsp_workspace } from '../tests/t_unit_lsp_workspace';
+import { t_unit_lsp_imports } from '../tests/t_unit_lsp_imports';
 
 const tests: TestCase[] = [
   t_unit_fmt,
   t_unit_typesEqual,
   t_unit_lsp_diagnostics,
   t_unit_lsp_workspace,
+  t_unit_lsp_imports,
   ...(grep
     ? allTests.filter(t => t.name.toLowerCase().includes(grep!.toLowerCase()))
     : allTests)

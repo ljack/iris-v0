@@ -21,6 +21,38 @@ export function uriToPath(uri: string): string | null {
   return uri;
 }
 
+export function resolveImportFile(
+  importPath: string,
+  baseFilePath: string,
+  workspaceRoots: string[],
+): string | null {
+  const withExt = importPath.endsWith(".iris")
+    ? importPath
+    : `${importPath}.iris`;
+
+  if (path.isAbsolute(withExt)) {
+    return fileExists(withExt) ? withExt : null;
+  }
+
+  const local = path.join(path.dirname(baseFilePath), withExt);
+  if (fileExists(local)) return local;
+
+  for (const root of workspaceRoots) {
+    const candidate = path.join(root, withExt);
+    if (fileExists(candidate)) return candidate;
+  }
+
+  return null;
+}
+
+function fileExists(filePath: string): boolean {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 async function walk(dirPath: string, results: string[]): Promise<void> {
   let entries: fs.Dirent[];
   try {
