@@ -2,7 +2,7 @@ import { TestCase } from '../src/test-types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { resolveImportFile } from '../src/lsp-workspace';
+import { loadImportModules, resolveImportFile } from '../src/lsp-workspace';
 
 export const t_unit_lsp_imports: TestCase = {
   name: 'Unit: LSP import resolver',
@@ -28,6 +28,19 @@ export const t_unit_lsp_imports: TestCase = {
     const workspaceResolved = resolveImportFile('core', baseFile, [root]);
     if (workspaceResolved !== workspaceImport) {
       throw new Error(`Expected workspace import to resolve to ${workspaceImport}`);
+    }
+
+    const program = {
+      module: { name: 'test', version: 1 },
+      imports: [
+        { path: 'lexer', alias: 'lexer' },
+        { path: 'core', alias: 'core' },
+      ],
+      defs: [],
+    };
+    const modules = loadImportModules(baseFile, program, [root]);
+    if (!modules.lexer || !modules.core) {
+      throw new Error('Expected modules to include lexer and core sources');
     }
   },
 };

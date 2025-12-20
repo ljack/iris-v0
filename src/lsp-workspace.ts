@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { Parser } from "./sexp/parser";
+import { Program } from "./types";
 
 const IGNORE_DIRS = new Set(["node_modules", ".git", "dist", "coverage", "target"]);
 
@@ -43,6 +45,47 @@ export function resolveImportFile(
   }
 
   return null;
+}
+
+export function loadImportModules(
+  baseFilePath: string,
+  program: Program,
+  workspaceRoots: string[],
+): Record<string, string> {
+  const modules: Record<string, string> = {};
+  const visited = new Set<string>();
+
+  const visit = (currentFile: string, currentProgram: Program) => {
+    for (const imp of currentProgram.imports) {
+      if (visited.has(imp.path)) continue;
+      const resolved = resolveImportFile(imp.path, currentFile, workspaceRoots);
+      if (!resolved) continue;
+      let text = "";
+      try {
+        text = fs.readFileSync(resolved, "utf8");
+      } catch {
+        continue;
+      }
+      modules[imp.path] = text;
+      visited.add(imp.path);
+      const parsed = parseProgramText(text);
+      if (parsed) {
+        visit(resolved, parsed);
+      }
+    }
+  };
+
+  visit(baseFilePath, program);
+  return modules;
+}
+
+function parseProgramText(text: string): Program | null {
+  try {
+    const parser = new Parser(text, false);
+    return parser.parse();
+  } catch {
+    return null;
+  }
 }
 
 function fileExists(filePath: string): boolean {

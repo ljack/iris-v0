@@ -21,7 +21,12 @@ import { check } from "./main";
 import path from "path";
 import fs from "fs";
 import { buildDiagnosticsForError } from "./lsp-diagnostics";
-import { collectIrisFiles, uriToPath, resolveImportFile } from "./lsp-workspace";
+import {
+  collectIrisFiles,
+  uriToPath,
+  resolveImportFile,
+  loadImportModules,
+} from "./lsp-workspace";
 import { pathToFileURL } from "url";
 import { Parser } from "./sexp/parser";
 import { Program, SourceSpan } from "./types";
@@ -37,6 +42,7 @@ let clientSupportsWatch = false;
 const definitionIndex = new Map<string, Location[]>();
 const definitionsByUri = new Map<string, Set<string>>();
 const programsByUri = new Map<string, Program>();
+const modulesByUri = new Map<string, Record<string, string>>();
 const qualifiedDefinitionsByUri = new Map<string, Map<string, Location[]>>();
 
 connection.onInitialize((params: InitializeParams) => {
@@ -207,8 +213,9 @@ connection.listen();
 
 function computeDiagnostics(textDocument: TextDocument): Diagnostic[] {
   const text = textDocument.getText();
+  const modules = modulesByUri.get(textDocument.uri) || {};
   try {
-    const result = check(text, {}, false);
+    const result = check(text, modules, false);
     if (!result.success) {
       const errorMsg = result.error as string;
       const program = programsByUri.get(textDocument.uri);
@@ -296,6 +303,10 @@ function updateIndexForUri(uri: string, text: string): void {
     return;
   }
   programsByUri.set(uri, program);
+  const filePath = uriToPath(uri);
+  if (filePath) {
+    modulesByUri.set(uri, loadImportModules(filePath, program, workspaceRoots));
+  }
   const defs = new Set<string>();
   for (const def of program.defs) {
     if (!def.nameSpan) continue;
@@ -327,6 +338,7 @@ function removeIndexForUri(uri: string): void {
   }
   definitionsByUri.delete(uri);
   programsByUri.delete(uri);
+  modulesByUri.delete(uri);
   qualifiedDefinitionsByUri.delete(uri);
 }
 
