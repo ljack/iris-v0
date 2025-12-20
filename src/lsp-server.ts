@@ -14,6 +14,8 @@ import {
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { check } from "./main";
+import path from "path";
+import fs from "fs";
 import { buildDiagnostic } from "./lsp-diagnostics";
 
 // Create LSP connection
@@ -23,7 +25,12 @@ const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 connection.onInitialize((params: InitializeParams) => {
+  const versions = getVersionInfo();
   const result: InitializeResult = {
+    serverInfo: {
+      name: "Iris LSP",
+      version: versions.lspVersion,
+    },
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       completionProvider: {
@@ -39,7 +46,10 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-  connection.console.log("IRIS Language Server initialized");
+  const versions = getVersionInfo();
+  connection.console.log(
+    `IRIS Language Server initialized (iris-v0 ${versions.irisVersion}, lsp ${versions.lspVersion})`,
+  );
 });
 
 // Provide completions for IRIS keywords and types
@@ -149,3 +159,16 @@ async function validateIrisDocument(textDocument: TextDocument): Promise<void> {
 
 documents.listen(connection);
 connection.listen();
+
+function getVersionInfo(): { irisVersion: string; lspVersion: string } {
+  const fallback = { irisVersion: "unknown", lspVersion: "unknown" };
+  try {
+    const pkgPath = path.join(__dirname, "..", "..", "package.json");
+    const raw = fs.readFileSync(pkgPath, "utf8");
+    const pkg = JSON.parse(raw) as { version?: string };
+    const version = pkg.version ?? "unknown";
+    return { irisVersion: version, lspVersion: version };
+  } catch {
+    return fallback;
+  }
+}
