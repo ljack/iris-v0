@@ -1,6 +1,5 @@
 (program
   (module (name "http") (version 0))
-
   (defs
     ;; Helper to parse URL into host, port, path
   ;; For now, assumes http://host/path or host/path
@@ -10,18 +9,18 @@
     (ret (Record (host Str) (port I64) (path Str)))
     (eff !Pure)
     (body
-      (let (url_no_proto 
+      (let (url_no_proto
              (match (str.index_of url "://")
                (case (tag "Some" (idx)) (str.substring url (+ idx 3) (str.len url)))
                (case (tag "None" ()) url)))
         (match (str.index_of url_no_proto "/")
           (case (tag "Some" (idx))
-             (record 
+             (record
                (host (str.substring url_no_proto 0 idx))
                (port 80)
                (path (str.substring url_no_proto idx (str.len url_no_proto)))))
-          (case (tag "None" ()) 
-             (record 
+          (case (tag "None" ())
+             (record
                (host url_no_proto)
                (port 80)
                (path "/")))))))
@@ -30,6 +29,7 @@
     (args (url Str))
     (ret (Result (Record (version Str) (status I64) (headers (List (Record (key Str) (val Str)))) (body Str)) Str))
     (eff !Net)
+    (doc "HTTP GET request. Returns (Ok response) or (Err message).")
     (body (http.get url))
   )
 
@@ -37,6 +37,7 @@
     (args (url Str) (req_body Str))
     (ret (Result (Record (version Str) (status I64) (headers (List (Record (key Str) (val Str)))) (body Str)) Str))
     (eff !Net)
+    (doc "HTTP POST request. Returns (Ok response) or (Err message).")
     (body (http.post url req_body))
   )
 )

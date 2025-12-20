@@ -43,6 +43,10 @@ const definitionIndex = new Map<string, Location[]>();
 const definitionsByUri = new Map<string, Set<string>>();
 const programsByUri = new Map<string, Program>();
 const modulesByUri = new Map<string, Record<string, string>>();
+const importProgramsByUri = new Map<
+  string,
+  Map<string, { uri: string; program: Program }>
+>();
 const qualifiedDefinitionsByUri = new Map<string, Map<string, Location[]>>();
 
 connection.onInitialize((params: InitializeParams) => {
@@ -132,25 +136,24 @@ connection.onHover((params) => {
   if (!document) {
     return null;
   }
-
-  const position = params.position;
-  const line = document.getText({
-    start: { line: position.line, character: 0 },
-    end: { line: position.line + 1, character: 0 },
-  });
-
-  // Simple hover: show information about keywords
-  if (line.includes("deffn")) {
-    return {
-      contents: {
-        kind: "markdown",
-        value:
-          "**deffn**: Define a function\n\n```iris\n(deffn (name foo) (args (x I64)) (ret I64) (eff !Pure) (body ...))\n```",
-      },
-    };
+  const name = symbolAtPosition(document, params.position);
+  if (!name) {
+    return null;
   }
 
-  return null;
+  const program = programsByUri.get(params.textDocument.uri);
+  const imports = importProgramsByUri.get(params.textDocument.uri);
+  const doc = findDocForSymbol(name, program, imports);
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    contents: {
+      kind: "markdown",
+      value: doc,
+    },
+  };
 });
 
 // Document change events
@@ -184,41 +187,25 @@ connection.onDefinition((params) => {
 
   if (program && name.includes(".")) {
     const [alias, fnName] = name.split(".");
-    const importDecl = program.imports.find((imp) => imp.alias === alias);
-    if (importDecl) {
-      const filePath = uriToPath(params.textDocument.uri);
-      if (filePath) {
-        const resolved = resolveImportFile(
-          importDecl.path,
-          filePath,
-          workspaceRoots,
-        );
-        if (resolved) {
-          const text = fs.readFileSync(resolved, "utf8");
-          const importedProgram = parseProgram(text);
-          if (importedProgram) {
-            const importedUri = pathToFileURL(resolved).toString();
-            const def = importedProgram.defs.find(
-              (d) =>
-                (d.kind === "DefFn" || d.kind === "DefTool") &&
-                d.name === fnName &&
-                d.nameSpan,
-            );
-            if (def?.nameSpan) {
-              return [
-                { uri: importedUri, range: spanToRange(def.nameSpan) },
-              ];
-            }
-            if (importedProgram.module?.nameSpan) {
-              return [
-                {
-                  uri: importedUri,
-                  range: spanToRange(importedProgram.module.nameSpan),
-                },
-              ];
-            }
-          }
-        }
+    const imports = importProgramsByUri.get(params.textDocument.uri);
+    const imported = imports?.get(alias);
+    if (imported) {
+      const def = imported.program.defs.find(
+        (d) =>
+          (d.kind === "DefFn" || d.kind === "DefTool") &&
+          d.name === fnName &&
+          d.nameSpan,
+      );
+      if (def?.nameSpan) {
+        return [{ uri: imported.uri, range: spanToRange(def.nameSpan) }];
+      }
+      if (imported.program.module?.nameSpan) {
+        return [
+          {
+            uri: imported.uri,
+            range: spanToRange(imported.program.module.nameSpan),
+          },
+        ];
       }
     }
   }
@@ -382,6 +369,7 @@ function removeIndexForUri(uri: string): void {
   programsByUri.delete(uri);
   modulesByUri.delete(uri);
   qualifiedDefinitionsByUri.delete(uri);
+  importProgramsByUri.delete(uri);
 }
 
 function parseProgram(text: string): Program | null {
@@ -400,6 +388,7 @@ function indexImportedDefinitions(uri: string, program: Program): void {
   }
 
   const byUri = new Map<string, Location[]>();
+  const byAlias = new Map<string, { uri: string; program: Program }>();
 
   for (const imp of program.imports) {
     const resolved = resolveImportFile(imp.path, filePath, workspaceRoots);
@@ -417,6 +406,7 @@ function indexImportedDefinitions(uri: string, program: Program): void {
       continue;
     }
     const importedUri = pathToFileURL(resolved).toString();
+    byAlias.set(imp.alias, { uri: importedUri, program: importedProgram });
     for (const def of importedProgram.defs) {
       if (!def.nameSpan) continue;
       const range = spanToRange(def.nameSpan);
@@ -430,6 +420,9 @@ function indexImportedDefinitions(uri: string, program: Program): void {
 
   if (byUri.size > 0) {
     qualifiedDefinitionsByUri.set(uri, byUri);
+  }
+  if (byAlias.size > 0) {
+    importProgramsByUri.set(uri, byAlias);
   }
 }
 
@@ -464,6 +457,36 @@ function symbolAtPosition(
   }
   if (start === end) return null;
   return lineText.slice(start, end);
+}
+
+function findDocForSymbol(
+  name: string,
+  program?: Program,
+  imports?: Map<string, { uri: string; program: Program }>,
+): string | null {
+  if (!program) return null;
+
+  if (name.includes(".") && imports) {
+    const [alias, fnName] = name.split(".");
+    const imported = imports.get(alias);
+    if (imported) {
+      const def = imported.program.defs.find(
+        (d) => (d.kind === "DefFn" || d.kind === "DefTool") && d.name === fnName,
+      );
+      if (def && "doc" in def && def.doc) {
+        return `**${name}**\\n\\n${def.doc}`;
+      }
+    }
+  }
+
+  const def = program.defs.find(
+    (d) => (d.kind === "DefFn" || d.kind === "DefTool") && d.name === name,
+  );
+  if (def && "doc" in def && def.doc) {
+    return `**${name}**\\n\\n${def.doc}`;
+  }
+
+  return null;
 }
 
 function getWorkspaceRoots(params: InitializeParams): string[] {
