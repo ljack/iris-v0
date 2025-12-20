@@ -10,6 +10,8 @@ import {
   CompletionItem,
   CompletionItemKind,
   Diagnostic,
+  DidChangeWatchedFilesNotification,
+  FileChangeType,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -17,8 +19,8 @@ import { check } from "./main";
 import path from "path";
 import fs from "fs";
 import { buildDiagnostic } from "./lsp-diagnostics";
-import { collectIrisFiles } from "./lsp-workspace";
-import { fileURLToPath, pathToFileURL } from "url";
+import { collectIrisFiles, uriToPath } from "./lsp-workspace";
+import { pathToFileURL } from "url";
 
 // Create LSP connection
 const connection = createConnection(ProposedFeatures.all);
@@ -27,9 +29,12 @@ const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let workspaceRoots: string[] = [];
+let clientSupportsWatch = false;
 
 connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
+  clientSupportsWatch = !!params.capabilities.workspace?.didChangeWatchedFiles
+    ?.dynamicRegistration;
   const versions = getVersionInfo();
   const result: InitializeResult = {
     serverInfo: {
@@ -57,6 +62,9 @@ connection.onInitialized(() => {
   );
   publishWorkspaceDiagnostics().catch((err) => {
     connection.console.error(`Workspace diagnostics failed: ${err?.message ?? err}`);
+  });
+  registerFileWatcher().catch((err) => {
+    connection.console.error(`File watcher registration failed: ${err?.message ?? err}`);
   });
 });
 
@@ -141,6 +149,12 @@ documents.onDidOpen((event) => {
   validateIrisDocument(event.document);
 });
 
+connection.onDidChangeWatchedFiles((event) => {
+  handleWatchedFiles(event.changes).catch((err) => {
+    connection.console.error(`Watched files handling failed: ${err?.message ?? err}`);
+  });
+});
+
 // Validate IRIS document using the actual parser and type checker
 async function validateIrisDocument(textDocument: TextDocument): Promise<void> {
   const diagnostics = computeDiagnostics(textDocument);
@@ -182,6 +196,53 @@ async function publishWorkspaceDiagnostics(): Promise<void> {
   }
 }
 
+async function registerFileWatcher(): Promise<void> {
+  if (!clientSupportsWatch) {
+    return;
+  }
+  await connection.client.register(DidChangeWatchedFilesNotification.type, {
+    watchers: [{ globPattern: "**/*.iris" }],
+  });
+}
+
+async function handleWatchedFiles(
+  changes: { uri: string; type: FileChangeType }[],
+): Promise<void> {
+  for (const change of changes) {
+    if (change.type === FileChangeType.Deleted) {
+      connection.sendDiagnostics({ uri: change.uri, diagnostics: [] });
+      continue;
+    }
+
+    const openDoc = documents.get(change.uri);
+    if (openDoc) {
+      connection.sendDiagnostics({
+        uri: change.uri,
+        diagnostics: computeDiagnostics(openDoc),
+      });
+      continue;
+    }
+
+    const filePath = uriToPath(change.uri);
+    if (!filePath) {
+      continue;
+    }
+
+    let text = "";
+    try {
+      text = await fs.promises.readFile(filePath, "utf8");
+    } catch {
+      continue;
+    }
+
+    const doc = TextDocument.create(change.uri, "iris", 1, text);
+    connection.sendDiagnostics({
+      uri: change.uri,
+      diagnostics: computeDiagnostics(doc),
+    });
+  }
+}
+
 function getWorkspaceRoots(params: InitializeParams): string[] {
   if (params.workspaceFolders && params.workspaceFolders.length > 0) {
     return params.workspaceFolders
@@ -193,17 +254,6 @@ function getWorkspaceRoots(params: InitializeParams): string[] {
     return root ? [root] : [];
   }
   return [];
-}
-
-function uriToPath(uri: string): string | null {
-  if (uri.startsWith("file://")) {
-    try {
-      return fileURLToPath(uri);
-    } catch {
-      return null;
-    }
-  }
-  return uri;
 }
 
 function getVersionInfo(): { irisVersion: string; lspVersion: string } {

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 const IGNORE_DIRS = new Set(["node_modules", ".git", "dist", "coverage", "target"]);
 
@@ -7,6 +8,17 @@ export async function collectIrisFiles(rootPath: string): Promise<string[]> {
   const results: string[] = [];
   await walk(rootPath, results);
   return results;
+}
+
+export function uriToPath(uri: string): string | null {
+  if (uri.startsWith("file://")) {
+    try {
+      return fileURLToPath(uri);
+    } catch {
+      return null;
+    }
+  }
+  return uri;
 }
 
 async function walk(dirPath: string, results: string[]): Promise<void> {
