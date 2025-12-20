@@ -7,9 +7,9 @@ repository = "https://github.com/ljack/iris-v0"
 authors = ["Iris Contributors <dev@iris-lang.org>"]
 
 [grammars.iris]
-repository = "file:///Users/jarkko/_dev/iris-v0"
-rev = "HEAD"
-path = "zed/iris/grammars-src/iris"
+repository = "file:///Users/jarkko/_dev/iris-v0/.git"
+rev = "98805a6806912099b58b463766414763b343ab3c"
+path = "tree-sitter-iris"
 
 [language_servers]
 
