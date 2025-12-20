@@ -1,4 +1,6 @@
-export type IrisType =
+type IrisTypeBase = { span?: SourceSpan };
+
+export type IrisType = IrisTypeBase & (
   | { type: 'I64' }
   | { type: 'Bool' }
   | { type: 'Str' }
@@ -10,7 +12,8 @@ export type IrisType =
   | { type: 'Map'; key: IrisType; value: IrisType }
   | { type: 'Fn'; args: IrisType[]; ret: IrisType; eff: IrisEffect }
   | { type: 'Named'; name: string }
-  | { type: 'Union'; variants: Record<string, IrisType> };
+  | { type: 'Union'; variants: Record<string, IrisType> }
+);
 
 export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any' | '!Infer';
 

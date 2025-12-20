@@ -84,13 +84,13 @@ function buildRelatedDiagnostics(
   }
 
     const returnMismatch = errorMsg.match(/Function ([A-Za-z0-9_!?\\.-]+) return type mismatch/);
-    if (returnMismatch) {
-      const fnName = returnMismatch[1];
-      const def = program.defs.find(
-        (d) =>
-          (d.kind === "DefFn" || d.kind === "DefTool") &&
-          d.name === fnName,
-      );
+  if (returnMismatch) {
+    const fnName = returnMismatch[1];
+    const def = program.defs.find(
+      (d) =>
+        (d.kind === "DefFn" || d.kind === "DefTool") &&
+        d.name === fnName,
+    );
     if (def?.nameSpan) {
       const range = spanToRange(def.nameSpan);
       related.push({
@@ -120,6 +120,22 @@ function buildRelatedDiagnostics(
         message: `Return value for ${fnName}`,
         source: "iris",
         code: "IRIS_RETURN_VALUE",
+      });
+    }
+
+    const retSpan = def && def.kind === "DefFn" ? def.ret?.span : undefined;
+    if (retSpan) {
+      const range = spanToRange(retSpan);
+      related.push({
+        location: Location.create(textDocument.uri, range),
+        message: `Declared return type for ${fnName}`,
+      });
+      diagnostics.push({
+        severity: DiagnosticSeverity.Error,
+        range,
+        message: `Declared return type for ${fnName}`,
+        source: "iris",
+        code: "IRIS_RETURN_DECL",
       });
     }
   }

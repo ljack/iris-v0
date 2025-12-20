@@ -94,7 +94,7 @@ export const t_unit_lsp_diagnostics: TestCase = {
     if (fnText !== 'broken') {
       throw new Error(`Expected to highlight 'broken', got '${fnText}'`);
     }
-    if (fnDiagnostics.length < 2) {
+    if (fnDiagnostics.length < 3) {
       throw new Error('Expected extra diagnostics for return mismatch');
     }
 
