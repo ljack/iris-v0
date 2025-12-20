@@ -102,7 +102,8 @@ export function parseExpr(ctx: ParserContext): Expr {
                 ctx.expectSymbol('case');
                 ctx.expect('LParen');
                 ctx.expectSymbol('tag');
-                const tag = ctx.expectString();
+                const tagTok = ctx.expectStringToken();
+                const tag = tagTok.value;
                 const vars: string[] = [];
                 // Optional args (v) or nothing
                 if (ctx.check('LParen')) {
@@ -120,7 +121,7 @@ export function parseExpr(ctx: ParserContext): Expr {
                     kind: 'List',
                     items: vars.map(v => ({ kind: 'Str', value: v } as Value))
                 };
-                cases.push({ tag, vars: varsValue, body });
+                cases.push({ tag, tagSpan: { line: tagTok.line, col: tagTok.col, len: tagTok.value.length }, vars: varsValue, body });
             }
             ctx.expect('RParen');
             return { kind: 'Match', target, cases };

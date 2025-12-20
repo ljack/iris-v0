@@ -121,6 +121,7 @@ export type IntrinsicOp =
 
 export type MatchCase = {
   tag: string;
+  tagSpan?: SourceSpan;
   vars: Value; // List of Str
   body: Expr;
 };

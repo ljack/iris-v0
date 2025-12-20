@@ -4,6 +4,7 @@ import { TypeCheckerContext, CheckFn } from '../context';
 import { resolve, joinEffects, expectType, fmt } from '../utils';
 
 export function checkControl(check: CheckFn, ctx: TypeCheckerContext, expr: Expr, env: Map<string, IrisType>, expectedType?: IrisType): { type: IrisType, eff: IrisEffect } {
+    const spanSuffix = (span?: { line: number; col: number }) => span ? ` at ${span.line}:${span.col}` : '';
     if (expr.kind === 'Let') {
         const letExpr = expr as any;
         if (!letExpr.value) console.log("Let expr missing value:", JSON.stringify(letExpr));
@@ -64,14 +65,14 @@ export function checkControl(check: CheckFn, ctx: TypeCheckerContext, expr: Expr
                 }
 
                 if (c.tag === 'Ok') {
-                    if (vars.length !== 1) throw new Error("Ok case expects 1 variable");
+                    if (vars.length !== 1) throw new Error(`TypeError: Ok case expects 1 variable${spanSuffix(c.tagSpan)}`);
                     if (!resolvedTarget.ok) throw new Error("Internal error: Result type missing ok type");
                     newEnv.set(vars[0], resolvedTarget.ok);
                 } else if (c.tag === 'Err') {
-                    if (vars.length !== 1) throw new Error("Err case expects 1 variable");
+                    if (vars.length !== 1) throw new Error(`TypeError: Err case expects 1 variable${spanSuffix(c.tagSpan)}`);
                     if (!resolvedTarget.err) throw new Error("Internal error: Result type missing err type");
                     newEnv.set(vars[0], resolvedTarget.err);
-                } else throw new Error(`Unknown result match tag: ${c.tag}`);
+                } else throw new Error(`TypeError: Unknown result match tag: ${c.tag}${spanSuffix(c.tagSpan)}`);
 
                 const body = check(ctx, c.body, newEnv, retType || expectedType);
                 if (retType) expectType(ctx, retType, body.type, "Match arms mismatch");
@@ -89,13 +90,13 @@ export function checkControl(check: CheckFn, ctx: TypeCheckerContext, expr: Expr
                 }
 
                 if (c.tag === 'nil') {
-                    if (vars.length !== 0) throw new Error("nil case expects 0 variables");
+                    if (vars.length !== 0) throw new Error(`TypeError: nil case expects 0 variables${spanSuffix(c.tagSpan)}`);
                 } else if (c.tag === 'cons') {
-                    if (vars.length !== 2) throw new Error("cons case expects 2 variables (head tail)");
+                    if (vars.length !== 2) throw new Error(`TypeError: cons case expects 2 variables (head tail)${spanSuffix(c.tagSpan)}`);
                     if (!resolvedTarget.inner) throw new Error("Internal List missing inner");
                     newEnv.set(vars[0], resolvedTarget.inner!); // head
                     newEnv.set(vars[1], resolvedTarget);       // tail
-                } else throw new Error(`Unknown list match tag: ${c.tag}`);
+                } else throw new Error(`TypeError: Unknown list match tag: ${c.tag}${spanSuffix(c.tagSpan)}`);
 
                 const body = check(ctx, c.body, newEnv, retType || expectedType);
                 if (retType) expectType(ctx, retType, body.type, "Match arms mismatch");
@@ -113,10 +114,10 @@ export function checkControl(check: CheckFn, ctx: TypeCheckerContext, expr: Expr
                 }
 
                 if (c.tag === '_') {
-                    if (vars.length !== 0) throw new Error("Wildcard match cannot bind variables");
+                    if (vars.length !== 0) throw new Error(`TypeError: Wildcard match cannot bind variables${spanSuffix(c.tagSpan)}`);
                 } else {
                     const variantType = resolvedTarget.variants[c.tag];
-                    if (!variantType) throw new Error(`TypeError: Union ${fmt(ctx, resolvedTarget)} has no variant ${c.tag}`);
+                    if (!variantType) throw new Error(`TypeError: Union ${fmt(ctx, resolvedTarget)} has no variant ${c.tag}${spanSuffix(c.tagSpan)}`);
 
                     // For v0, assume 1 var binds to payload.
                     if (vars.length === 1) {
@@ -124,7 +125,7 @@ export function checkControl(check: CheckFn, ctx: TypeCheckerContext, expr: Expr
                     } else if (vars.length === 0) {
                         // Unit payload or ignored
                     } else {
-                        throw new Error(`Match case ${c.tag} expects 1 variable (payload binding)`);
+                        throw new Error(`TypeError: Match case ${c.tag} expects 1 variable (payload binding)${spanSuffix(c.tagSpan)}`);
                     }
                 }
 
