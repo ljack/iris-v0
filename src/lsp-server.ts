@@ -185,6 +185,23 @@ connection.onDefinition((params) => {
   }
   const program = programsByUri.get(params.textDocument.uri);
 
+  if (program && !name.includes(".")) {
+    const localDef = program.defs.find(
+      (d) =>
+        (d.kind === "DefFn" || d.kind === "DefTool" || d.kind === "TypeDef") &&
+        d.name === name &&
+        d.nameSpan,
+    );
+    if (localDef?.nameSpan) {
+      return [
+        {
+          uri: params.textDocument.uri,
+          range: spanToRange(localDef.nameSpan),
+        },
+      ];
+    }
+  }
+
   if (program && name.includes(".")) {
     const [alias, fnName] = name.split(".");
     const imports = importProgramsByUri.get(params.textDocument.uri);
@@ -225,6 +242,12 @@ connection.onDefinition((params) => {
   for (const candidate of candidates) {
     const locations = definitionIndex.get(candidate);
     if (locations && locations.length > 0) {
+      const local = locations.find(
+        (loc) => loc.uri === params.textDocument.uri,
+      );
+      if (local) {
+        return [local];
+      }
       return locations;
     }
   }
