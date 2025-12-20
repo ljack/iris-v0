@@ -62,7 +62,7 @@ connection.onInitialize((params: InitializeParams) => {
         triggerCharacters: [".", "("],
       },
       hoverProvider: true,
-      definitionProvider: false,
+      definitionProvider: true,
       referencesProvider: false,
     },
   };
