@@ -4,6 +4,7 @@ import { TypeCheckerContext, CheckFn } from '../context';
 import { resolve, joinEffects, expectType, qualifyType } from '../utils';
 
 export function checkCall(check: CheckFn, ctx: TypeCheckerContext, expr: Expr, env: Map<string, IrisType>, expectedType?: IrisType): { type: IrisType, eff: IrisEffect } {
+    const spanSuffix = (span?: { line: number; col: number }) => span ? ` at ${span.line}:${span.col}` : '';
     if (expr.kind === 'Var') {
         if (env.has(expr.name)) return { type: env.get(expr.name)!, eff: '!Pure' };
         if (ctx.constants.has(expr.name)) return { type: ctx.constants.get(expr.name)!, eff: '!Pure' };
@@ -34,7 +35,7 @@ export function checkCall(check: CheckFn, ctx: TypeCheckerContext, expr: Expr, e
             }
         }
 
-        throw new Error(`TypeError: Unknown variable: ${expr.name}`);
+        throw new Error(`TypeError: Unknown variable: ${expr.name}${spanSuffix(expr.span)}`);
     }
 
     if (expr.kind === 'Call') {
@@ -60,8 +61,8 @@ export function checkCall(check: CheckFn, ctx: TypeCheckerContext, expr: Expr, e
             }
         }
 
-        if (!func) throw new Error(`TypeError: Unknown function call: ${expr.fn}`);
-        if (expr.args.length !== func.args.length) throw new Error(`TypeError: Arity mismatch for ${expr.fn}`);
+        if (!func) throw new Error(`TypeError: Unknown function call: ${expr.fn}${spanSuffix(expr.fnSpan)}`);
+        if (expr.args.length !== func.args.length) throw new Error(`TypeError: Arity mismatch for ${expr.fn}${spanSuffix(expr.fnSpan)}`);
         let eff: IrisEffect = '!Pure';
         for (let i = 0; i < expr.args.length; i++) {
             const arg = check(ctx, expr.args[i], env, func.args[i]);

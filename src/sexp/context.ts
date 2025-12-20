@@ -7,6 +7,7 @@ export interface ParserContext {
     check(kind: Token['kind']): boolean;
     expect(kind: Token['kind']): void;
     expectSymbol(val?: string): string;
+    expectSymbolToken(val?: string): Extract<Token, { kind: 'Symbol' }>;
     expectString(): string;
     expectInt(): bigint;
     skipSExp(): void;

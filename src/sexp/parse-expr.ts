@@ -1,10 +1,14 @@
 
-import { Expr, MatchCase, IntrinsicOp, Value } from '../types';
+import { Expr, MatchCase, IntrinsicOp, Value, SourceSpan } from '../types';
 import { ParserContext } from './context';
 import { parseType, parseEffect } from './parse-type';
 
 export function parseExpr(ctx: ParserContext): Expr {
     const token = ctx.peek();
+    const tokenSpan = (t: { line: number; col: number; value?: string }): SourceSpan | undefined => {
+        if (!t.value) return { line: t.line, col: t.col, len: 1 };
+        return { line: t.line, col: t.col, len: t.value.length };
+    };
 
     if (token.kind === 'Int') { ctx.consume(); return { kind: 'Literal', value: { kind: 'I64', value: token.value } }; }
     if (token.kind === 'Bool') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Bool', value: token.value } }; }
@@ -13,7 +17,7 @@ export function parseExpr(ctx: ParserContext): Expr {
         if (token.value === 'None') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Option', value: null } }; }
         if (token.value === 'nil') { ctx.consume(); return { kind: 'Literal', value: { kind: 'List', items: [] } }; }
         ctx.consume();
-        return { kind: 'Var', name: token.value };
+        return { kind: 'Var', name: token.value, span: tokenSpan(token) };
     }
 
     if (token.kind === 'LParen') {
@@ -32,6 +36,7 @@ export function parseExpr(ctx: ParserContext): Expr {
         }
 
         const op = head.value;
+        const opSpan = tokenSpan(head);
         ctx.consume();
 
         // Special forms
@@ -119,13 +124,14 @@ export function parseExpr(ctx: ParserContext): Expr {
             return { kind: 'Match', target, cases };
         }
         if (op === 'call') {
-            const fn = ctx.expectSymbol();
+            const fnToken = ctx.expectSymbolToken();
+            const fn = fnToken.value;
             const args: Expr[] = [];
             while (!ctx.check('RParen')) {
                 args.push(parseExpr(ctx));
             }
             ctx.expect('RParen');
-            return { kind: 'Call', fn, args };
+            return { kind: 'Call', fn, fnSpan: tokenSpan(fnToken), args };
         }
 
         // Constructors / Intrinsics
@@ -286,7 +292,7 @@ export function parseExpr(ctx: ParserContext): Expr {
             args.push(parseExpr(ctx));
         }
         ctx.expect('RParen');
-        return { kind: 'Call', fn: op, args };
+        return { kind: 'Call', fn: op, fnSpan: opSpan, args };
     }
 
     throw new Error(`Unexpected token for expression: ${token.kind} at ${token.line}:${token.col}`);

@@ -152,7 +152,7 @@ export class Parser implements ParserContext {
         const kind = this.expectSymbol();
 
         if (kind === 'defconst') {
-            this.expect('LParen'); this.expectSymbol('name'); const name = this.expectSymbol(); this.expect('RParen');
+            this.expect('LParen'); this.expectSymbol('name'); const nameTok = this.expectSymbolToken(); const name = nameTok.value; this.expect('RParen');
             this.expect('LParen'); this.expectSymbol('type'); const type = parseType(this); this.expect('RParen');
             const meta: { doc?: string } = {};
             while (this.check('LParen')) {
@@ -168,9 +168,9 @@ export class Parser implements ParserContext {
             }
             this.expect('LParen'); this.expectSymbol('value'); const value = parseExpr(this); this.expect('RParen');
             this.expect('RParen');
-            return { kind: 'DefConst', name, type, value, doc: meta.doc };
+            return { kind: 'DefConst', name, nameSpan: { line: nameTok.line, col: nameTok.col, len: nameTok.value.length }, type, value, doc: meta.doc };
         } else if (kind === 'deffn') {
-            this.expect('LParen'); this.expectSymbol('name'); const name = this.expectSymbol(); this.expect('RParen');
+            this.expect('LParen'); this.expectSymbol('name'); const nameTok = this.expectSymbolToken(); const name = nameTok.value; this.expect('RParen');
 
             this.expect('LParen'); this.expectSymbol('args');
             const args: { name: string, type: IrisType }[] = [];
@@ -202,9 +202,9 @@ export class Parser implements ParserContext {
             this.expect('LParen'); this.expectSymbol('body'); const body = parseExpr(this); this.expect('RParen');
             this.expect('RParen');
 
-            return { kind: 'DefFn', name, args, ret, eff, body, ...meta };
+            return { kind: 'DefFn', name, nameSpan: { line: nameTok.line, col: nameTok.col, len: nameTok.value.length }, args, ret, eff, body, ...meta };
         } else if (kind === 'deftool') {
-            this.expect('LParen'); this.expectSymbol('name'); const name = this.expectSymbol(); this.expect('RParen');
+            this.expect('LParen'); this.expectSymbol('name'); const nameTok = this.expectSymbolToken(); const name = nameTok.value; this.expect('RParen');
 
             this.expect('LParen'); this.expectSymbol('args');
             const args: { name: string, type: IrisType }[] = [];
@@ -226,16 +226,17 @@ export class Parser implements ParserContext {
             }
             this.expect('RParen');
 
-            return { kind: 'DefTool', name, args, ret, eff, ...meta };
+            return { kind: 'DefTool', name, nameSpan: { line: nameTok.line, col: nameTok.col, len: nameTok.value.length }, args, ret, eff, ...meta };
         } else if (kind === 'type' || kind === 'deftype') {
-            const name = this.expectSymbol();
+            const nameTok = this.expectSymbolToken();
+            const name = nameTok.value;
             const type = parseType(this);
             const meta: { doc?: string } = {};
             while (this.check('LParen')) {
                 this.parseMetaSection(meta, { doc: true });
             }
             this.expect('RParen');
-            return { kind: 'TypeDef', name, type, doc: meta.doc };
+            return { kind: 'TypeDef', name, nameSpan: { line: nameTok.line, col: nameTok.col, len: nameTok.value.length }, type, doc: meta.doc };
         } else {
             throw new Error(`Unknown definition kind: ${kind}`);
         }
@@ -270,6 +271,10 @@ export class Parser implements ParserContext {
     }
 
     public expectSymbol(val?: string): string {
+        return this.expectSymbolToken(val).value;
+    }
+
+    public expectSymbolToken(val?: string): Extract<Token, { kind: 'Symbol' }> {
         const t = this.peek();
         if (t.kind !== 'Symbol') {
             throw new Error(`Expected Symbol at ${t.line}:${t.col}, got ${t.kind}`);
@@ -278,7 +283,7 @@ export class Parser implements ParserContext {
             throw new Error(`Expected symbol '${val}' at ${t.line}:${t.col}, got '${t.value}'`);
         }
         this.consume();
-        return t.value;
+        return t as Extract<Token, { kind: 'Symbol' }>;
     }
 
     public expectString(): string {

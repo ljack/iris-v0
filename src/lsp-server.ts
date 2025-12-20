@@ -12,6 +12,8 @@ import {
   Diagnostic,
   DidChangeWatchedFilesNotification,
   FileChangeType,
+  Location,
+  Range,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -21,6 +23,8 @@ import fs from "fs";
 import { buildDiagnostic } from "./lsp-diagnostics";
 import { collectIrisFiles, uriToPath } from "./lsp-workspace";
 import { pathToFileURL } from "url";
+import { Parser } from "./sexp/parser";
+import { Program, SourceSpan } from "./types";
 
 // Create LSP connection
 const connection = createConnection(ProposedFeatures.all);
@@ -30,6 +34,8 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let workspaceRoots: string[] = [];
 let clientSupportsWatch = false;
+const definitionIndex = new Map<string, Location[]>();
+const definitionsByUri = new Map<string, Set<string>>();
 
 connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
@@ -141,11 +147,13 @@ connection.onHover((params) => {
 
 // Document change events
 documents.onDidChangeContent((change) => {
+  updateIndexForUri(change.document.uri, change.document.getText());
   validateIrisDocument(change.document);
 });
 
 // Also validate when document is opened
 documents.onDidOpen((event) => {
+  updateIndexForUri(event.document.uri, event.document.getText());
   validateIrisDocument(event.document);
 });
 
@@ -153,6 +161,29 @@ connection.onDidChangeWatchedFiles((event) => {
   handleWatchedFiles(event.changes).catch((err) => {
     connection.console.error(`Watched files handling failed: ${err?.message ?? err}`);
   });
+});
+
+connection.onDefinition((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) {
+    return null;
+  }
+  const name = symbolAtPosition(doc, params.position);
+  if (!name) {
+    return null;
+  }
+  const candidates = new Set<string>();
+  candidates.add(name);
+  if (name.includes(".")) {
+    candidates.add(name.split(".").pop() || name);
+  }
+  for (const candidate of candidates) {
+    const locations = definitionIndex.get(candidate);
+    if (locations && locations.length > 0) {
+      return locations;
+    }
+  }
+  return null;
 });
 
 // Validate IRIS document using the actual parser and type checker
@@ -189,6 +220,7 @@ async function publishWorkspaceDiagnostics(): Promise<void> {
         continue;
       }
       const uri = pathToFileURL(filePath).toString();
+      updateIndexForUri(uri, text);
       const doc = TextDocument.create(uri, "iris", 1, text);
       const diagnostics = computeDiagnostics(doc);
       connection.sendDiagnostics({ uri, diagnostics });
@@ -211,6 +243,7 @@ async function handleWatchedFiles(
   for (const change of changes) {
     if (change.type === FileChangeType.Deleted) {
       connection.sendDiagnostics({ uri: change.uri, diagnostics: [] });
+      removeIndexForUri(change.uri);
       continue;
     }
 
@@ -235,12 +268,92 @@ async function handleWatchedFiles(
       continue;
     }
 
+    updateIndexForUri(change.uri, text);
     const doc = TextDocument.create(change.uri, "iris", 1, text);
     connection.sendDiagnostics({
       uri: change.uri,
       diagnostics: computeDiagnostics(doc),
     });
   }
+}
+
+function updateIndexForUri(uri: string, text: string): void {
+  removeIndexForUri(uri);
+  const program = parseProgram(text);
+  if (!program) {
+    return;
+  }
+  const defs = new Set<string>();
+  for (const def of program.defs) {
+    if (!def.nameSpan) continue;
+    const range = spanToRange(def.nameSpan);
+    const location: Location = { uri, range };
+    const existing = definitionIndex.get(def.name) || [];
+    existing.push(location);
+    definitionIndex.set(def.name, existing);
+    defs.add(def.name);
+  }
+  if (defs.size > 0) {
+    definitionsByUri.set(uri, defs);
+  }
+}
+
+function removeIndexForUri(uri: string): void {
+  const existing = definitionsByUri.get(uri);
+  if (!existing) return;
+  for (const name of existing) {
+    const locations = definitionIndex.get(name);
+    if (!locations) continue;
+    const remaining = locations.filter((loc) => loc.uri !== uri);
+    if (remaining.length > 0) {
+      definitionIndex.set(name, remaining);
+    } else {
+      definitionIndex.delete(name);
+    }
+  }
+  definitionsByUri.delete(uri);
+}
+
+function parseProgram(text: string): Program | null {
+  try {
+    const parser = new Parser(text, false);
+    return parser.parse();
+  } catch {
+    return null;
+  }
+}
+
+function spanToRange(span: SourceSpan): Range {
+  const line = Math.max(0, span.line - 1);
+  const startChar = Math.max(0, span.col - 1);
+  const endChar = Math.max(startChar + 1, startChar + span.len);
+  return {
+    start: { line, character: startChar },
+    end: { line, character: endChar },
+  };
+}
+
+function symbolAtPosition(
+  doc: TextDocument,
+  position: { line: number; character: number },
+): string | null {
+  const lineText = doc
+    .getText({
+      start: { line: position.line, character: 0 },
+      end: { line: position.line + 1, character: 0 },
+    })
+    .replace(/\r?\n$/, "");
+  const isIdent = (ch: string) => /[A-Za-z0-9_!?\\.-]/.test(ch);
+  let start = Math.min(position.character, lineText.length);
+  let end = start;
+  while (start > 0 && isIdent(lineText[start - 1])) {
+    start -= 1;
+  }
+  while (end < lineText.length && isIdent(lineText[end])) {
+    end += 1;
+  }
+  if (start === end) return null;
+  return lineText.slice(start, end);
 }
 
 function getWorkspaceRoots(params: InitializeParams): string[] {

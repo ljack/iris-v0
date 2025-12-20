@@ -14,6 +14,12 @@ export type IrisType =
 
 export type IrisEffect = '!Pure' | '!IO' | '!Net' | '!Any' | '!Infer';
 
+export type SourceSpan = {
+  line: number;
+  col: number;
+  len: number;
+};
+
 export interface Import {
   path: string;
   alias: string;
@@ -42,10 +48,11 @@ export interface Program {
 export type ModuleResolver = (path: string) => Program | undefined;
 
 export type Definition =
-  | { kind: 'DefConst'; name: string; type: IrisType; value: Expr; doc?: string }
+  | { kind: 'DefConst'; name: string; nameSpan?: SourceSpan; type: IrisType; value: Expr; doc?: string }
   | {
     kind: 'DefFn';
     name: string;
+    nameSpan?: SourceSpan;
     args: { name: string; type: IrisType }[];
     ret: IrisType;
     eff: IrisEffect;
@@ -58,6 +65,7 @@ export type Definition =
   | {
     kind: 'DefTool';
     name: string;
+    nameSpan?: SourceSpan;
     args: { name: string; type: IrisType }[];
     ret: IrisType;
     eff: IrisEffect;
@@ -66,17 +74,17 @@ export type Definition =
     ensures?: string;
     caps?: Capability[];
   }
-  | { kind: 'TypeDef'; name: string; type: IrisType; doc?: string };
+  | { kind: 'TypeDef'; name: string; nameSpan?: SourceSpan; type: IrisType; doc?: string };
 
 export type FunctionLikeDef = Extract<Definition, { kind: 'DefFn' | 'DefTool' }>;
 
 export type Expr =
   | { kind: 'Literal'; value: Value }
-  | { kind: 'Var'; name: string }
+  | { kind: 'Var'; name: string; span?: SourceSpan }
   | { kind: 'Let'; name: string; value: Expr; body: Expr }
   | { kind: 'If'; cond: Expr; then: Expr; else: Expr }
   | { kind: 'Match'; target: Expr; cases: MatchCase[] }
-  | { kind: 'Call'; fn: string; args: Expr[] }
+  | { kind: 'Call'; fn: string; fnSpan?: SourceSpan; args: Expr[] }
   | {
     kind: 'Intrinsic';
     op: IntrinsicOp;

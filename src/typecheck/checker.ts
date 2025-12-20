@@ -14,6 +14,7 @@ export class TypeChecker implements TypeCheckerContext {
 
     check(program: Program) {
         this.currentProgram = program;
+        const spanSuffix = (span?: { line: number; col: number }) => span ? ` at ${span.line}:${span.col}` : '';
 
         // Pre-pass: load imported types
         if (this.resolver) {
@@ -55,7 +56,7 @@ export class TypeChecker implements TypeCheckerContext {
         for (const def of program.defs) {
             if (def.kind === 'DefConst') {
                 const { type, eff } = checkExprFull(this, def.value, new Map());
-                expectType(this, def.type, type, `Constant ${def.name} type mismatch`);
+                expectType(this, def.type, type, `Constant ${def.name} type mismatch${spanSuffix(def.nameSpan)}`);
                 checkEffectSubtype(this, eff, '!Pure', `Constant ${def.name} must be Pure`);
             } else if (def.kind === 'DefFn') {
                 const fnType = this.functions.get(def.name)!;
@@ -67,7 +68,7 @@ export class TypeChecker implements TypeCheckerContext {
 
                 const { type: bodyType, eff: bodyEff } = checkExprFull(this, def.body, env, def.ret);
 
-                expectType(this, def.ret, bodyType, `Function ${def.name} return type mismatch`);
+                expectType(this, def.ret, bodyType, `Function ${def.name} return type mismatch${spanSuffix(def.nameSpan)}`);
 
                 if (def.eff === '!Infer') {
                     // Update registry with inferred effect logic if we supported two-pass inference or similar.
@@ -76,7 +77,7 @@ export class TypeChecker implements TypeCheckerContext {
                     // we might need a fixpoint. For v0.2 simple scope, we just let it accept.
                     this.functions.set(def.name, { ...fnType, eff: bodyEff });
                 } else {
-                    checkEffectSubtype(this, bodyEff, def.eff, `Function ${def.name}`);
+                    checkEffectSubtype(this, bodyEff, def.eff, `Function ${def.name}${spanSuffix(def.nameSpan)}`);
                 }
             } else if (def.kind === 'DefTool') {
                 // No body to check; signature is validated in the first pass.

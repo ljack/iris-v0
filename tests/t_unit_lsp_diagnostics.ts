@@ -67,5 +67,15 @@ export const t_unit_lsp_diagnostics: TestCase = {
     if (fnText !== 'broken') {
       throw new Error(`Expected to highlight 'broken', got '${fnText}'`);
     }
+
+    const spanError = buildDiagnostic(
+      'TypeError: Unknown function call: foo at 3:5',
+      doc,
+    );
+    if (spanError.range.start.line !== 2 || spanError.range.start.character !== 4) {
+      throw new Error(
+        `Expected span at 3:5, got ${spanError.range.start.line + 1}:${spanError.range.start.character + 1}`,
+      );
+    }
   },
 };
