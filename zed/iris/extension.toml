@@ -1,0 +1,20 @@
+id = "iris"
+name = "Iris Language Support"
+version = "0.1.0"
+schema_version = 1
+description = "Syntax highlighting and editor support for IRIS (.iris) files."
+repository = "https://github.com/ljack/iris-v0"
+authors = ["Iris Contributors <dev@iris-lang.org>"]
+
+[grammars.iris]
+repository = "file:///Users/jarkko/_dev/iris-v0"
+rev = "HEAD"
+path = "zed/iris/grammars-src/iris"
+
+[language_servers]
+
+[context_servers]
+
+[agent_servers]
+
+[slash_commands]

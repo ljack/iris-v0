@@ -1,0 +1,7 @@
+name = "Iris"
+grammar = "iris"
+path_suffixes = ["iris"]
+line_comments = [";;"]
+tab_size = 4
+hard_tabs = false
+word_characters = ["_", "-", ".", "!", "?", "<", ">", "=", "*", "+", "/"]
