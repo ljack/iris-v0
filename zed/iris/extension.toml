@@ -8,10 +8,16 @@ authors = ["Iris Contributors <dev@iris-lang.org>"]
 
 [grammars.iris]
 repository = "file:///Users/jarkko/_dev/iris-v0/.git"
-rev = "98805a6806912099b58b463766414763b343ab3c"
+rev = "aa8b0445e6d663852e698ed79c6134ea3c32794f"
 path = "tree-sitter-iris"
 
-[language_servers]
+[language_servers.iris-lsp]
+name = "IRIS Language Server"
+language = "iris"
+
+[language_servers.iris-lsp.binary]
+command = "npx"
+args = ["ts-node", "../../src/lsp-server.ts"]
 
 [context_servers]
 
