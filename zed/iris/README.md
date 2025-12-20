@@ -25,7 +25,10 @@ This extension provides comprehensive editor support for IRIS language files (`.
 
 ### Prerequisites
 - [Zed Editor](https://zed.dev/)
-- Node.js and npm installed
+- **Rust installed via [rustup](https://rustup.rs/)** (required for Zed extensions)
+  - If you have Rust from Homebrew or other sources, uninstall it first
+  - Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- Node.js and npm installed (for the LSP server)
 - IRIS repository cloned locally
 
 ### Install as Dev Extension
@@ -80,9 +83,16 @@ To modify the extension:
 
 ## Troubleshooting
 
-If the language server doesn't start:
+**Extension fails to compile:**
+- Ensure Rust is installed via rustup (not Homebrew)
+- Run `rustup --version` to verify rustup is installed
+- If you have Rust from Homebrew, uninstall it: `brew uninstall rust`
+- Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
+**Language server doesn't start:**
 - Ensure Node.js and npm are in your PATH
 - Check that `npx ts-node` works from the command line
+- Navigate to the IRIS repo root and run `npm install`
 - View Zed logs: Help → View Logs
 
 ## License

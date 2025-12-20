@@ -15,10 +15,6 @@ path = "tree-sitter-iris"
 name = "IRIS Language Server"
 language = "iris"
 
-[language_servers.iris-lsp.binary]
-command = "npx"
-args = ["ts-node", "../../src/lsp-server.ts"]
-
 [context_servers]
 
 [agent_servers]
