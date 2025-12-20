@@ -30,6 +30,7 @@ import {
 import { pathToFileURL } from "url";
 import { Parser } from "./sexp/parser";
 import { Program, SourceSpan } from "./types";
+import { getBuiltinDoc } from "./lsp-docs";
 
 // Create LSP connection
 const connection = createConnection(ProposedFeatures.all);
@@ -141,6 +142,16 @@ connection.onHover((params) => {
     return null;
   }
 
+  const builtin = getBuiltinDoc(name);
+  if (builtin) {
+    return {
+      contents: {
+        kind: "markdown",
+        value: builtin.markdown,
+      },
+    };
+  }
+
   const program = programsByUri.get(params.textDocument.uri);
   const imports = importProgramsByUri.get(params.textDocument.uri);
   const doc = findDocForSymbol(name, program, imports);
@@ -249,6 +260,14 @@ connection.onDefinition((params) => {
         return [local];
       }
       return locations;
+    }
+  }
+
+  const builtinDoc = getBuiltinDoc(name);
+  if (builtinDoc) {
+    const docsLocation = findBuiltinDocLocation(name);
+    if (docsLocation) {
+      return [docsLocation];
     }
   }
   return null;
@@ -480,6 +499,35 @@ function symbolAtPosition(
   }
   if (start === end) return null;
   return lineText.slice(start, end);
+}
+
+function findBuiltinDocLocation(name: string): Location | null {
+  if (workspaceRoots.length === 0) {
+    return null;
+  }
+  for (const root of workspaceRoots) {
+    const docPath = path.join(root, "docs", "stdlib_types.md");
+    let text = "";
+    try {
+      text = fs.readFileSync(docPath, "utf8");
+    } catch {
+      continue;
+    }
+    const lines = text.split(/\r?\n/);
+    const heading = `## ${name}`;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === heading) {
+        return {
+          uri: pathToFileURL(docPath).toString(),
+          range: {
+            start: { line: i, character: 0 },
+            end: { line: i, character: lines[i].length },
+          },
+        };
+      }
+    }
+  }
+  return null;
 }
 
 function findDocForSymbol(
