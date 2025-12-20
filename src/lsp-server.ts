@@ -17,6 +17,8 @@ import { check } from "./main";
 import path from "path";
 import fs from "fs";
 import { buildDiagnostic } from "./lsp-diagnostics";
+import { collectIrisFiles } from "./lsp-workspace";
+import { fileURLToPath, pathToFileURL } from "url";
 
 // Create LSP connection
 const connection = createConnection(ProposedFeatures.all);
@@ -24,7 +26,10 @@ const connection = createConnection(ProposedFeatures.all);
 // Create text document manager
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
+let workspaceRoots: string[] = [];
+
 connection.onInitialize((params: InitializeParams) => {
+  workspaceRoots = getWorkspaceRoots(params);
   const versions = getVersionInfo();
   const result: InitializeResult = {
     serverInfo: {
@@ -50,6 +55,9 @@ connection.onInitialized(() => {
   connection.console.log(
     `IRIS Language Server initialized (iris-v0 ${versions.irisVersion}, lsp ${versions.lspVersion})`,
   );
+  publishWorkspaceDiagnostics().catch((err) => {
+    connection.console.error(`Workspace diagnostics failed: ${err?.message ?? err}`);
+  });
 });
 
 // Provide completions for IRIS keywords and types
@@ -135,30 +143,68 @@ documents.onDidOpen((event) => {
 
 // Validate IRIS document using the actual parser and type checker
 async function validateIrisDocument(textDocument: TextDocument): Promise<void> {
-  const text = textDocument.getText();
-  const diagnostics: Diagnostic[] = [];
-
-  try {
-    // Run the IRIS parser and type checker
-    const result = check(text, {}, false);
-
-    if (!result.success) {
-      // Parse the error message to extract useful information
-      const errorMsg = result.error as string;
-      diagnostics.push(buildDiagnostic(errorMsg, textDocument));
-    }
-  } catch (e: any) {
-    // If there's an unexpected error, report it as a diagnostic
-    diagnostics.push({
-      ...buildDiagnostic(`InternalError: ${e.message}`, textDocument),
-    });
-  }
-
+  const diagnostics = computeDiagnostics(textDocument);
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
 documents.listen(connection);
 connection.listen();
+
+function computeDiagnostics(textDocument: TextDocument): Diagnostic[] {
+  const text = textDocument.getText();
+  try {
+    const result = check(text, {}, false);
+    if (!result.success) {
+      const errorMsg = result.error as string;
+      return [buildDiagnostic(errorMsg, textDocument)];
+    }
+    return [];
+  } catch (e: any) {
+    return [buildDiagnostic(`InternalError: ${e.message}`, textDocument)];
+  }
+}
+
+async function publishWorkspaceDiagnostics(): Promise<void> {
+  for (const root of workspaceRoots) {
+    const irisFiles = await collectIrisFiles(root);
+    for (const filePath of irisFiles) {
+      let text = "";
+      try {
+        text = await fs.promises.readFile(filePath, "utf8");
+      } catch {
+        continue;
+      }
+      const uri = pathToFileURL(filePath).toString();
+      const doc = TextDocument.create(uri, "iris", 1, text);
+      const diagnostics = computeDiagnostics(doc);
+      connection.sendDiagnostics({ uri, diagnostics });
+    }
+  }
+}
+
+function getWorkspaceRoots(params: InitializeParams): string[] {
+  if (params.workspaceFolders && params.workspaceFolders.length > 0) {
+    return params.workspaceFolders
+      .map((folder) => uriToPath(folder.uri))
+      .filter((root): root is string => !!root);
+  }
+  if (params.rootUri) {
+    const root = uriToPath(params.rootUri);
+    return root ? [root] : [];
+  }
+  return [];
+}
+
+function uriToPath(uri: string): string | null {
+  if (uri.startsWith("file://")) {
+    try {
+      return fileURLToPath(uri);
+    } catch {
+      return null;
+    }
+  }
+  return uri;
+}
 
 function getVersionInfo(): { irisVersion: string; lspVersion: string } {
   const fallback = { irisVersion: "unknown", lspVersion: "unknown" };
