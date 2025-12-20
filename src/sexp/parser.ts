@@ -1,5 +1,5 @@
 
-import { Program, Definition, Expr, IrisType, IrisEffect, Import, Capability } from '../types';
+import { Program, Definition, Expr, IrisType, IrisEffect, Import, Capability, ModuleDecl } from '../types';
 import { Token } from './types';
 import { tokenize } from './lexer';
 import { ParserContext } from './context';
@@ -27,7 +27,7 @@ export class Parser implements ParserContext {
         this.expect('LParen');
         this.expectSymbol('program');
 
-        let moduleDecl = { name: 'unknown', version: 0 };
+        let moduleDecl: ModuleDecl = { name: 'unknown', version: 0 };
         const imports: Import[] = [];
         const defs: Definition[] = [];
 
@@ -40,14 +40,15 @@ export class Parser implements ParserContext {
             if (section === 'module') {
                 this.expect('LParen');
                 this.expectSymbol('name');
-                const name = this.expectString();
+                const nameTok = this.expectStringToken();
+                const name = nameTok.value;
                 this.expect('RParen');
                 this.expect('LParen');
                 this.expectSymbol('version');
                 const version = Number(this.expectInt());
                 this.expect('RParen');
                 this.expect('RParen');
-                moduleDecl = { name, version };
+                moduleDecl = { name, nameSpan: { line: nameTok.line, col: nameTok.col, len: nameTok.value.length }, version };
                 this.log(`Parsed module: ${name} v${version}`);
                 this.lastClosedSection = { name: 'module', line: this.tokens[this.pos - 1].line, col: this.tokens[this.pos - 1].col };
             } else if (section === 'imports') {
@@ -287,12 +288,16 @@ export class Parser implements ParserContext {
     }
 
     public expectString(): string {
+        return this.expectStringToken().value;
+    }
+
+    public expectStringToken(): Extract<Token, { kind: 'Str' }> {
         const t = this.peek();
         if (t.kind !== 'Str') {
             throw new Error(`Expected String at ${t.line}:${t.col}, got ${t.kind}`);
         }
         this.consume();
-        return t.value;
+        return t as Extract<Token, { kind: 'Str' }>;
     }
 
     public expectInt(): bigint {

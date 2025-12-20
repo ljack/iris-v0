@@ -180,6 +180,48 @@ connection.onDefinition((params) => {
   if (!name) {
     return null;
   }
+  const program = programsByUri.get(params.textDocument.uri);
+
+  if (program && name.includes(".")) {
+    const [alias, fnName] = name.split(".");
+    const importDecl = program.imports.find((imp) => imp.alias === alias);
+    if (importDecl) {
+      const filePath = uriToPath(params.textDocument.uri);
+      if (filePath) {
+        const resolved = resolveImportFile(
+          importDecl.path,
+          filePath,
+          workspaceRoots,
+        );
+        if (resolved) {
+          const text = fs.readFileSync(resolved, "utf8");
+          const importedProgram = parseProgram(text);
+          if (importedProgram) {
+            const importedUri = pathToFileURL(resolved).toString();
+            const def = importedProgram.defs.find(
+              (d) =>
+                (d.kind === "DefFn" || d.kind === "DefTool") &&
+                d.name === fnName &&
+                d.nameSpan,
+            );
+            if (def?.nameSpan) {
+              return [
+                { uri: importedUri, range: spanToRange(def.nameSpan) },
+              ];
+            }
+            if (importedProgram.module?.nameSpan) {
+              return [
+                {
+                  uri: importedUri,
+                  range: spanToRange(importedProgram.module.nameSpan),
+                },
+              ];
+            }
+          }
+        }
+      }
+    }
+  }
   const byUri = qualifiedDefinitionsByUri.get(params.textDocument.uri);
   if (byUri && name.includes(".")) {
     const qualified = byUri.get(name);

@@ -28,7 +28,7 @@ export interface Import {
   alias: string;
 }
 
-export type ModuleDecl = { name: string; version: number };
+export type ModuleDecl = { name: string; nameSpan?: SourceSpan; version: number };
 
 export type DocMetadata = {
   doc?: string;
