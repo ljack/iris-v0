@@ -1,3 +1,5 @@
+;; Compiler module: expression parser.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "parser_expr") (version 1))
   (imports

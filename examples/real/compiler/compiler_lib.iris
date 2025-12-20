@@ -1,3 +1,5 @@
+;; Compiler module: end-to-end compile pipeline helpers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "compiler_lib") (version 1))
   (imports
@@ -11,6 +13,7 @@
   )
   (defs
     (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
+        (doc "Compile a source file to core or wasm output based on target.")
         (body
             (let (read_res (io.read_file path))
                 (match read_res
@@ -41,4 +44,3 @@
         )
     )
   )
-

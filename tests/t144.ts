@@ -9,7 +9,7 @@ export const t144 = {
     fn: async () => {
         console.log("Running T144: Parser to WASM (Compiling parser.iris -> WASM)...");
 
-        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/${name}`), 'utf-8');
+        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/real/compiler/${name}`), 'utf-8');
 
         const sources: Record<string, string> = {
             'compiler': loadFile('compiler.iris'),
@@ -33,7 +33,7 @@ export const t144 = {
 
         const fileSystem = {
             readFile: (p: string) => {
-                if (p === 'examples/parser.iris') return sources['parser'];
+                if (p === 'examples/real/compiler/parser.iris') return sources['parser'];
                 return null;
             },
             writeFile: (p: string, c: string) => true,
@@ -42,9 +42,9 @@ export const t144 = {
 
         const interpreter = new Interpreter(program, fileSystem, moduleResolver);
 
-        console.log("Compiling examples/parser.iris to WASM...");
+        console.log("Compiling examples/real/compiler/parser.iris to WASM...");
         const resWASM = interpreter.callFunctionSync('compile_file', [
-            valStr('examples/parser.iris'),
+            valStr('examples/real/compiler/parser.iris'),
             valStr('wasm')
         ]);
 

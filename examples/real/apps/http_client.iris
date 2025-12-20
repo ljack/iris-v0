@@ -1,13 +1,16 @@
+;; Example app: HTTP client using stdlib/http.
+;; Demonstrates network effects and Result handling.
 (program
   (module (name "http_client_example") (version 0))
   (imports
-    (import "../stdlib/http" (as "Client"))
+    (import "../../stdlib/http" (as "Client"))
   )
   (defs
-    (deffn (name main) 
+    (deffn (name main)
       (args)
       (ret (Result Str Str))
       (eff !Net)
+      (doc "Fetch https://google.com and print a few response fields.")
       (body 
         (let (res (Client.get "https://google.com"))
           (match res

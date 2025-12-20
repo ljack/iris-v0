@@ -10,7 +10,7 @@ export const t133 = {
     fn: async () => {
         console.log("Running T133: Self-hosted Code Generator...");
 
-        const codePath = path.join(__dirname, '../examples/codegen.iris');
+        const codePath = path.join(__dirname, '../examples/real/compiler/codegen.iris');
         const code = fs.readFileSync(codePath, 'utf-8');
 
         // 1. Parse & Host-Check

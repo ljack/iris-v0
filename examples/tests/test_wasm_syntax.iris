@@ -1,0 +1,19 @@
+;; Test fixture: exercise wasm_syntax helpers.
+;; Uses compiler modules from examples/real/compiler.
+(program
+  (module (name "test_wasm_syntax") (version 1))
+  (imports
+    (import "io" (as "io"))
+    (import "../real/compiler/wasm_syntax" (as "ws"))
+  )
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (doc "Sanity check for IO and wasm_syntax wiring.")
+      (body
+        (let (_ (io.print "Hello world"))
+          0
+        )
+      )
+    )
+  )
+)

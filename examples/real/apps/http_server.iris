@@ -1,9 +1,12 @@
+;; Example app: tiny HTTP server with routing helpers.
+;; Demonstrates net/io effects and request handling.
 (program
   (module (name "server") (version 0))
 
   (defs
     ;; Helper to join strings in a list for index generation
     (deffn (name join_files) (args (files (List Str))) (ret Str) (eff !Pure)
+      (doc "Join file names into HTML list items.")
       (body 
         (match files
           (case (tag "cons" (head tail)) 
@@ -18,8 +21,9 @@
     )
 
     (deffn (name serve_index) (args) (ret Str) (eff !IO)
+      (doc "Serve a basic HTML index of example apps.")
       (body
-        (let (files_res (io.read_dir "examples"))
+        (let (files_res (io.read_dir "examples/real/apps"))
           (match files_res
             (case (tag "Ok" (files))
               (str.concat "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><h1>Examples</h1><ul>" 
@@ -33,11 +37,12 @@
     )
 
     (deffn (name serve_file) (args (path Str)) (ret Str) (eff !IO)
+      (doc "Serve a file from the examples/real/apps directory.")
       (body
         ;; Naive path safety: Check if it contains ".."
         (if (str.contains path "..")
            "HTTP/1.1 403 Forbidden\r\n\r\nForbidden"
-           (let (full_path (str.concat "examples" path)) ;; path starts with /, e.g., /hello.iris -> examples/hello.iris
+           (let (full_path (str.concat "examples/real/apps" path)) ;; path starts with /, e.g., /hello.iris -> examples/real/apps/hello.iris
                 (if (io.file_exists full_path)
                     (match (io.read_file full_path)
                        (case (tag "Ok" (content))
@@ -53,6 +58,7 @@
     )
 
     (deffn (name handle_client) (args (sock I64)) (ret I64) (eff !Net)
+      (doc "Handle a single client connection.")
       (body
         (match (net.read sock)
            (case (tag "Ok" (raw_req))
@@ -75,6 +81,7 @@
     )
 
     (deffn (name start_server) (args) (ret I64) (eff !Net)
+      (doc "Listen on port 8080 and accept connections.")
       (body
          (match (net.listen 8080)
             (case (tag "Ok" (server_sock))
@@ -88,6 +95,7 @@
     )
     
     (deffn (name loop) (args (server_sock I64)) (ret I64) (eff !Net)
+      (doc "Accept client sockets in a loop.")
       (body
          (match (net.accept server_sock)
             (case (tag "Ok" (client_sock))
@@ -100,6 +108,7 @@
     )
 
     (deffn (name main) (args) (ret I64) (eff !Net)
+      (doc "Start the HTTP server.")
        (body (call start_server))
     )
   )

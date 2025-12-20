@@ -1,3 +1,5 @@
+;; Compiler module: code generation for the Iris core target.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "codegen") (version 2))
   (imports
@@ -20,6 +22,7 @@
     )
 
     (deffn (name codegen_expr) (args (e ast.Expr)) (ret Str) (eff !Pure)
+        (doc "Generate core target code for a single expression.")
         (body
             (match e
                 (case (tag "Literal" (v))
@@ -108,6 +111,7 @@
     )
 
     (deffn (name codegen) (args (p ast.Program)) (ret Str) (eff !Pure)
+        (doc "Generate core target code for an entire program.")
         (body (call gen_defs p.progDefs))
     )
   )

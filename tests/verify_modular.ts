@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 async function test() {
-    const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/${name}`), 'utf-8');
+    const loadFile = (name: string) =>
+        fs.readFileSync(path.join(__dirname, `../examples/real/compiler/${name}`), 'utf-8');
 
     const sources: Record<string, string> = {
         'lexer': loadFile('lexer.iris'),

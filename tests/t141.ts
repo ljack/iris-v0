@@ -12,7 +12,7 @@ export const t141 = {
         console.log("Running T141: WASM Strings & Runtime...");
 
         // 1. Load Codegen
-        const code = fs.readFileSync(path.join(__dirname, '../examples/codegen_wasm.iris'), 'utf8');
+        const code = fs.readFileSync(path.join(__dirname, '../examples/real/compiler/codegen_wasm.iris'), 'utf8');
         const program = new Parser(code).parse();
         const interpreter = new Interpreter(program);
 

@@ -1,3 +1,5 @@
+;; Compiler module: WebAssembly expression codegen.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "codegen_wasm_expr") (version 1))
   (imports
@@ -88,12 +90,12 @@
                     (let (idx_str (call get_tag_index tag_name))
                     (let (cond (if (= tag_name "_") "(i32.const 1)" (str.concat "(i64.eq (i64.load (i32.wrap_i64 (local.get " (str.concat target_v (str.concat "))) (i64.const " (str.concat idx_str "))"))))))
                     (let (bindings (call gen_match_bindings vars target_v 0))
-                        (str.concat "(if (result i64) " 
-                            (str.concat cond 
-                                (str.concat "\n  (then\n" 
-                                    (str.concat bindings 
-                                        (str.concat body_code 
-                                            (str.concat "\n  )\n  (else\n" 
+                        (str.concat "(if (result i64) "
+                            (str.concat cond
+                                (str.concat "\n  (then\n"
+                                    (str.concat bindings
+                                        (str.concat body_code
+                                            (str.concat "\n  )\n  (else\n"
                                                 (str.concat (call gen_match_cases t target_v (+ level 1)) "\n  )\n)")))))))
                     ))))))
             )
@@ -107,7 +109,7 @@
             (match v
               (case (tag "I64" (i)) (str.concat "(i64.const " (str.concat (i64.to_string i) ")")))
               (case (tag "Bool" (b)) (if b "(i64.const 1)" "(i64.const 0)"))
-              (case (tag "Str" (s)) 
+              (case (tag "Str" (s))
                 (let (len (str.len s))
                 (let (aligned (+ 8 (+ len (if (= (% (+ 8 len) 8) 0) 0 (- 8 (% (+ 8 len) 8))))))
                 (let (alloc (str.concat "(call $alloc (i64.const " (str.concat (i64.to_string aligned) "))\n(local.set $t0)\n")))
@@ -115,19 +117,19 @@
                 (let (bytes (call gen_string_bytes s 0 len))
                     (str.concat alloc (str.concat store_len (str.concat bytes "(local.get $t0)")))
                 ))))))
-              (case (tag "Some" (val)) 
+              (case (tag "Some" (val))
                 (let (vcode (call codegen_expr (tag "Literal" val)))
                 (let (s1 "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 1))\n")
                 (let (s2 (str.concat "(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) " (str.concat vcode ")\n")))
                     (str.concat s1 (str.concat s2 "(local.get $t0)"))
                 ))))
-              (case (tag "None" ()) 
+              (case (tag "None" ())
                 "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 0))\n(local.get $t0)"
               )
               (case (tag "_" ()) "(i64.const 0)")
             )
           )
-          
+
           (case (tag "Intrinsic" (i))
             (let (op i.op)
             (let (args i.args)
@@ -169,15 +171,15 @@
                 )
             ))
           )
-          
+
           (case (tag "Var" (v)) (str.concat "(local.get $" (str.concat (call ws.sanitize_identifier v.name) ")")))
-          
+
           (case (tag "Let" (l))
             (let (vcode (call codegen_expr l.value))
                 (str.concat vcode (str.concat "\n(local.set $" (str.concat (call ws.sanitize_identifier l.name) (str.concat ")\n" (call codegen_expr l.body)))))
             )
           )
-          
+
           (case (tag "If" (i))
             (let (ccode (call codegen_expr i.cond))
             (let (tcode (call codegen_expr i.then))
@@ -185,7 +187,7 @@
                 (str.concat "(if (result i64) (i64.ne (i64.const 0) " (str.concat ccode (str.concat ")\n(then\n" (str.concat tcode (str.concat ")\n(else\n" (str.concat ecode ")\n)"))))))
             )))
           )
-          
+
           (case (tag "Match" (m))
             (let (tcode (call codegen_expr m.target))
                 (str.concat tcode (str.concat "\n(local.set $target)\n" (call gen_match_cases m.cases "$target" 0)))

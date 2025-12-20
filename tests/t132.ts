@@ -10,7 +10,7 @@ export const t132 = {
     fn: async () => {
         console.log("Running T132: Self-hosted Type Checker...");
 
-        const codePath = path.join(__dirname, '../examples/typecheck.iris');
+        const codePath = path.join(__dirname, '../examples/real/compiler/typecheck.iris');
         const code = fs.readFileSync(codePath, 'utf-8');
 
         // 1. Parse & Host-Check

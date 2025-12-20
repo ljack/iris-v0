@@ -9,7 +9,7 @@ export const t136 = {
     fn: async () => {
         console.log("Running T136: WASM Control Flow...");
 
-        const code = fs.readFileSync(path.join(__dirname, '../examples/codegen_wasm.iris'), 'utf8');
+        const code = fs.readFileSync(path.join(__dirname, '../examples/real/compiler/codegen_wasm.iris'), 'utf8');
         const parser = new Parser(code);
         const program = parser.parse();
 

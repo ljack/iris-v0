@@ -11,7 +11,7 @@ export const t140 = {
         console.log("Running T140: Self-Hosting Verification...");
 
         // 1. Load the Self-Hosted Compiler (codegen_wasm.iris)
-        const code = fs.readFileSync(path.join(__dirname, '../examples/codegen_wasm.iris'), 'utf8');
+        const code = fs.readFileSync(path.join(__dirname, '../examples/real/compiler/codegen_wasm.iris'), 'utf8');
         const parser = new Parser(code);
         const program = parser.parse();
         const checker = new TypeChecker();
@@ -19,7 +19,7 @@ export const t140 = {
         const interpreter = new Interpreter(program);
 
         // 2. Load the Input File (hello.iris)
-        const helloCode = fs.readFileSync(path.join(__dirname, '../examples/hello.iris'), 'utf8');
+        const helloCode = fs.readFileSync(path.join(__dirname, '../examples/real/apps/hello_full.iris'), 'utf8');
         console.log("Input Source:\n", helloCode);
 
         // NOTE: We manually construct AST below because 'hello.iris' is a script fragment, 
@@ -41,7 +41,7 @@ export const t140 = {
         // If parsed as Program, check `helloProgram.defs`.
         // If empty, maybe it's treated differently.
         // Actually, standard Iris parsers enforce `(program ...)` usually?
-        // Or `examples/hello.iris` is a script?
+        // Or `examples/real/apps/hello_full.iris` is a script?
         // Let's construct the AST manually if Parser behavior is complex for scripts, 
         // OR rely on the fact that we can parse the expression string directly using `Parser.parseExpr`?
 

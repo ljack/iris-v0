@@ -5,12 +5,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const sources: Record<string, string> = {
-    'compiler': fs.readFileSync('./examples/compiler.iris', 'utf8'),
-    'lexer': fs.readFileSync('./examples/lexer.iris', 'utf8'),
-    'parser': fs.readFileSync('./examples/parser.iris', 'utf8'),
-    'typecheck': fs.readFileSync('./examples/typecheck.iris', 'utf8'),
-    'codegen': fs.readFileSync('./examples/codegen.iris', 'utf8'),
-    'codegen_wasm': fs.readFileSync('./examples/codegen_wasm.iris', 'utf8'),
+    'compiler': fs.readFileSync('./examples/real/compiler/compiler.iris', 'utf8'),
+    'lexer': fs.readFileSync('./examples/real/compiler/lexer.iris', 'utf8'),
+    'parser': fs.readFileSync('./examples/real/compiler/parser.iris', 'utf8'),
+    'typecheck': fs.readFileSync('./examples/real/compiler/typecheck.iris', 'utf8'),
+    'codegen': fs.readFileSync('./examples/real/compiler/codegen.iris', 'utf8'),
+    'codegen_wasm': fs.readFileSync('./examples/real/compiler/codegen_wasm.iris', 'utf8'),
     'io': '',
     'str': '',
     'list': ''
@@ -31,7 +31,7 @@ async function main() {
 
     const hostFs = {
         readFile: (p: string) => {
-            if (p === 'examples/hello.iris') return fs.readFileSync(p, 'utf8');
+            if (p === 'examples/real/apps/hello_full.iris') return fs.readFileSync(p, 'utf8');
             return null;
         },
         writeFile: (p: string, c: string) => {
@@ -45,9 +45,9 @@ async function main() {
     const interp = new Interpreter(program, hostFs, moduleResolver, undefined, undefined, interpreterCache);
 
     try {
-        console.log("Calling compile_fileSync('examples/hello.iris', 'wasm')...");
+        console.log("Calling compile_fileSync('examples/real/apps/hello_full.iris', 'wasm')...");
         const result = interp.callFunctionSync('compile_file', [
-            { kind: 'Str', value: 'examples/hello.iris' },
+            { kind: 'Str', value: 'examples/real/apps/hello_full.iris' },
             { kind: 'Str', value: 'wasm' }
         ]);
         console.log("Result:", JSON.stringify(result));

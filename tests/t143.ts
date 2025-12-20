@@ -10,7 +10,7 @@ export const t143 = {
         console.log("Running T143: Lexer Bootstrapping (Compiling lexer.iris -> WASM)...");
 
         // 1. Load all required source files
-        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/${name}`), 'utf-8');
+        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/real/compiler/${name}`), 'utf-8');
 
         const sources: Record<string, string> = {
             'compiler': loadFile('compiler.iris'),
@@ -38,8 +38,8 @@ export const t143 = {
         const fileSystem = {
             readFile: (p: string) => {
                 // compiler.iris calls io.read_file(path)
-                // We map "examples/lexer.iris" to the content
-                if (p === 'examples/lexer.iris') return sources['lexer'];
+                // We map "examples/real/compiler/lexer.iris" to the content
+                if (p === 'examples/real/compiler/lexer.iris') return sources['lexer'];
                 return null;
             },
             writeFile: (p: string, c: string) => true,
@@ -49,9 +49,9 @@ export const t143 = {
         const interpreter = new Interpreter(program, fileSystem, moduleResolver);
 
         // 4. Compile lexer.iris to WASM
-        console.log("Compiling examples/lexer.iris to WASM...");
+        console.log("Compiling examples/real/compiler/lexer.iris to WASM...");
         const resWASM = await interpreter.callFunction('compile_file', [
-            valStr('examples/lexer.iris'),
+            valStr('examples/real/compiler/lexer.iris'),
             valStr('wasm')
         ]);
 

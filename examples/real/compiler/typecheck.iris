@@ -1,3 +1,5 @@
+;; Compiler module: program-level type checking.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "typecheck") (version 2))
   (imports
@@ -10,6 +12,7 @@
   )
   (defs
     (deffn (name type_check_program) (args (p ast.Program)) (ret (Result ast.IrisType Str)) (eff !Pure)
+        (doc "Type check an Iris Program and return Ok/Err.")
         (body
             (let (e (call env.env_new))
             (let (e2 (call collect_defs p.progDefs e))

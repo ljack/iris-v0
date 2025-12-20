@@ -1,3 +1,5 @@
+;; Compiler module: lexer/tokenizer from source text.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "lexer") (version 1))
   (imports
@@ -178,6 +180,7 @@
     )
 
     (deffn (name tokenize) (args (input Str)) (ret (List ast.Token)) (eff !Pure)
+      (doc "Tokenize Iris source into a list of tokens.")
       (body (call reverse (call tokenize_rec input (str.len input) 0 (list-of ast.Token))))
     )
 
@@ -195,6 +198,7 @@
     )
 
     (deffn (name main) (args) (ret I64) (eff !IO)
+      (doc "CLI helper that tokenizes a small sample.")
       (body
         (let (code "(let x 123 \"hello\")")
             (let (tokens (call tokenize code))

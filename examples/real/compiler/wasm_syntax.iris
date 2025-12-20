@@ -1,3 +1,5 @@
+;; Compiler module: WebAssembly text-format helpers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "wasm_syntax") (version 1))
   (imports

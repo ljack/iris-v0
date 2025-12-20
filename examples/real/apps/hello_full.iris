@@ -1,0 +1,13 @@
+;; Example app: full program structure with imports and main.
+;; Demonstrates program/module layout for Iris apps.
+(program
+  (module (name "hello") (version 0))
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (doc "Print a greeting from the CLI.")
+      (body
+        (io.print "Hello from CLI!")
+      )
+    )
+  )
+)

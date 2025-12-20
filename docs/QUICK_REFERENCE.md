@@ -4,8 +4,8 @@
 
 ### CLI Commands
 ```bash
-✅ iris run examples/hello.iris       # Executes program
-✅ iris check examples/hello.iris     # Type-check only
+✅ iris run examples/real/apps/hello_full.iris       # Executes program
+✅ iris check examples/real/apps/hello_full.iris     # Type-check only
 ✅ iris version                       # Shows v0.4.0
 ✅ iris help                          # Shows usage
 ❌ iris eval "code"                   # Not implemented
@@ -13,9 +13,9 @@
 
 ### Example Programs (All Runnable)
 ```bash
-✅ iris run examples/hello.iris       # Output: "Hello, world!" + 0
-✅ iris run examples/fib.iris         # Output: "Calculating fib(10)..." + 55
-✅ iris run examples/server.iris      # Output: "Listening on http://localhost:8080"
+✅ iris run examples/real/apps/hello_full.iris       # Output: "Hello, world!" + 0
+✅ iris run examples/real/apps/fib.iris         # Output: "Calculating fib(10)..." + 55
+✅ iris run examples/real/apps/http_server.iris      # Output: "Listening on http://localhost:8080"
 ```
 
 ### Network Features (All 5 Implemented)
@@ -139,9 +139,14 @@ iris-v0/
 │   ├── sexp.ts             # S-expr parser (500+ lines)
 │   └── types.ts            # TypeScript types
 ├── examples/
-│   ├── hello.iris          # Hello world
-│   ├── fib.iris            # Fibonacci
-│   └── server.iris         # HTTP server
+│   ├── real/
+│   │   ├── apps/
+│   │   │   ├── hello_full.iris  # Hello world
+│   │   │   ├── fib.iris         # Fibonacci
+│   │   │   └── http_server.iris # HTTP server
+│   │   └── compiler/            # Iris compiler modules
+│   ├── tests/                   # LSP/compiler fixtures
+│   └── sandbox/                 # Scratchpad files
 ├── tests/
 │   ├── t01.ts through t82.ts   # 82 tests
 │   ├── t90.ts              # Module test
@@ -243,7 +248,7 @@ Hello, IRIS
 
 ## HTTP Server Example (Simplified)
 
-The `examples/server.iris` demonstrates:
+The `examples/real/apps/http_server.iris` demonstrates:
 1. `net.listen 8080` - Bind to port
 2. `net.accept server_sock` - Accept connections in loop
 3. `net.read client_sock` - Read HTTP request
@@ -252,7 +257,7 @@ The `examples/server.iris` demonstrates:
 6. `net.write client_sock response` - Send HTTP response
 7. `net.close sock` - Close connection
 
-Full example serves files from `examples/` directory on localhost:8080.
+Full example serves files from `examples/real/apps/` directory on localhost:8080.
 
 ## Debugging Tips
 
@@ -264,7 +269,7 @@ iris check myprogram.iris
 npm run test
 
 # Run specific example
-iris run examples/hello.iris
+iris run examples/real/apps/hello_full.iris
 
 # Build if you modify source
 npm run build

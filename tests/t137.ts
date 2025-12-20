@@ -10,7 +10,7 @@ export const t137 = {
         console.log("Running T137: WASM Data Structures...");
 
         // Load self-hosted codegen
-        const code = fs.readFileSync(path.join(__dirname, '../examples/codegen_wasm.iris'), 'utf8');
+        const code = fs.readFileSync(path.join(__dirname, '../examples/real/compiler/codegen_wasm.iris'), 'utf8');
         const parser = new Parser(code);
         const program = parser.parse();
 

@@ -1,13 +1,17 @@
+;; Example app: minimal function definition and call.
+;; Demonstrates simple defs and pure return values.
 (program
   (module (name "hello") (version 0))
   (defs
 
     (deffn (name hello) (args) (ret I64) (eff !IO)
+      (doc "Print a greeting from a helper function.")
       (body 
         (io.print "Hello from CLI and function!")
       )
     )
     (deffn (name main) (args) (ret I64) (eff !IO)
+      (doc "Entry point that calls hello.")
       (body 
         (call hello)
       )

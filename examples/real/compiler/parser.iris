@@ -1,3 +1,5 @@
+;; Compiler module: parser entrypoint wiring sub-parsers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "parser") (version 2))
   (imports
@@ -9,6 +11,7 @@
   (defs
     ;; Re-export or wrap top-level functions to preserve original API
     (deffn (name parse) (args (tokens (List ast.Token))) (ret ast.Program) (eff !Pure)
+      (doc "Parse a token stream into a Program AST.")
       (body 
         (let (p (call base.parser_new tokens))
             (let (res (call top.parse_program p))

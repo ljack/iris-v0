@@ -1,3 +1,5 @@
+;; Compiler module: CLI entrypoint for compiling Iris files.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "compiler") (version 1))
   (imports
@@ -8,6 +10,7 @@
   )
   (defs
     (deffn (name main) (args) (ret I64) (eff !IO)
+        (doc "CLI wrapper around compiler_lib.compile_file.")
         (body
             (let (args (sys.args))
                 (if (< (list.length args) 1)

@@ -1,3 +1,5 @@
+;; Sandbox: scratchpad for local experiments.
+;; Not part of the core examples or tests.
 (program
   (module (name "compiler") (version 1))
   (imports
@@ -5,15 +7,16 @@
     (import "io" (as "io"))
     (import "str" (as "str"))
     (import "list" (as "list"))
-    (import "lexer" (as "lexer"))
-    (import "parser" (as "parser"))
-    (import "typecheck" (as "typecheck"))
-    (import "codegen" (as "codegen"))
-    (import "codegen_wasm" (as "codegen_wasm"))
+    (import "../real/compiler/lexer" (as "lexer"))
+    (import "../real/compiler/parser" (as "parser"))
+    (import "../real/compiler/typecheck" (as "typecheck"))
+    (import "../real/compiler/codegen" (as "codegen"))
+    (import "../real/compiler/codegen_wasm" (as "codegen_wasm"))
   )
   (defs
  
   (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
+        (doc "Compile a file to the requested target (core or wasm).")
         (body
             (let (read_res (io.read_file path))
                 (match read_res
@@ -45,6 +48,7 @@
     
     
     (deffn (name main) (args) (ret I64) (eff !IO)
+        (doc "CLI wrapper around compile_file for sandbox testing.")
         (body
             (let (args (sys.args))
                 (if (< (list.length args) 1)

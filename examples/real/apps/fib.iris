@@ -1,16 +1,20 @@
+;; Example app: recursive Fibonacci with a simple CLI entrypoint.
+;; Demonstrates basic recursion and numeric types.
 (program
   (module (name "fib") (version 0))
   (defs
     (deffn (name fib) (args (n I64)) (ret I64) (eff !Pure)
-      (body 
+      (doc "Recursive Fibonacci for small values. Not optimized.")
+      (body
         (if (< n 2)
             n
             (+ (call fib (- n 1)) (call fib (- n 2))))
       )
     )
-    
+
     (deffn (name main) (args) (ret I64) (eff !IO)
-      (body 
+      (doc "Print fib(10) and return the result.")
+      (body
         (let (res (io.print "Calculating fib(10)..."))
              (let (val (call fib 10))
                   (let (res2 (io.print val))

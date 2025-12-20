@@ -6,7 +6,8 @@ import * as path from 'path';
 async function main() {
     console.log("Running T144 via Worker (128MB Stack)...");
 
-    const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/${name}`), 'utf-8');
+    const loadFile = (name: string) =>
+        fs.readFileSync(path.join(__dirname, `../examples/real/compiler/${name}`), 'utf-8');
 
     const sources: Record<string, string> = {
         'compiler': loadFile('compiler.iris'),
@@ -23,7 +24,7 @@ async function main() {
         const response: any = await runWithStack(workerPath, {
             programSource: sources['compiler'],
             sources: sources,
-            fileName: 'examples/parser.iris',
+            fileName: 'examples/real/compiler/parser.iris',
             target: 'wasm'
         }, 128);
 

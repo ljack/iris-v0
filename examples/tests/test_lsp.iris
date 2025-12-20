@@ -1,0 +1,14 @@
+;; Test fixture: intentional errors for LSP diagnostics.
+;; Open in editor to verify error ranges.
+(program
+  (module (name "test") (version 0))
+  (defs
+    (deffn (name broken) (args) (ret I64) (eff !Pure)
+      (doc "Intentional type error for diagnostics tests.")
+      (body
+        ;; This should cause a type error - returning a string instead of I64
+        "hello"
+      )
+    )
+  )
+)

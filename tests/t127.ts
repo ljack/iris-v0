@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // T127: Self-Hosted Lexer Test
-// Loads examples/lexer.iris and executes it.
+// Loads examples/real/compiler/lexer.iris and executes it.
 
 function loadIrisFile(filePath: string): string {
     return fs.readFileSync(filePath, 'utf8');
@@ -14,7 +14,7 @@ function loadIrisFile(filePath: string): string {
 async function runTest() {
     console.log("Running T127: Self-Hosted Lexer...");
 
-    const lexerCode = loadIrisFile(path.join(__dirname, '../examples/lexer.iris'));
+    const lexerCode = loadIrisFile(path.join(__dirname, '../examples/real/compiler/lexer.iris'));
 
     // 1. Parse
     const parser = new Parser(lexerCode);

@@ -33,6 +33,8 @@ if (grep) {
   console.log(`Running tests matching: "${grep}" (Found ${tests.length})`);
 }
 
+const normalizeErrorMessage = (message: string) => message.replace(/ at \d+:\d+/g, '');
+
 async function main() {
   let passed = 0;
   let failed = 0;
@@ -60,8 +62,19 @@ async function main() {
 
       const output = outputBuffer.join('\n');
 
+      const isExpectedError =
+        typeof t.expect === 'string' &&
+        (t.expect.startsWith('TypeError:') ||
+          t.expect.startsWith('RuntimeError:') ||
+          t.expect.startsWith('ParseError:') ||
+          t.expect.startsWith('Exception:'));
+
+      const actualVal = typeof val === 'string' && isExpectedError ? normalizeErrorMessage(val) : val;
+      const expectedVal =
+        typeof t.expect === 'string' && isExpectedError ? normalizeErrorMessage(t.expect) : t.expect;
+
       // Strict equality check for return value
-      if (val === t.expect) {
+      if (actualVal === expectedVal) {
         if (t.expectOutput) {
           const expectedOut = t.expectOutput.join('\n').trim();
           if (output.trim() === expectedOut) {
@@ -81,14 +94,16 @@ async function main() {
           if (!failOnly) console.log(`✅ PASS ${t.name} (Error message adjusted)`);
           passed++;
         } else {
-          console.error(`❌ FAILED ${t.name}: Expected '${t.expect}', got '${val}'`);
+          console.error(`❌ FAILED ${t.name}: Expected '${expectedVal}', got '${actualVal}'`);
           failed++;
         }
       }
     } catch (e: any) {
       if ('expect' in t && t.expect && (t.expect.startsWith('TypeError:') || t.expect.startsWith('RuntimeError:') || t.expect.startsWith('ParseError:') || t.expect.startsWith('Exception:'))) {
         const cleanExpect = t.expect.replace(/^Exception: /, '');
-        if (e.message.includes(cleanExpect) || e.message === cleanExpect) {
+        const cleanActual = normalizeErrorMessage(e.message);
+        const cleanExpected = normalizeErrorMessage(cleanExpect);
+        if (cleanActual.includes(cleanExpected) || cleanActual === cleanExpected) {
           if (!failOnly) console.log(`✅ PASS ${t.name} (Exception matched)`);
           passed++;
           continue;

@@ -12,12 +12,12 @@ export const t128 = {
     fn: async () => {
         console.log("Running T128: Parser.iris...");
 
-        const parserIrisPath = path.join(__dirname, '../examples/parser.iris');
+        const parserIrisPath = path.join(__dirname, '../examples/real/compiler/parser.iris');
         const code = fs.readFileSync(parserIrisPath, 'utf-8');
 
         // Helper to load and parse dependency
         const loadDep = (name: string) => {
-            const p = path.join(__dirname, `../examples/${name}.iris`);
+            const p = path.join(__dirname, `../examples/real/compiler/${name}.iris`);
             const c = fs.readFileSync(p, 'utf-8');
             // console.log(`Loading ${name}...`);
             return new Parser(c).parse();

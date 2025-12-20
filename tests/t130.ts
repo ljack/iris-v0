@@ -9,7 +9,7 @@ import { Expr, Value } from '../src/types';
 export const t130 = {
     name: 't130_evaluator',
     fn: async () => {
-        const code = fs.readFileSync('examples/interpreter.iris', 'utf-8');
+        const code = fs.readFileSync('examples/real/apps/interpreter.iris', 'utf-8');
         const program = new Parser(code).parse();
 
         const checker = new TypeChecker(); // Fix: constructor takes resolver, not program

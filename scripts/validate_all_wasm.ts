@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 /**
  * Script to validate all generated WASP files using wat2wasm.
- * Scans examples/ directory for .iris files that generate WASP,
+ * Scans examples/real/compiler for .iris files that generate WASP,
  * compiles them, and validates the output.
  */
 
@@ -9,7 +9,7 @@ import { readdirSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { validateWatWithWat2Wasm, isWat2WasmAvailable } from '../src/test-helpers';
 
-const EXAMPLES_DIR = join(__dirname, '../examples');
+const EXAMPLES_DIR = join(__dirname, '../examples/real/compiler');
 const WASM_GENERATING_FILES = [
   'codegen_wasm_expr.iris',
   'codegen_wasm.iris',
@@ -78,5 +78,4 @@ if (require.main === module) {
     process.exit(1);
   });
 }
-
 

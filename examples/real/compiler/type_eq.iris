@@ -1,3 +1,5 @@
+;; Compiler module: type equality and comparison helpers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "type_eq") (version 1))
   (imports

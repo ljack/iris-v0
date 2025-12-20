@@ -1,3 +1,5 @@
+;; Compiler module: AST definitions for Iris programs.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "ast") (version 1))
   (imports

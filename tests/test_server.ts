@@ -4,11 +4,9 @@ import * as path from 'path';
 import * as net from 'net';
 
 const BIN_PATH = path.resolve(__dirname, '../bin/iris');
-const EXAMPLES_DIR = path.resolve(__dirname, '../examples');
-
 // Spawn server
 console.log("Starting server...");
-const server = spawn(BIN_PATH, ['run', 'examples/server.iris'], { cwd: path.resolve(__dirname, '..') });
+const server = spawn(BIN_PATH, ['run', 'examples/real/apps/http_server.iris'], { cwd: path.resolve(__dirname, '..') });
 
 server.stdout.on('data', (data) => console.log(`[Server]: ${data}`));
 server.stderr.on('data', (data) => console.error(`[Server Err]: ${data}`));
@@ -18,13 +16,13 @@ setTimeout(() => {
     const client = new net.Socket();
     client.connect(8080, '127.0.0.1', () => {
         console.log('Connected to server');
-        client.write('GET /hello.iris HTTP/1.1\r\nHost: localhost\r\n\r\n');
+        client.write('GET /hello_full.iris HTTP/1.1\r\nHost: localhost\r\n\r\n');
     });
 
     client.on('data', (data) => {
         console.log('Received: ' + data);
-        if (data.toString().includes('Hello, world!')) {
-            console.log('✅ PASS: Served hello.iris');
+        if (data.toString().includes('Hello from CLI!')) {
+            console.log('✅ PASS: Served hello_full.iris');
         } else {
             console.log('❌ FAIL: Content match');
         }

@@ -1,3 +1,5 @@
+;; Compiler module: type environment and symbol table helpers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "type_env") (version 1))
   (imports

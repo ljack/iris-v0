@@ -9,7 +9,7 @@ export const t145 = {
     fn: async () => {
         console.log("Running T145: TypeCheck to WASM (Compiling typecheck.iris -> WASM)...");
 
-        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/${name}`), 'utf-8');
+        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/real/compiler/${name}`), 'utf-8');
 
         const sources: Record<string, string> = {
             'compiler': loadFile('compiler.iris'),
@@ -33,7 +33,7 @@ export const t145 = {
 
         const fileSystem = {
             readFile: (p: string) => {
-                if (p === 'examples/typecheck.iris') return sources['typecheck'];
+                if (p === 'examples/real/compiler/typecheck.iris') return sources['typecheck'];
                 return null;
             },
             writeFile: (p: string, c: string) => true,
@@ -42,10 +42,10 @@ export const t145 = {
 
         const interpreter = new Interpreter(program, fileSystem, moduleResolver);
 
-        console.log("Compiling examples/typecheck.iris to WASM...");
+        console.log("Compiling examples/real/compiler/typecheck.iris to WASM...");
 
         const resWASM = interpreter.callFunctionSync('compile_file', [
-            valStr('examples/typecheck.iris'),
+            valStr('examples/real/compiler/typecheck.iris'),
             valStr('wasm')
         ]);
 

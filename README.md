@@ -139,7 +139,12 @@ iris-v0/
 │   └── GOAL-4-ROADMAP.md # Goal 4 detailed roadmap
 │
 ├── docs/                   # Documentation and Roadmap
-├── examples/             # Example programs
+├── examples/             # Example programs and fixtures
+│   ├── real/             # Real Iris sources for demos/tooling
+│   │   ├── apps/         # Runnable apps (hello, fib, http server)
+│   │   └── compiler/     # Iris compiler pipeline modules
+│   ├── tests/            # Test fixtures for LSP/compiler
+│   └── sandbox/          # Scratchpad files
 ├── package.json         # NPM configuration
 └── tsconfig.json        # TypeScript configuration
 ```

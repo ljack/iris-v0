@@ -9,7 +9,7 @@ export const t134 = {
     fn: async () => {
         console.log("Running T134: Self-hosted WASM Code Generator...");
 
-        const code = fs.readFileSync(path.join(__dirname, '../examples/codegen_wasm.iris'), 'utf8');
+        const code = fs.readFileSync(path.join(__dirname, '../examples/real/compiler/codegen_wasm.iris'), 'utf8');
         const parser = new Parser(code);
         const program = parser.parse();
 

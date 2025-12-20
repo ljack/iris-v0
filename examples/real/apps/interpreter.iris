@@ -1,3 +1,5 @@
+;; Example app: small interpreter core for experimentation.
+;; Demonstrates data structures and evaluation loops.
 (program
   (module (name "interpreter") (version 1))
   (imports
@@ -71,18 +73,22 @@
     (type Env (Record (bindings (Map Str Value))))
 
     (deffn (name env_new) (args) (ret Env) (eff !Pure)
+        (doc "Create a new environment with a dummy binding.")
         (body (record (bindings (map.make "k" (tag "I64" 0))))) ;; dummy witness
     )
 
     (deffn (name env_get) (args (env Env) (key Str)) (ret (Option Value)) (eff !Pure)
+        (doc "Lookup a value in the environment.")
         (body (map.get env.bindings key))
     )
 
     (deffn (name env_put) (args (env Env) (key Str) (val Value)) (ret Env) (eff !Pure)
+        (doc "Return a new environment with a binding added or replaced.")
         (body (record (bindings (map.put env.bindings key val))))
     )
 
     (deffn (name eval) (args (e Expr) (env Env)) (ret Value) (eff !Pure)
+        (doc "Evaluate an expression in the given environment.")
         (body
             (match e
                 (case (tag "Literal" (v)) v)
@@ -145,6 +151,7 @@
     )
 
     (deffn (name eval_intrinsic) (args (op Str) (args (List Expr)) (env Env)) (ret Value) (eff !Pure)
+        (doc "Evaluate built-in intrinsic operations by name.")
         (body
             (if (= op "+")
                 (let (a (list.get args 0))

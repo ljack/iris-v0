@@ -10,16 +10,19 @@ export const t135 = {
         console.log("Running T135: Compiler Pipeline Integration...");
 
         // 1. Load all required source files
-        const loadFile = (name: string) => fs.readFileSync(path.join(__dirname, `../examples/${name}`), 'utf-8');
+        const loadCompilerFile = (name: string) =>
+            fs.readFileSync(path.join(__dirname, `../examples/real/compiler/${name}`), 'utf-8');
+        const loadAppFile = (name: string) =>
+            fs.readFileSync(path.join(__dirname, `../examples/real/apps/${name}`), 'utf-8');
 
         const sources: Record<string, string> = {
-            'compiler': loadFile('compiler.iris'),
-            'lexer': loadFile('lexer.iris'),
-            'parser': loadFile('parser.iris'),
-            'typecheck': loadFile('typecheck.iris'),
-            'codegen': loadFile('codegen.iris'),
-            'codegen_wasm': loadFile('codegen_wasm.iris'),
-            'hello': loadFile('hello.iris') // Test input
+            'compiler': loadCompilerFile('compiler.iris'),
+            'lexer': loadCompilerFile('lexer.iris'),
+            'parser': loadCompilerFile('parser.iris'),
+            'typecheck': loadCompilerFile('typecheck.iris'),
+            'codegen': loadCompilerFile('codegen.iris'),
+            'codegen_wasm': loadCompilerFile('codegen_wasm.iris'),
+            'hello': loadAppFile('hello_full.iris') // Test input
         };
 
         // 2. Parse & Bootstapping the Compiler itself
@@ -40,7 +43,7 @@ export const t135 = {
 
         const fileSystem = {
             readFile: (p: string) => {
-                if (p === 'examples/hello.iris') return sources['hello'];
+                if (p === 'examples/real/apps/hello_full.iris') return sources['hello'];
                 if (p === 'hello.iris') return sources['hello'];
                 return null;
             },
@@ -56,9 +59,9 @@ export const t135 = {
         // (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) ...)
 
         // Test 1: Compile to TypeScript
-        console.log("Testing compile_file('examples/hello.iris', 'ts')...");
+        console.log("Testing compile_file('examples/real/apps/hello_full.iris', 'ts')...");
         const resTS = await interpreter.callFunction('compile_file', [
-            valStr('examples/hello.iris'),
+            valStr('examples/real/apps/hello_full.iris'),
             valStr('ts')
         ]);
 
@@ -77,9 +80,9 @@ export const t135 = {
         }
 
         // Test 2: Compile to WASM
-        console.log("Testing compile_file('examples/hello.iris', 'wasm')...");
+        console.log("Testing compile_file('examples/real/apps/hello_full.iris', 'wasm')...");
         const resWASM = await interpreter.callFunction('compile_file', [
-            valStr('examples/hello.iris'),
+            valStr('examples/real/apps/hello_full.iris'),
             valStr('wasm')
         ]);
 

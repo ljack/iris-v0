@@ -1,0 +1,24 @@
+;; Example app: intentional type errors for LSP diagnostics.
+;; Demonstrates editor feedback in Zed for Iris code.
+(program
+  (module (name "lsp_demo") (version 0))
+  (defs
+    ;; This function is correct
+    (deffn (name add) (args (x I64) (y I64)) (ret I64) (eff !Pure)
+      (doc "Add two I64 values.")
+      (body (+ x y))
+    )
+
+    ;; This function has a type error - returns string instead of I64
+    (deffn (name broken) (args) (ret I64) (eff !Pure)
+      (doc "Intentional type error: returns Str instead of I64.")
+      (body "this should be a number")
+    )
+
+    ;; This function is also correct
+    (deffn (name multiply) (args (a I64) (b I64)) (ret I64) (eff !Pure)
+      (doc "Multiply two I64 values.")
+      (body (* a b))
+    )
+  )
+)

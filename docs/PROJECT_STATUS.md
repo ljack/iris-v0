@@ -18,7 +18,7 @@ IRIS v0 is a **functional, deterministic programming language** designed for AI 
 - **Effect System**: Complete with `!Pure < !IO < !Net < !Any` lattice
 - **CLI Tool**: Working with `run`, `check`, `version`, `help` commands
 - **Network Features**: All major network intrinsics implemented and functional
-- **HTTP Server**: Demonstrated working with `examples/server.iris`
+- **HTTP Server**: Demonstrated working with `examples/real/apps/http_server.iris`
 - **Module System**: Imports and cross-module function calls working (T90 passes)
 - **Tool Host**: `deftool` + metadata supported, browser tool registry available
 - **Test Coverage**: 334 tests with ~99% line coverage (last run)
@@ -50,7 +50,7 @@ IRIS v0 is a **functional, deterministic programming language** designed for AI 
 
 ### Example Programs (All Runnable)
 
-#### a) Hello World (`examples/hello.iris`)
+#### a) Hello World (`examples/real/apps/hello_full.iris`)
 ```iris
 (program
   (module (name "hello") (version 0))
@@ -60,12 +60,12 @@ IRIS v0 is a **functional, deterministic programming language** designed for AI 
 ```
 **Status**: ✅ Fully working
 ```bash
-$ iris run examples/hello.iris
+$ iris run examples/real/apps/hello_full.iris
 Hello, world!
 0
 ```
 
-#### b) Fibonacci (`examples/fib.iris`)
+#### b) Fibonacci (`examples/real/apps/fib.iris`)
 ```iris
 (program
   (module (name "fib") (version 0))
@@ -79,13 +79,13 @@ Hello, world!
 ```
 **Status**: ✅ Fully working
 ```bash
-$ iris run examples/fib.iris
+$ iris run examples/real/apps/fib.iris
 Calculating fib(10)...
 55
 55
 ```
 
-#### c) HTTP Server (`examples/server.iris`)
+#### c) HTTP Server (`examples/real/apps/http_server.iris`)
 ```iris
 (program
   (module (name "server") (version 0))
@@ -101,7 +101,7 @@ Calculating fib(10)...
 ```
 **Status**: ✅ Fully working
 ```bash
-$ iris run examples/server.iris
+$ iris run examples/real/apps/http_server.iris
 Listening on http://localhost:8080
 ```
 
@@ -143,7 +143,7 @@ NodeNetwork (implements INetwork)
 - ✅ Error handling with null returns on failure
 - ✅ Full integration with `Interpreter` via `INetwork` interface
 
-**Demonstration**: The `examples/server.iris` program:
+**Demonstration**: The `examples/real/apps/http_server.iris` program:
 1. Calls `net.listen 8080` → Creates server
 2. Enters accept loop with `net.accept`
 3. Reads HTTP request with `net.read`
@@ -228,10 +228,10 @@ NodeNetwork (implements INetwork)
 
 ### Can It Run?
 
-**YES** - The HTTP server fully runs and is demonstrated in `examples/server.iris`.
+**YES** - The HTTP server fully runs and is demonstrated in `examples/real/apps/http_server.iris`.
 
 ```bash
-$ timeout 3 iris run examples/server.iris
+$ timeout 3 iris run examples/real/apps/http_server.iris
 Listening on http://localhost:8080
 ```
 
@@ -386,7 +386,7 @@ interface INetwork {
 | `src/sexp.ts` | S-expression parser | 500+ |
 | `src/types.ts` | TypeScript type definitions | 100+ |
 | `tests/**/*.ts` | 92 test files (T01-T82, T90, T100+) | 5000+ |
-| `examples/*.iris` | Example programs (hello, fib, server) | 107 |
+| `examples/real/apps/*.iris` | Example programs (hello, fib, http server) | 107 |
 
 ---
 
@@ -436,10 +436,10 @@ npm run test-cli # CLI-specific tests
 ### Running Programs
 ```bash
 # Type-check only
-./bin/iris check examples/hello.iris
+./bin/iris check examples/real/apps/hello_full.iris
 
 # Execute program
-./bin/iris run examples/hello.iris
+./bin/iris run examples/real/apps/hello_full.iris
 
 # Show version
 ./bin/iris version

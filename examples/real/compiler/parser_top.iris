@@ -1,3 +1,5 @@
+;; Compiler module: top-level parser for modules, imports, and defs.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
 (program
   (module (name "parser_top") (version 1))
   (imports
