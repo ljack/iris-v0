@@ -278,5 +278,22 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
         return { type: { type: 'Result', ok: httpResType, err: { type: 'Str' } }, eff: joinedEff };
     }
 
+    if (expr.op === 'http.get' || expr.op === 'http.post') {
+        if (expr.op === 'http.get') {
+            if (argTypes.length !== 1) throw new Error("http.get expects 1 arg (url)");
+            if (argTypes[0].type !== 'Str') throw new Error("http.get expects Str url");
+        } else {
+            if (argTypes.length !== 2) throw new Error("http.post expects 2 args (url, body)");
+            if (argTypes[0].type !== 'Str' || argTypes[1].type !== 'Str') {
+                throw new Error("http.post expects (Str url, Str body)");
+            }
+        }
+
+        joinedEff = joinEffects(joinedEff, '!Net');
+        const headerType: IrisType = { type: 'Record', fields: { key: { type: 'Str' }, val: { type: 'Str' } } };
+        const httpResType: IrisType = { type: 'Record', fields: { version: { type: 'Str' }, status: { type: 'I64' }, headers: { type: 'List', inner: headerType }, body: { type: 'Str' } } };
+        return { type: { type: 'Result', ok: httpResType, err: { type: 'Str' } }, eff: joinedEff };
+    }
+
     throw new Error(`Unknown intrinsic: ${expr.op}`);
 }

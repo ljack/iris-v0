@@ -29,7 +29,7 @@ import {
 } from "./lsp-workspace";
 import { pathToFileURL } from "url";
 import { Parser } from "./sexp/parser";
-import { Program, SourceSpan } from "./types";
+import { Expr, IrisType, Program, SourceSpan } from "./types";
 import { getBuiltinDoc } from "./lsp-docs";
 
 // Create LSP connection
@@ -68,7 +68,10 @@ connection.onInitialize((params: InitializeParams) => {
       },
       hoverProvider: true,
       definitionProvider: true,
-      referencesProvider: false,
+      declarationProvider: true,
+      typeDefinitionProvider: true,
+      implementationProvider: true,
+      referencesProvider: true,
     },
   };
   return result;
@@ -273,6 +276,100 @@ connection.onDefinition((params) => {
   return null;
 });
 
+connection.onDeclaration((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) {
+    return null;
+  }
+  const name = symbolAtPosition(doc, params.position);
+  if (!name) {
+    return null;
+  }
+  const program = programsByUri.get(params.textDocument.uri);
+  const locations = resolveDefinitionLocations(
+    name,
+    params.textDocument.uri,
+    program,
+  );
+  return locations ?? null;
+});
+
+connection.onTypeDefinition((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) {
+    return null;
+  }
+  const name = symbolAtPosition(doc, params.position);
+  if (!name) {
+    return null;
+  }
+  const program = programsByUri.get(params.textDocument.uri);
+  const typeDefs = resolveTypeDefinitionLocations(
+    name,
+    params.textDocument.uri,
+    program,
+  );
+  if (typeDefs && typeDefs.length > 0) {
+    return typeDefs;
+  }
+  return resolveDefinitionLocations(name, params.textDocument.uri, program) ?? null;
+});
+
+connection.onImplementation((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) {
+    return null;
+  }
+  const name = symbolAtPosition(doc, params.position);
+  if (!name) {
+    return null;
+  }
+  const program = programsByUri.get(params.textDocument.uri);
+  return resolveDefinitionLocations(name, params.textDocument.uri, program) ?? null;
+});
+
+connection.onReferences(async (params) => {
+  const doc =
+    documents.get(params.textDocument.uri) ??
+    loadDocumentFromUri(params.textDocument.uri);
+  if (!doc) {
+    return null;
+  }
+  const name = symbolAtPosition(doc, params.position);
+  if (!name) {
+    return null;
+  }
+
+  await ensureWorkspaceIndexed();
+
+  const references: Location[] = [];
+  const seen = new Set<string>();
+  const refsByUri = new Map<string, number>();
+
+  const addLocation = (uri: string, range: Range) => {
+    const key = `${uri}:${range.start.line}:${range.start.character}:${range.end.line}:${range.end.character}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    references.push({ uri, range });
+    refsByUri.set(uri, (refsByUri.get(uri) ?? 0) + 1);
+  };
+
+  for (const [uri, program] of programsByUri.entries()) {
+    collectReferencesFromProgram(program, name, uri, addLocation);
+  }
+
+  for (const [uri, program] of programsByUri.entries()) {
+    if ((refsByUri.get(uri) ?? 0) > 0) continue;
+    const text = loadTextForUri(uri, program);
+    if (!text) continue;
+    for (const range of findTextOccurrences(text, name)) {
+      addLocation(uri, range);
+    }
+  }
+
+  return references;
+});
+
 // Validate IRIS document using the actual parser and type checker
 async function validateIrisDocument(textDocument: TextDocument): Promise<void> {
   const diagnostics = computeDiagnostics(textDocument);
@@ -394,6 +491,129 @@ function updateIndexForUri(uri: string, text: string): void {
   indexImportedDefinitions(uri, program);
 }
 
+function resolveDefinitionLocations(
+  name: string,
+  uri: string,
+  program?: Program,
+): Location[] | null {
+  if (program && !name.includes(".")) {
+    const localDef = program.defs.find(
+      (d) =>
+        (d.kind === "DefFn" ||
+          d.kind === "DefTool" ||
+          d.kind === "DefConst" ||
+          d.kind === "TypeDef") &&
+        d.name === name &&
+        d.nameSpan,
+    );
+    if (localDef?.nameSpan) {
+      return [{ uri, range: spanToRange(localDef.nameSpan) }];
+    }
+  }
+
+  if (program && name.includes(".")) {
+    const [alias, fnName] = name.split(".");
+    const imports = importProgramsByUri.get(uri);
+    const imported = imports?.get(alias);
+    if (imported) {
+      const def = imported.program.defs.find(
+        (d) =>
+          (d.kind === "DefFn" ||
+            d.kind === "DefTool" ||
+            d.kind === "DefConst" ||
+            d.kind === "TypeDef") &&
+          d.name === fnName &&
+          d.nameSpan,
+      );
+      if (def?.nameSpan) {
+        return [{ uri: imported.uri, range: spanToRange(def.nameSpan) }];
+      }
+      if (imported.program.module?.nameSpan) {
+        return [
+          {
+            uri: imported.uri,
+            range: spanToRange(imported.program.module.nameSpan),
+          },
+        ];
+      }
+    }
+  }
+
+  const candidates = new Set<string>();
+  candidates.add(name);
+  if (name.includes(".")) {
+    candidates.add(name.split(".").pop() || name);
+  }
+  for (const candidate of candidates) {
+    const locations = definitionIndex.get(candidate);
+    if (locations && locations.length > 0) {
+      const local = locations.find((loc) => loc.uri === uri);
+      if (local) {
+        return [local];
+      }
+      return locations;
+    }
+  }
+
+  const builtinDoc = getBuiltinDoc(name);
+  if (builtinDoc) {
+    const docsLocation = findBuiltinDocLocation(name);
+    if (docsLocation) {
+      return [docsLocation];
+    }
+  }
+
+  return null;
+}
+
+function resolveTypeDefinitionLocations(
+  name: string,
+  uri: string,
+  program?: Program,
+): Location[] | null {
+  if (program && !name.includes(".")) {
+    const localDef = program.defs.find(
+      (d) => d.kind === "TypeDef" && d.name === name && d.nameSpan,
+    );
+    if (localDef?.nameSpan) {
+      return [{ uri, range: spanToRange(localDef.nameSpan) }];
+    }
+  }
+
+  if (program && name.includes(".")) {
+    const [alias, typeName] = name.split(".");
+    const imports = importProgramsByUri.get(uri);
+    const imported = imports?.get(alias);
+    if (imported) {
+      const def = imported.program.defs.find(
+        (d) => d.kind === "TypeDef" && d.name === typeName && d.nameSpan,
+      );
+      if (def?.nameSpan) {
+        return [{ uri: imported.uri, range: spanToRange(def.nameSpan) }];
+      }
+    }
+  }
+
+  return null;
+}
+
+async function ensureWorkspaceIndexed(): Promise<void> {
+  for (const root of workspaceRoots) {
+    const irisFiles = await collectIrisFiles(root);
+    for (const filePath of irisFiles) {
+      const uri = pathToFileURL(filePath).toString();
+      if (programsByUri.has(uri)) continue;
+      let text = "";
+      try {
+        text = await fs.promises.readFile(filePath, "utf8");
+      } catch {
+        continue;
+      }
+      updateIndexForUri(uri, text);
+    }
+  }
+}
+
 function removeIndexForUri(uri: string): void {
   const existing = definitionsByUri.get(uri);
   if (!existing) return;
@@ -476,6 +696,248 @@ function spanToRange(span: SourceSpan): Range {
     start: { line, character: startChar },
     end: { line, character: endChar },
   };
+}
+
+function collectReferencesFromProgram(
+  program: Program,
+  name: string,
+  uri: string,
+  addLocation: (uri: string, range: Range) => void,
+): void {
+  if (program.module?.name === name && program.module.nameSpan) {
+    addLocation(uri, spanToRange(program.module.nameSpan));
+  }
+
+  for (const def of program.defs) {
+    if (def.name === name && def.nameSpan) {
+      addLocation(uri, spanToRange(def.nameSpan));
+    }
+    if ("type" in def && def.type) {
+      collectTypeReferences(def.type, name, uri, addLocation);
+    }
+    if (def.kind === "DefFn") {
+      for (const arg of def.args) {
+        collectTypeReferences(arg.type, name, uri, addLocation);
+      }
+      collectTypeReferences(def.ret, name, uri, addLocation);
+      collectExprReferences(def.body, name, uri, addLocation);
+    }
+    if (def.kind === "DefTool") {
+      for (const arg of def.args) {
+        collectTypeReferences(arg.type, name, uri, addLocation);
+      }
+      collectTypeReferences(def.ret, name, uri, addLocation);
+    }
+    if (def.kind === "DefConst") {
+      collectExprReferences(def.value, name, uri, addLocation);
+    }
+    if (def.kind === "TypeDef") {
+      collectTypeReferences(def.type, name, uri, addLocation);
+    }
+  }
+}
+
+function collectExprReferences(
+  expr: Expr,
+  name: string,
+  uri: string,
+  addLocation: (uri: string, range: Range) => void,
+): void {
+  if (!expr) return;
+  switch (expr.kind) {
+    case "Literal":
+      return;
+    case "Var":
+      if (expr.name === name && expr.span) {
+        addLocation(uri, spanToRange(expr.span));
+      }
+      return;
+    case "Let":
+      collectExprReferences(expr.value, name, uri, addLocation);
+      collectExprReferences(expr.body, name, uri, addLocation);
+      return;
+    case "If":
+      collectExprReferences(expr.cond, name, uri, addLocation);
+      collectExprReferences(expr.then, name, uri, addLocation);
+      collectExprReferences(expr.else, name, uri, addLocation);
+      return;
+    case "Match":
+      collectExprReferences(expr.target, name, uri, addLocation);
+      for (const c of expr.cases) {
+        if (c.tag === name && c.tagSpan) {
+          addLocation(uri, spanToRange(c.tagSpan));
+        }
+        collectExprReferences(c.body, name, uri, addLocation);
+      }
+      return;
+    case "Call":
+      if (expr.fn === name && expr.fnSpan) {
+        addLocation(uri, spanToRange(expr.fnSpan));
+      }
+      for (const arg of expr.args) {
+        collectExprReferences(arg, name, uri, addLocation);
+      }
+      return;
+    case "Intrinsic":
+      for (const arg of expr.args) {
+        collectExprReferences(arg, name, uri, addLocation);
+      }
+      return;
+    case "List":
+      for (const item of expr.items) {
+        collectExprReferences(item, name, uri, addLocation);
+      }
+      if (expr.typeArg) {
+        collectTypeReferences(expr.typeArg, name, uri, addLocation);
+      }
+      return;
+    case "Tuple":
+      for (const item of expr.items) {
+        collectExprReferences(item, name, uri, addLocation);
+      }
+      return;
+    case "Fold":
+      collectExprReferences(expr.list, name, uri, addLocation);
+      collectExprReferences(expr.init, name, uri, addLocation);
+      collectExprReferences(expr.fn, name, uri, addLocation);
+      return;
+    case "Lambda":
+      for (const arg of expr.args) {
+        collectTypeReferences(arg.type, name, uri, addLocation);
+      }
+      collectTypeReferences(expr.ret, name, uri, addLocation);
+      collectExprReferences(expr.body, name, uri, addLocation);
+      return;
+    case "Record":
+      for (const field of expr.fields) {
+        collectExprReferences(field, name, uri, addLocation);
+      }
+      return;
+    case "Tagged":
+      collectExprReferences(expr.value, name, uri, addLocation);
+      return;
+    default:
+      return;
+  }
+}
+
+function collectTypeReferences(
+  type: IrisType,
+  name: string,
+  uri: string,
+  addLocation: (uri: string, range: Range) => void,
+): void {
+  if (!type) return;
+  const typeName = "type" in type ? type.type : undefined;
+  if (typeName && typeName === name && type.span) {
+    addLocation(uri, spanToRange(type.span));
+  }
+  if ("type" in type && type.type === "Named" && type.name === name && type.span) {
+    addLocation(uri, spanToRange(type.span));
+  }
+
+  switch (type.type) {
+    case "Option":
+      collectTypeReferences(type.inner, name, uri, addLocation);
+      return;
+    case "Result":
+      collectTypeReferences(type.ok, name, uri, addLocation);
+      collectTypeReferences(type.err, name, uri, addLocation);
+      return;
+    case "List":
+      collectTypeReferences(type.inner, name, uri, addLocation);
+      return;
+    case "Tuple":
+      for (const item of type.items) {
+        collectTypeReferences(item, name, uri, addLocation);
+      }
+      return;
+    case "Record":
+      for (const value of Object.values(type.fields)) {
+        collectTypeReferences(value, name, uri, addLocation);
+      }
+      return;
+    case "Map":
+      collectTypeReferences(type.key, name, uri, addLocation);
+      collectTypeReferences(type.value, name, uri, addLocation);
+      return;
+    case "Fn":
+      for (const arg of type.args) {
+        collectTypeReferences(arg, name, uri, addLocation);
+      }
+      collectTypeReferences(type.ret, name, uri, addLocation);
+      return;
+    case "Union":
+      for (const value of Object.values(type.variants)) {
+        collectTypeReferences(value, name, uri, addLocation);
+      }
+      return;
+    default:
+      return;
+  }
+}
+
+function loadTextForUri(uri: string, program?: Program): string | null {
+  const doc = documents.get(uri);
+  if (doc) return doc.getText();
+  const filePath = uriToPath(uri);
+  if (!filePath) return null;
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+function loadDocumentFromUri(uri: string): TextDocument | null {
+  const text = loadTextForUri(uri);
+  if (text == null) return null;
+  return TextDocument.create(uri, "iris", 1, text);
+}
+
+function findTextOccurrences(text: string, name: string): Range[] {
+  if (!name) return [];
+  const ranges: Range[] = [];
+  const isIdent = (ch: string) => /[A-Za-z0-9_!?\\.-]/.test(ch);
+  const lineStarts: number[] = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\n") {
+      lineStarts.push(i + 1);
+    }
+  }
+
+  const positionAt = (index: number) => {
+    let low = 0;
+    let high = lineStarts.length - 1;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (lineStarts[mid] <= index) {
+        if (mid === lineStarts.length - 1 || lineStarts[mid + 1] > index) {
+          return { line: mid, character: index - lineStarts[mid] };
+        }
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return { line: 0, character: index };
+  };
+
+  let index = 0;
+  while (index <= text.length - name.length) {
+    const found = text.indexOf(name, index);
+    if (found === -1) break;
+    const before = found > 0 ? text[found - 1] : "";
+    const after = found + name.length < text.length ? text[found + name.length] : "";
+    if ((before === "" || !isIdent(before)) && (after === "" || !isIdent(after))) {
+      const start = positionAt(found);
+      const end = positionAt(found + name.length);
+      ranges.push({ start, end });
+    }
+    index = found + name.length;
+  }
+
+  return ranges;
 }
 
 function symbolAtPosition(

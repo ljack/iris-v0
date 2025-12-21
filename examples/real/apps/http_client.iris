@@ -3,7 +3,7 @@
 (program
   (module (name "http_client_example") (version 0))
   (imports
-    (import "../../stdlib/http" (as "Client"))
+    (import "../../../stdlib/http" (as "Client"))
   )
   (defs
     (deffn (name main)

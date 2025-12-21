@@ -5,15 +5,23 @@ schema_version = 1
 description = "Syntax highlighting and editor support for IRIS (.iris) files."
 repository = "https://github.com/ljack/iris-v0"
 authors = ["Iris Contributors <dev@iris-lang.org>"]
+themes = []
+icon_themes = []
+languages = ["languages/iris"]
+capabilities = []
+
+[lib]
+kind = "Rust"
+version = "0.7.0"
 
 [grammars.iris]
 repository = "file:///Users/jarkko/_dev/iris-v0/.git"
-rev = "aa8b0445e6d663852e698ed79c6134ea3c32794f"
+rev = "4d2ecbdf72d0dc900c83314a9c99f9265d08945e"
 path = "tree-sitter-iris"
 
 [language_servers.iris-lsp]
 name = "IRIS Language Server"
-language = "iris"
+language = "Iris"
 
 [context_servers]
 
