@@ -163,6 +163,16 @@ iris-v0/
 
 - See `AGENTS.md` for repo-specific contributor guidelines.
 
+## Zed Extension
+
+The Zed editor extension is maintained in a separate repo. Local path:
+
+```
+/Users/jarkko/_dev/iris-zed
+```
+
+This repo no longer tracks the `zed/` directory.
+
 ## Architecture
 
 ### Pipeline
