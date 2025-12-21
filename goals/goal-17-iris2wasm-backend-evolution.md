@@ -124,6 +124,7 @@ Status:
 - Added IR helpers for `arg_raw`, `i64.ne`, `i64.const` (instr), and shifted `+`, `io.print`, and `If` condition building to IR helpers (`tests/t156_wasm_snippet_intrinsics.ts`, `tests/t165_wasm_ir_codegen_if.ts`).
 - Added IR helpers for `i64.const` as arg/node and `local.get` as node for broader reuse.
 - Added IR helpers for `i32.wrap_i64`/`i64.load` as args and applied them to `list.get` and `cons` to reduce raw wrappers.
+- `cons` now builds `memory.copy` arguments via IR helpers, reducing raw WAT lines further.
 - `Call` argument sequencing now emits IR nodes via `gen_call_args_nodes` (`tests/t155_wasm_snippet_var_call.ts` still passes).
 - String literal codegen now uses IR `local.get` nodes (validated by `tests/t158_wasm_snippet_string_literal.ts`).
 
