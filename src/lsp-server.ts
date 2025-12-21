@@ -45,6 +45,7 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let workspaceRoots: string[] = [];
 let clientSupportsWatch = false;
+let clientSupportsShowDocument = false;
 const definitionIndex = new Map<string, Location[]>();
 const definitionsByUri = new Map<string, Set<string>>();
 const programsByUri = new Map<string, Program>();
@@ -60,6 +61,7 @@ connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
   clientSupportsWatch = !!params.capabilities.workspace?.didChangeWatchedFiles
     ?.dynamicRegistration;
+  clientSupportsShowDocument = !!params.capabilities.window?.showDocument?.support;
   const versions = getVersionInfo();
   const result: InitializeResult = {
     serverInfo: {
@@ -462,6 +464,7 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 
   const runTarget = filePath.startsWith(root) ? path.relative(root, filePath) : filePath;
   const output = await runIrisProgram(binPath, root, runTarget);
+  const logPath = await writeRunLog(root, filePath, output);
   if (output.stderr) {
     connection.window.showErrorMessage(
       `Iris run failed:\n${output.stderr.trim()}`.slice(0, 4000),
@@ -474,6 +477,14 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
   connection.console.log(
     `Iris run output (${runTarget}):\n${output.stdout}${output.stderr ? `\n${output.stderr}` : ""}`,
   );
+  if (logPath && clientSupportsShowDocument) {
+    connection.sendRequest("window/showDocument", {
+      uri: pathToFileURL(logPath).toString(),
+      takeFocus: true,
+    });
+  } else if (logPath) {
+    connection.window.showInformationMessage(`Iris run log saved to ${logPath}`);
+  }
   return output.stdout;
 });
 
@@ -772,6 +783,28 @@ async function runIrisProgram(
       resolve({ stdout, stderr: `${stderr}\n${err.message}` }),
     );
   });
+}
+
+async function writeRunLog(
+  root: string,
+  filePath: string,
+  output: { stdout: string; stderr: string },
+): Promise<string | null> {
+  try {
+    const base = path.basename(filePath, path.extname(filePath));
+    const logDir = path.join(root, ".iris-run");
+    await fs.promises.mkdir(logDir, { recursive: true });
+    const logPath = path.join(logDir, `${base}.log`);
+    const header = `# Iris run: ${base}\n# ${new Date().toISOString()}\n\n`;
+    const content = `${header}${output.stdout}${output.stderr ? `\n${output.stderr}` : ""}`;
+    await fs.promises.writeFile(logPath, content, "utf8");
+    return logPath;
+  } catch (err) {
+    connection.console.error(
+      `Failed to write Iris run log: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return null;
+  }
 }
 
 function parseProgram(text: string): Program | null {

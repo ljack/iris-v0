@@ -5,7 +5,7 @@ import { evalMath } from './math';
 import { evalSys } from './sys';
 import { evalIo } from './io';
 import { evalNet } from './net';
-import { evalHttp } from './http';
+import { evalHttp, evalHttpAsync } from './http';
 import { evalConstructor } from './constructors';
 
 import { evalData } from './data';
@@ -14,7 +14,12 @@ export async function evalIntrinsic(ctx: InterpreterContext, op: IntrinsicOp, ar
     if (op.startsWith('sys.')) return evalSys(ctx, op, args);
     if (op.startsWith('net.')) return evalNet(ctx, op, args);
     if (op.startsWith('io.')) return evalIo(ctx, op, args);
-    if (op.startsWith('http.')) return evalHttp(op, args);
+    if (op.startsWith('http.')) {
+        if (op === 'http.get' || op === 'http.post') {
+            return await evalHttpAsync(op, args);
+        }
+        return evalHttp(op, args);
+    }
     if (['Some', 'Ok', 'Err'].includes(op)) return evalConstructor(op, args);
 
     const dataRes = evalData(op, args);

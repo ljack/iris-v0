@@ -7,6 +7,7 @@
       (doc "Print a greeting from the CLI.")
       (body
         (io.print "Hello from CLI!")
+
       )
     )
   )

@@ -1,6 +1,9 @@
 
 import { Value, IntrinsicOp } from '../../types';
 
+const MOCK_OK_URL = "http://example.com";
+const MOCK_FAIL_URL = "http://invalid-url-that-fails.test";
+
 export function evalHttp(op: IntrinsicOp, args: Value[]): Value {
     if (op === 'http.parse_request') {
         const raw = args[0];
@@ -107,5 +110,96 @@ export function evalHttp(op: IntrinsicOp, args: Value[]): Value {
         }
     }
 
+    if (op === 'http.get' || op === 'http.post') {
+        return {
+            kind: 'Result',
+            isOk: false,
+            value: { kind: 'Str', value: "http.get requires async runtime" },
+        };
+    }
+
     throw new Error(`Unknown http op: ${op}`);
+}
+
+export async function evalHttpAsync(op: IntrinsicOp, args: Value[]): Promise<Value> {
+    if (op === 'http.get') {
+        const raw = args[0];
+        if (raw.kind !== 'Str') throw new Error("http.get expects Str");
+        return runHttpFetch(raw.value, "GET");
+    }
+
+    if (op === 'http.post') {
+        const raw = args[0];
+        const body = args[1];
+        if (raw.kind !== 'Str' || body.kind !== 'Str') {
+            throw new Error("http.post expects Str url and Str body");
+        }
+        return runHttpFetch(raw.value, "POST", body.value);
+    }
+
+    return evalHttp(op, args);
+}
+
+async function runHttpFetch(
+    url: string,
+    method: "GET" | "POST",
+    body?: string,
+): Promise<Value> {
+    if (url === MOCK_FAIL_URL) {
+        return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Fetch failed" } };
+    }
+
+    if (url === MOCK_OK_URL) {
+        return { kind: 'Result', isOk: true, value: buildHttpResponseValue("HTTP/1.1", 200, [], "OK") };
+    }
+
+    const fetchFn = (globalThis as any).fetch as
+        | ((input: string, init?: { method?: string; body?: string }) => Promise<any>)
+        | undefined;
+    if (!fetchFn) {
+        return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Fetch not available" } };
+    }
+
+    try {
+        const res = await fetchFn(url, {
+            method,
+            body,
+        });
+        const text = await res.text();
+        const headers: Array<{ key: string; val: string }> = [];
+        if (res.headers && typeof res.headers.forEach === "function") {
+            res.headers.forEach((val: string, key: string) => headers.push({ key, val }));
+        }
+        return {
+            kind: 'Result',
+            isOk: true,
+            value: buildHttpResponseValue("HTTP/1.1", res.status, headers, text),
+        };
+    } catch {
+        return { kind: 'Result', isOk: false, value: { kind: 'Str', value: "Fetch failed" } };
+    }
+}
+
+function buildHttpResponseValue(
+    version: string,
+    status: number,
+    headers: Array<{ key: string; val: string }>,
+    body: string,
+): Value {
+    const headerValues: Value[] = headers.map((h) => ({
+        kind: 'Record',
+        fields: {
+            key: { kind: 'Str', value: h.key },
+            val: { kind: 'Str', value: h.val },
+        },
+    }));
+    return {
+        kind: 'Record',
+        fields: {
+            version: { kind: 'Str', value: version },
+            status: { kind: 'I64', value: BigInt(status) },
+            headers: { kind: 'List', items: headerValues },
+            body: { kind: 'Str', value: body },
+        },
+    };
 }

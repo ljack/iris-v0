@@ -37,7 +37,7 @@ export const t200_http_parse_response_headers: TestCase = {
 
 export const t201_http_get: TestCase = {
   name: 'Test 201: http.get (mock)',
-  expect: 'TypeError: Unknown intrinsic: http.get',
+  expect: '(record (body "OK") (headers (list )) (status 200) (version "HTTP/1.1"))',
   source: `(program
  (module (name "t201") (version 0))
  (defs

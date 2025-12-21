@@ -1,0 +1,35 @@
+(program
+  (module (name "pretty") (version 0))
+  (defs
+    (deffn (name headers_to_str)
+      (args (headers (List (Record (key Str) (val Str)))))
+      (ret Str)
+      (eff !Pure)
+      (doc "Format HTTP headers list as \"Key: Value\" lines.")
+      (body (call headers_to_str_rec headers 0 ""))
+    )
+
+    (deffn (name headers_to_str_rec)
+      (args (headers (List (Record (key Str) (val Str)))) (idx I64) (acc Str))
+      (ret Str)
+      (eff !Pure)
+      (body
+        (if (>= idx (list.length headers))
+          acc
+          (let (item_opt (list.get headers idx))
+            (match item_opt
+              (case (tag "Some" (h))
+                (let (line (str.concat (record.get h "key") (str.concat ": " (record.get h "val"))))
+                  (let (next (if (= acc "") line (str.concat acc (str.concat "\n" line))))
+                    (call headers_to_str_rec headers (+ idx 1) next)
+                  )
+                )
+              )
+              (case (tag "None") acc)
+            )
+          )
+        )
+      )
+    )
+  )
+)

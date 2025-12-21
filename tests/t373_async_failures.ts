@@ -284,7 +284,7 @@ export const t378_async_net_connect_failed: TestCase = {
 
 export const t379_async_http_get_failed: TestCase = {
     name: 'Test 379: async http.get failed',
-    expect: 'TypeError: Unknown intrinsic: http.get',
+    expect: '(Err "Fetch failed")',
     source: `(program
  (module (name "t379") (version 0))
  (defs
@@ -297,7 +297,7 @@ export const t379_async_http_get_failed: TestCase = {
 
 export const t380_async_http_post_failed: TestCase = {
     name: 'Test 380: async http.post failed',
-    expect: 'TypeError: Unknown intrinsic: http.post',
+    expect: '(Err "Fetch failed")',
     source: `(program
  (module (name "t380") (version 0))
  (defs

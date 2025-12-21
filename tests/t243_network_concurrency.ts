@@ -181,7 +181,7 @@ export const t248_sys_send_recv: TestCase = {
 
 export const t249_http_post: TestCase = {
   name: 'Test 249: http.post',
-  expect: 'TypeError: Unknown intrinsic: http.post',
+  expect: '(Ok (record (body "OK") (headers (list )) (status 200) (version "HTTP/1.1")))',
   source: `(program
  (module (name "t249") (version 0))
  (defs
@@ -247,4 +247,3 @@ export const t251_io_write_file: TestCase = {
     }
   }
 };
-

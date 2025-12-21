@@ -202,7 +202,7 @@ export const t327_async_http_parse_response: TestCase = {
 
 export const t328_async_http_get: TestCase = {
   name: 'Test 328: async http.get',
-  expect: 'TypeError: Unknown intrinsic: http.get',
+  expect: '(Ok (record (body "OK") (headers (list )) (status 200) (version "HTTP/1.1")))',
   source: `(program
  (module (name "t328") (version 0))
  (defs
@@ -215,7 +215,7 @@ export const t328_async_http_get: TestCase = {
 
 export const t329_async_http_post: TestCase = {
   name: 'Test 329: async http.post',
-  expect: 'TypeError: Unknown intrinsic: http.post',
+  expect: '(Ok (record (body "OK") (headers (list )) (status 200) (version "HTTP/1.1")))',
   source: `(program
  (module (name "t329") (version 0))
  (defs
