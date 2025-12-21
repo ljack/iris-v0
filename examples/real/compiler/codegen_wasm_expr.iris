@@ -31,6 +31,20 @@
       )
     )
 
+    (deffn (name gen_call_args_nodes) (args (args (List ast.Expr)) (index I64)) (ret (List wir.WasmNode)) (eff !Pure)
+      (body
+        (match (list.get args index)
+          (case (tag "Some" (arg))
+            (let* ((arg_code (call codegen_expr arg))
+                   (rest (call gen_call_args_nodes args (+ index 1))))
+              (cons (call wir.node_raw arg_code) rest)
+            )
+          )
+          (case (tag "None" ()) (list))
+        )
+      )
+    )
+
     (deffn (name gen_list_items) (args (items (List ast.Expr)) (index I64)) (ret Str) (eff !Pure)
       (body
         (match (list.get items index)
@@ -165,8 +179,8 @@
                            (arg_code (call codegen_expr arg)))
                         (call wrt.render_nodes (list
                           (call wir.node_raw arg_code)
-                          (call wir.call "$print")
-                          (call wir.i64_const 1)
+                          (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$print"))))
+                          (call wir.node_instr (call wir.i64_const_instr "1"))
                         ))
                     )
                   )
@@ -334,9 +348,10 @@
           (case (tag "Call" (c))
              (let* ((name c.name)
                     (args c.args)
-                    (arg_code (call gen_call_args args 0))
-                    (call_line (call wrt.render_node (call wir.call (call ws.local_id name)))))
-                 (call ws.lines (list arg_code call_line))
+                    (arg_nodes (call gen_call_args_nodes args 0))
+                    (call_node (call wir.call (call ws.local_id name)))
+                    (nodes (call nodes_append arg_nodes (list call_node))))
+                 (call wrt.render_nodes nodes)
              )
           )
 

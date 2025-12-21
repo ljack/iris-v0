@@ -123,6 +123,7 @@ Status:
 - Added IR helpers for `local.get` (instr), `i64.store`, `i64.lt_u`, and refactored `cons` to emit IR nodes (`tests/t148_wasm_snippet_cons.ts` still passes).
 - Added IR helpers for `arg_raw`, `i64.ne`, `i64.const` (instr), and shifted `+`, `io.print`, and `If` condition building to IR helpers (`tests/t156_wasm_snippet_intrinsics.ts`, `tests/t165_wasm_ir_codegen_if.ts`).
 - Added IR helpers for `i64.const` as arg/node and `local.get` as node for broader reuse.
+- `Call` argument sequencing now emits IR nodes via `gen_call_args_nodes` (`tests/t155_wasm_snippet_var_call.ts` still passes).
 - String literal codegen now uses IR `local.get` nodes (validated by `tests/t158_wasm_snippet_string_literal.ts`).
 
 Success criteria:
