@@ -1,0 +1,82 @@
+(program
+  (module (name "test/assert") (version 0))
+  (defs
+    (type AssertResult (Record (name Str) (status Str) (message Str)))
+
+    (type AssertValue
+      (union
+        (tag "Bool" (Bool))
+        (tag "I64" (I64))
+        (tag "Str" (Str))
+      )
+    )
+
+    (deffn (name pass) (args (name Str)) (ret AssertResult) (eff !Pure)
+      (body (record (name name) (status "pass") (message ""))))
+
+    (deffn (name fail) (args (name Str) (message Str)) (ret AssertResult) (eff !Pure)
+      (body (record (name name) (status "fail") (message message))))
+
+    (deffn (name bool) (args (value Bool)) (ret AssertValue) (eff !Pure)
+      (body (tag "Bool" value)))
+
+    (deffn (name i64) (args (value I64)) (ret AssertValue) (eff !Pure)
+      (body (tag "I64" value)))
+
+    (deffn (name str) (args (value Str)) (ret AssertValue) (eff !Pure)
+      (body (tag "Str" value)))
+
+    (deffn (name assert-eq) (args (name Str) (actual AssertValue) (expected AssertValue)) (ret AssertResult) (eff !Pure)
+      (body
+        (match actual
+          (case (tag "Bool" (a))
+            (match expected
+              (case (tag "Bool" (b))
+                (if (= a b)
+                  (pass name)
+                  (fail name "Expected equal boolean values")
+                )
+              )
+              (case (tag "_") (fail name "Expected Bool"))
+            )
+          )
+          (case (tag "I64" (a))
+            (match expected
+              (case (tag "I64" (b))
+                (if (= a b)
+                  (pass name)
+                  (fail name "Expected equal I64 values")
+                )
+              )
+              (case (tag "_") (fail name "Expected I64"))
+            )
+          )
+          (case (tag "Str" (a))
+            (match expected
+              (case (tag "Str" (b))
+                (if (= a b)
+                  (pass name)
+                  (fail name "Expected equal strings")
+                )
+              )
+              (case (tag "_") (fail name "Expected Str"))
+            )
+          )
+          (case (tag "_") (fail name "Unsupported AssertValue"))
+        )
+      )
+    )
+
+    (deffn (name assert-true) (args (name Str) (value Bool)) (ret AssertResult) (eff !Pure)
+      (body (if value (pass name) (fail name "Expected condition to be true"))))
+
+    (deffn (name assert-error) (args (name Str) (result (Result AssertValue Str))) (ret AssertResult) (eff !Pure)
+      (body
+        (match result
+          (case (tag "Err" (_)) (pass name))
+          (case (tag "Ok" (_)) (fail name "Expected Err result"))
+        )
+      )
+    )
+  )
+)

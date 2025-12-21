@@ -1,0 +1,17 @@
+(program
+  (module (name "t801_error_assertion") (version 0))
+  (imports (import "test/assert" (as "assert")))
+  (defs
+    (deffn (name fail-result) (args) (ret (Result assert.AssertValue Str)) (eff !Pure)
+      (body (Err "boom")))
+
+    (deffn (name main) (args) (ret (List assert.AssertResult)) (eff !Pure)
+      (body
+        (list
+          (assert.assert-error "expects err" (fail-result))
+          (assert.assert-eq "ok path" (assert.bool true) (assert.bool true))
+        )
+      )
+    )
+  )
+)
