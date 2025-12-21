@@ -73,10 +73,13 @@
               (case (tag "Str" (s))
                 (let* ((len (str.len s))
                        (aligned (+ 8 (+ len (if (= (% (+ 8 len) 8) 0) 0 (- 8 (% (+ 8 len) 8))))))
-                       (alloc (str.concat "(call $alloc (i64.const " (str.concat (i64.to_string aligned) "))\n(local.set $t0)\n")))
-                       (store_len (str.concat "(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const " (str.concat (i64.to_string len) "))\n")))
+                       (alloc (call ws.lines (list
+                         (call ws.s "call" (list "$alloc" (str.concat "(i64.const " (str.concat (i64.to_string aligned) ")"))))
+                         "(local.set $t0)"
+                         (call ws.s "i64.store" (list "(i32.wrap_i64 (local.get $t0))" (str.concat "(i64.const " (str.concat (i64.to_string len) ")"))))
+                       )))
                        (bytes (call emit.gen_string_bytes s 0 len)))
-                    (str.concat alloc (str.concat store_len (str.concat bytes "(local.get $t0)")))
+                    (str.concat alloc (str.concat "\n" (str.concat bytes "(local.get $t0)")))
                 ))
               (case (tag "Some" (val))
                 (let* ((vcode (call codegen_expr (tag "Literal" val)))
