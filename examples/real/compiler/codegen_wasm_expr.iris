@@ -69,26 +69,42 @@
                 ))
               (case (tag "Some" (val))
                 (let* ((vcode (call codegen_expr (tag "Literal" val)))
-                       (alloc (call ws.lines (list
-                         (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
-                         (call ws.s "local.set" (list (call ws.local_id "t0")))
-                         (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))) (call ws.s "i64.const" (list "1"))))
+                       (t0 (call ws.local_id "t0"))
+                       (get_t0 (call wir.local_get_instr t0))
+                       (alloc_node (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$alloc") (call wir.i64_const_arg "16")))))
+                       (set_t0 (call wir.local_set t0))
+                       (store_flag (call wir.node_instr (call wir.i64_store
+                         (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t0))
+                         (call wir.i64_const_arg "1")
                        )))
-                       (store (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t0"))) (call ws.s "i64.const" (list "8")))))) vcode))))
+                       (addr_t0_plus_8 (call wir.i64_add (call wir.arg_instr get_t0) (call wir.i64_const_arg "8")))
+                       (store_value (call wir.node_instr (call wir.i64_store
+                         (call wir.i32_wrap_i64_arg (call wir.arg_instr addr_t0_plus_8))
+                         (call wir.arg_raw vcode)
+                       ))))
                     (list
-                      (call wir.node_raw alloc)
-                      (call wir.node_raw store)
-                      (call wir.local_get_node (call ws.local_id "t0"))
+                      alloc_node
+                      set_t0
+                      store_flag
+                      store_value
+                      (call wir.local_get_node t0)
                     )
                 ))
               (case (tag "None" ())
-                (list
-                  (call wir.node_raw (call ws.lines (list
-                    (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
-                    (call ws.s "local.set" (list (call ws.local_id "t0")))
-                    (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))) (call ws.s "i64.const" (list "0"))))
-                  )))
-                  (call wir.local_get_node (call ws.local_id "t0"))
+                (let* ((t0 (call ws.local_id "t0"))
+                       (get_t0 (call wir.local_get_instr t0))
+                       (alloc_node (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$alloc") (call wir.i64_const_arg "16")))))
+                       (set_t0 (call wir.local_set t0))
+                       (store_flag (call wir.node_instr (call wir.i64_store
+                         (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t0))
+                         (call wir.i64_const_arg "0")
+                       ))))
+                  (list
+                    alloc_node
+                    set_t0
+                    store_flag
+                    (call wir.local_get_node t0)
+                  )
                 )
               )
               (case (tag "_" ()) (list (call wir.i64_const 0)))
