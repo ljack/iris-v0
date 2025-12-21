@@ -195,22 +195,22 @@
                            (get_t2 (call wir.local_get_instr t2))
                            (cond_instr (call wir.i64_lt_u
                              (call wir.arg_instr get_t1)
-                             (call wir.arg_instr (call wir.i64_load (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t0)))))
+                             (call wir.i64_load_arg (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t0)))
                            ))
                            (cond_node (call wir.node_instr cond_instr))
                            (alloc_node (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$alloc") (call wir.i64_const_arg "16")))))
                            (set_t2 (call wir.local_set t2))
                            (store_flag_one (call wir.node_instr (call wir.i64_store
-                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t2)))
+                             (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t2))
                              (call wir.i64_const_arg "1")
                            )))
                            (addr_t2_plus_8 (call wir.i64_add (call wir.arg_instr get_t2) (call wir.i64_const_arg "8")))
                            (addr_t0_plus_8 (call wir.i64_add (call wir.arg_instr get_t0) (call wir.i64_const_arg "8")))
                            (index_mul (call wir.i64_mul (call wir.arg_instr get_t1) (call wir.i64_const_arg "8")))
                            (load_addr (call wir.i64_add (call wir.arg_instr addr_t0_plus_8) (call wir.arg_instr index_mul)))
-                           (load_value (call wir.i64_load (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr load_addr)))))
+                           (load_value (call wir.i64_load (call wir.i32_wrap_i64_arg (call wir.arg_instr load_addr))))
                            (store_value (call wir.node_instr (call wir.i64_store
-                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr addr_t2_plus_8)))
+                             (call wir.i32_wrap_i64_arg (call wir.arg_instr addr_t2_plus_8))
                              (call wir.arg_instr load_value)
                            )))
                            (then_nodes (list
@@ -221,7 +221,7 @@
                              (call wir.node_instr get_t2)
                            ))
                            (store_flag_zero (call wir.node_instr (call wir.i64_store
-                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t2)))
+                             (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t2))
                              (call wir.i64_const_arg "0")
                            )))
                            (else_nodes (list
@@ -250,7 +250,7 @@
                            (get_t0 (call wir.local_get_instr t0))
                            (get_t1 (call wir.local_get_instr t1))
                            (get_t2 (call wir.local_get_instr t2))
-                           (t1_len (call wir.i64_load (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t1)))))
+                           (t1_len (call wir.i64_load (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t1))))
                            (alloc_size (call wir.i64_add
                              (call wir.i64_const_arg "16")
                              (call wir.arg_instr (call wir.i64_mul
@@ -265,7 +265,7 @@
                              (call wir.i64_const_arg "1")
                            ))
                            (store_len (call wir.node_instr (call wir.i64_store
-                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t2)))
+                             (call wir.i32_wrap_i64_arg (call wir.arg_instr get_t2))
                              (call wir.arg_instr len_plus_one)
                            )))
                            (addr_t2_plus_8 (call wir.i64_add
@@ -273,7 +273,7 @@
                              (call wir.i64_const_arg "8")
                            ))
                            (store_head (call wir.node_instr (call wir.i64_store
-                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr addr_t2_plus_8)))
+                             (call wir.i32_wrap_i64_arg (call wir.arg_instr addr_t2_plus_8))
                              (call wir.arg_instr get_t0)
                            )))
                            (mem_line1 "(memory.copy")
