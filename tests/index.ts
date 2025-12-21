@@ -103,6 +103,7 @@ export { t129 } from './t129_recursive_types';
 export { t500_llm_metadata } from './t500_llm_metadata';
 export { t501_web_tools } from './t501_web_tools';
 export { t502_wasm_host } from './t502_wasm_host';
+export { t146_wasm_syntax_builder } from './t146_wasm_syntax_builder';
 import { t01 } from './t01';
 import { t02 } from './t02';
 import { t03 } from './t03';
@@ -201,6 +202,7 @@ import { t129 } from './t129_recursive_types';
 import { t500_llm_metadata } from './t500_llm_metadata';
 import { t501_web_tools } from './t501_web_tools';
 import { t502_wasm_host } from './t502_wasm_host';
+import { t146_wasm_syntax_builder } from './t146_wasm_syntax_builder';
 import {
   t200_http_parse_response, t200_http_parse_response_headers, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
@@ -416,7 +418,8 @@ export const TESTS = [
   t397_syntax_errors,
   t500_llm_metadata,
   t501_web_tools,
-  t502_wasm_host
+  t502_wasm_host,
+  t146_wasm_syntax_builder,
 ];
 // Advanced/experimental tests (some may fail):
 // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145

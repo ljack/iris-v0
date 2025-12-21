@@ -76,5 +76,56 @@
         (call escape_string_impl s 0 (str.len s))
       )
     )
+
+    (deffn (name join_with) (args (parts (List Str)) (sep Str)) (ret Str) (eff !Pure)
+      (body
+        (match parts
+          (case (tag "nil" ()) "")
+          (case (tag "cons" (h t))
+            (match t
+              (case (tag "nil" ()) h)
+              (case (tag "cons" (_ _))
+                (str.concat h (str.concat sep (call join_with t sep)))
+              )
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name lines) (args (parts (List Str))) (ret Str) (eff !Pure)
+      (body (call join_with parts "\n"))
+    )
+
+    (deffn (name s) (args (head Str) (args (List Str))) (ret Str) (eff !Pure)
+      (body
+        (let (tail (call join_with args " "))
+          (if (= tail "")
+            (str.concat "(" (str.concat head ")"))
+            (str.concat "(" (str.concat head (str.concat " " (str.concat tail ")"))))
+          )
+        )
+      )
+    )
+
+    (deffn (name head) (args (head Str) (args (List Str))) (ret Str) (eff !Pure)
+      (body
+        (let (tail (call join_with args " "))
+          (if (= tail "")
+            (str.concat "(" head)
+            (str.concat "(" (str.concat head (str.concat " " tail)))
+          )
+        )
+      )
+    )
+
+    (deffn (name block) (args (head Str) (body Str)) (ret Str) (eff !Pure)
+      (body
+        (if (= body "")
+          (str.concat "(" (str.concat head ")"))
+          (str.concat "(" (str.concat head (str.concat "\n" (str.concat body "\n)"))))
+        )
+      )
+    )
   )
 )
