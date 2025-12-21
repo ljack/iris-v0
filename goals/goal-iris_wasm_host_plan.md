@@ -2,6 +2,11 @@
 
 Audience: *antigravity* (implementation agent)
 
+## Scope map
+- This doc owns **runtime/host ABI + platform profiles**.
+- Compiler backend evolution lives in `goals/goal-17-iris2wasm-backend-evolution.md`.
+- Tool/host boundary principles live in `goals/goal-iris-wasm-plan-addenum-1.md`.
+
 Goal: Run **AI-generated IRIS programs** safely and consistently on:
 - Browsers
 - Mobile phones
