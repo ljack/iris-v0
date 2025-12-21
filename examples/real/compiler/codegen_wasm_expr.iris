@@ -27,8 +27,13 @@
             (let* ((val_code (call codegen_expr item))
                    (offset (+ 8 (* index 8)))
                    (addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string offset) "))")))
-                   (store (str.concat "(i64.store (i32.wrap_i64 " (str.concat addr (str.concat ")) " (str.concat val_code ")\n"))))))
-                (str.concat store (call gen_list_items items (+ index 1)))
+                   (store (call ws.s "i64.store"
+                      (list
+                        (str.concat "(i32.wrap_i64 " (str.concat addr ")"))
+                        val_code
+                      )))
+                   (rest (call gen_list_items items (+ index 1))))
+                (call ws.lines (list store rest))
             ))
           (case (tag "None" ()) "")
         )
