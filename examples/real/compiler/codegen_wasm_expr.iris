@@ -45,6 +45,22 @@
       )
     )
 
+    (deffn (name codegen_expr_nodes_shallow) (args (e ast.Expr)) (ret (List wir.WasmNode)) (eff !Pure)
+      (body
+        (match e
+          (case (tag "Literal" (v))
+            (match v
+              (case (tag "I64" (i)) (list (call wir.i64_const i)))
+              (case (tag "Bool" (b)) (list (call wir.i64_const (if b 1 0))))
+              (case (tag "_" ()) (list (call wir.node_raw (call codegen_expr e))))
+            )
+          )
+          (case (tag "Var" (v)) (list (call wir.local_get (call ws.local_id v.name))))
+          (case (tag "_" ()) (list (call wir.node_raw (call codegen_expr e))))
+        )
+      )
+    )
+
     (deffn (name gen_list_items) (args (items (List ast.Expr)) (index I64)) (ret Str) (eff !Pure)
       (body
         (match (list.get items index)
@@ -185,8 +201,8 @@
                     )
                   )
                   (case (= op "list.get")
-                   (let* ((lcode (call codegen_expr (call get_arg args 0)))
-                           (icode (call codegen_expr (call get_arg args 1)))
+                   (let* ((l_nodes (call codegen_expr_nodes_shallow (call get_arg args 0)))
+                           (i_nodes (call codegen_expr_nodes_shallow (call get_arg args 1)))
                            (t0 (call ws.local_id "t0"))
                            (t1 (call ws.local_id "t1"))
                            (t2 (call ws.local_id "t2"))
@@ -231,19 +247,16 @@
                              (call wir.node_instr get_t2)
                            ))
                            (if_node (call wir.node_if cond_node then_nodes else_nodes))
-                           (nodes (list
-                             (call wir.node_raw lcode)
-                             (call wir.local_set t0)
-                             (call wir.node_raw icode)
-                             (call wir.local_set t1)
-                             if_node
-                           )))
+                           (seed (call nodes_append l_nodes (list (call wir.local_set t0))))
+                           (seed2 (call nodes_append seed i_nodes))
+                           (seed3 (call nodes_append seed2 (list (call wir.local_set t1))))
+                           (nodes (call nodes_append seed3 (list if_node))))
                         (call wrt.render_nodes nodes)
                     )
                   )
                   (case (= op "cons")
-                    (let* ((a1 (call codegen_expr (call get_arg args 0)))
-                           (a2 (call codegen_expr (call get_arg args 1)))
+                    (let* ((a1_nodes (call codegen_expr_nodes_shallow (call get_arg args 0)))
+                           (a2_nodes (call codegen_expr_nodes_shallow (call get_arg args 1)))
                            (t0 (call ws.local_id "t0"))
                            (t1 (call ws.local_id "t1"))
                            (t2 (call ws.local_id "t2"))
@@ -292,23 +305,20 @@
                            (mem_line2 (call ws.indent2 (call wrt.render_arg mem_dst)))
                            (mem_line3 (call ws.indent2 (call wrt.render_arg mem_src)))
                            (mem_line4 (call ws.indent2 (call wrt.render_arg mem_len)))
-                           (nodes (list
-                             (call wir.node_raw a1)
-                             (call wir.local_set t0)
-                             (call wir.node_raw a2)
-                             (call wir.local_set t1)
-                             alloc_node
-                             set_t2
-                             store_len
-                             store_head
-                             (call wir.node_raw mem_line1)
-                             (call wir.node_raw mem_line2)
-                             (call wir.node_raw mem_line3)
-                             (call wir.node_raw mem_line4)
-                             (call wir.node_raw ")")
-                            (call wir.node_instr get_t2)
-                          )))
-                        (call wrt.render_nodes nodes)
+                          )
+                        (let* ((seed (call nodes_append a1_nodes (list (call wir.local_set t0))))
+                               (seed2 (call nodes_append seed a2_nodes))
+                               (seed3 (call nodes_append seed2 (list (call wir.local_set t1))))
+                               (rest (list alloc_node set_t2 store_len store_head
+                                          (call wir.node_raw mem_line1)
+                                          (call wir.node_raw mem_line2)
+                                          (call wir.node_raw mem_line3)
+                                          (call wir.node_raw mem_line4)
+                                          (call wir.node_raw ")")
+                                          (call wir.node_instr get_t2)))
+                               (all_nodes (call nodes_append seed3 rest)))
+                          (call wrt.render_nodes all_nodes)
+                        )
                     )
                   )
                   (else
