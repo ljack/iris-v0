@@ -95,6 +95,12 @@
       )
     )
 
+    (deffn (name indent2) (args (s Str)) (ret Str) (eff !Pure)
+      (body
+        (call join_with (list "  " s) "")
+      )
+    )
+
     (deffn (name join_with) (args (parts (List Str)) (sep Str)) (ret Str) (eff !Pure)
       (body
         (match parts

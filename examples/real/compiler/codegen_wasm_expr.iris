@@ -81,8 +81,8 @@
                        (aligned (+ 8 (+ len (if (= (% (+ 8 len) 8) 0) 0 (- 8 (% (+ 8 len) 8))))))
                        (alloc (call ws.lines (list
                          (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list (i64.to_string aligned)))))
-                         "(local.set $t0)"
-                         (call ws.s "i64.store" (list "(i32.wrap_i64 (local.get $t0))" (call ws.s "i64.const" (list (i64.to_string len)))))
+                         (call ws.s "local.set" (list (call ws.local_id "t0")))
+                         (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))) (call ws.s "i64.const" (list (i64.to_string len)))))
                        )))
                        (bytes (call emit.gen_string_bytes s 0 len)))
                     (if (= bytes "")
@@ -93,19 +93,19 @@
               (case (tag "Some" (val))
                 (let* ((vcode (call codegen_expr (tag "Literal" val)))
                        (alloc (call ws.lines (list
-                         "(call $alloc (i64.const 16))"
-                         "(local.set $t0)"
-                         "(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 1))"
+                         (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
+                         (call ws.s "local.set" (list (call ws.local_id "t0")))
+                         (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))) (call ws.s "i64.const" (list "1"))))
                        )))
-                       (store (call ws.s "i64.store" (list "(i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8)))" vcode))))
-                    (call ws.lines (list alloc store "(local.get $t0)"))
+                       (store (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t0"))) (call ws.s "i64.const" (list "8")))))) vcode))))
+                    (call ws.lines (list alloc store (call ws.s "local.get" (list (call ws.local_id "t0")))))
                 ))
               (case (tag "None" ())
                 (call ws.lines (list
-                  "(call $alloc (i64.const 16))"
-                  "(local.set $t0)"
-                  "(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 0))"
-                  "(local.get $t0)"
+                  (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
+                  (call ws.s "local.set" (list (call ws.local_id "t0")))
+                  (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))) (call ws.s "i64.const" (list "0"))))
+                  (call ws.s "local.get" (list (call ws.local_id "t0")))
                 ))
               )
               (case (tag "_" ()) (call ws.s "i64.const" (list "0")))
@@ -119,13 +119,13 @@
                   (case (= op "+")
                     (let* ((a1 (call codegen_expr (call get_arg args 0)))
                            (a2 (call codegen_expr (call get_arg args 1))))
-                        (call ws.lines (list a1 a2 "(i64.add)"))
+                        (call ws.lines (list a1 a2 (call ws.s "i64.add" (list))))
                     )
                   )
                   (case (= op "io.print")
                     (let* ((arg (call get_arg args 0))
                            (arg_code (call codegen_expr arg)))
-                        (call ws.lines (list arg_code "(call $print)" "(i64.const 1)"))
+                        (call ws.lines (list arg_code (call ws.s "call" (list "$print")) (call ws.s "i64.const" (list "1"))))
                     )
                   )
                   (case (= op "list.get")
@@ -133,22 +133,34 @@
                            (icode (call codegen_expr (call get_arg args 1)))
                            (part1 (call ws.lines (list lcode "(local.set $t0)")))
                            (part2 (call ws.lines (list icode "(local.set $t1)")))
-                           (cond "(i64.lt_u (local.get $t1) (i64.load (i32.wrap_i64 (local.get $t0))))")
+                           (cond (call ws.s "i64.lt_u" (list
+                             (call ws.s "local.get" (list (call ws.local_id "t1")))
+                             (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))))
+                             )
+                           )))
                            (then_body (call ws.lines (list
-                             "(call $alloc (i64.const 16))"
-                             "(local.set $t2)"
-                             "(i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 1))"
-                             "(i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8)))"
-                             "  (i64.load (i32.wrap_i64 (i64.add (i64.add (local.get $t0) (i64.const 8)) (i64.mul (local.get $t1) (i64.const 8)))))"
-                             " )"
-                             "(local.get $t2)"
+                             (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
+                             (call ws.s "local.set" (list (call ws.local_id "t2")))
+                             (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t2"))))) (call ws.s "i64.const" (list "1"))))
+                             (call ws.s "i64.store" (list
+                               (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t2"))) (call ws.s "i64.const" (list "8"))))))
+                               (call ws.s "i64.load" (list
+                                 (call ws.s "i32.wrap_i64" (list
+                                   (call ws.s "i64.add" (list
+                                     (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t0"))) (call ws.s "i64.const" (list "8"))))
+                                     (call ws.s "i64.mul" (list (call ws.s "local.get" (list (call ws.local_id "t1"))) (call ws.s "i64.const" (list "8")))
+                                   ))
+                                 ))
+                               ))
+                             )))
+                             (call ws.s "local.get" (list (call ws.local_id "t2")))
                            )))
                            (then_block (call ws.block "then" then_body))
                            (else_body (call ws.lines (list
-                             "(call $alloc (i64.const 16))"
-                             "(local.set $t2)"
-                             "(i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 0))"
-                             "(local.get $t2)"
+                             (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
+                             (call ws.s "local.set" (list (call ws.local_id "t2")))
+                             (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t2"))))) (call ws.s "i64.const" (list "0"))))
+                             (call ws.s "local.get" (list (call ws.local_id "t2")))
                            )))
                            (else_block (call ws.block "else" else_body))
                            (body (call ws.lines (list then_block else_block)))
@@ -161,19 +173,34 @@
                            (a2 (call codegen_expr (call get_arg args 1)))
                            (lines (list
                              a1
-                             "(local.set $t0)"
+                             (call ws.s "local.set" (list (call ws.local_id "t0")))
                              a2
-                             "(local.set $t1)"
-                             "(call $alloc (i64.add (i64.const 16) (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8))))"
-                             "(local.set $t2)"
-                             "(i64.store (i32.wrap_i64 (local.get $t2)) (i64.add (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 1)))"
-                             "(i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8))) (local.get $t0))"
+                             (call ws.s "local.set" (list (call ws.local_id "t1")))
+                             (call ws.s "call" (list "$alloc"
+                               (call ws.s "i64.add" (list
+                                 (call ws.s "i64.const" (list "16"))
+                                 (call ws.s "i64.mul" (list (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t1")))))) ) (call ws.s "i64.const" (list "8"))))
+                               ))
+                             ))
+                             (call ws.s "local.set" (list (call ws.local_id "t2")))
+                             (call ws.s "i64.store" (list
+                               (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t2")))))
+                               (call ws.s "i64.add" (list
+                                 (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t1"))))))
+                                 )
+                                 (call ws.s "i64.const" (list "1"))
+                               ))
+                             ))
+                             (call ws.s "i64.store" (list
+                               (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t2"))) (call ws.s "i64.const" (list "8"))))))
+                               (call ws.s "local.get" (list (call ws.local_id "t0")))
+                             ))
                              "(memory.copy"
-                             "  (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 16)))"
-                             "  (i32.wrap_i64 (i64.add (local.get $t1) (i64.const 8)))"
-                             "  (i32.wrap_i64 (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8)))"
+                             (call ws.indent2 (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t2"))) (call ws.s "i64.const" (list "16")))))))
+                             (call ws.indent2 (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t1"))) (call ws.s "i64.const" (list "8")))))))
+                             (call ws.indent2 (call ws.s "i32.wrap_i64" (list (call ws.s "i64.mul" (list (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t1"))))))) (call ws.s "i64.const" (list "8")))))))
                              ")"
-                             "(local.get $t2)"
+                             (call ws.s "local.get" (list (call ws.local_id "t2")))
                            )))
                         (call ws.lines lines)
                     )
