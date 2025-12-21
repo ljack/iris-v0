@@ -45,14 +45,14 @@
                            (body_code (call codegen_expr h.body))
                            (idx_str (call match.get_tag_index tag_name))
                            (cond (if (= tag_name "_") "(i32.const 1)" (str.concat "(i64.eq (i64.load (i32.wrap_i64 (local.get " (str.concat target_v (str.concat "))) (i64.const " (str.concat idx_str "))"))))))
-                           (bindings (call match.gen_match_bindings vars target_v 0)))
-                        (str.concat "(if (result i64) "
-                            (str.concat cond
-                                (str.concat "\n  (then\n"
-                                    (str.concat bindings
-                                        (str.concat body_code
-                                            (str.concat "\n  )\n  (else\n"
-                                                (str.concat (call gen_match_cases t target_v (+ level 1)) "\n  )\n)")))))))
+                           (bindings (call match.gen_match_bindings vars target_v 0))
+                           (then_body (str.concat bindings body_code))
+                           (then_block (call ws.block "then" then_body))
+                           (else_body (call gen_match_cases t target_v (+ level 1)))
+                           (else_block (call ws.block "else" else_body))
+                           (body (call ws.lines (list then_block else_block)))
+                           (head (call ws.head "if (result i64)" (list cond))))
+                        (str.concat head (str.concat "\n" (str.concat body "\n)")))
                     )
                 )
         )
