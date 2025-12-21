@@ -110,6 +110,15 @@
       )
     )
 
+    (deffn (name local_get_instr) (args (name Str)) (ret WasmInstr) (eff !Pure)
+      (body
+        (record
+          (op "local.get")
+          (args (cons (tag "Text" name) (list)))
+        )
+      )
+    )
+
     (deffn (name i64_add) (args (a WasmArg) (b WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.add") (args (list a b))))
     )
@@ -118,8 +127,16 @@
       (body (record (op "i64.mul") (args (list a b))))
     )
 
+    (deffn (name i64_lt_u) (args (a WasmArg) (b WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.lt_u") (args (list a b))))
+    )
+
     (deffn (name i64_load) (args (addr WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.load") (args (list addr))))
+    )
+
+    (deffn (name i64_store) (args (addr WasmArg) (value WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.store") (args (list addr value))))
     )
 
     (deffn (name i32_wrap_i64) (args (value WasmArg)) (ret WasmInstr) (eff !Pure)
