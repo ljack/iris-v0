@@ -53,6 +53,7 @@ Note: “before” is `HEAD` prior to these uncommitted changes; “after” is 
    - Add small `wasm_syntax` helpers (`lines`, `block`, `head`, `s`) to reduce manual parens.
    - Refactor WAT generators incrementally (one function per commit).
    - Keep formatting changes minimal, update tests if output changes.
+   - Add small golden WAT snippet tests to lock formatting during refactors.
 
 ## Success criteria
 - `iris_curl.iris` nesting depth reduced by at least 30%.
