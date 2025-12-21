@@ -48,6 +48,12 @@
       )
     )
 
+    (deffn (name local_id) (args (name Str)) (ret Str) (eff !Pure)
+      (body
+        (str.concat "$" (call sanitize_identifier name))
+      )
+    )
+
     (deffn (name escape_string_impl) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
       (body
         (if (= i len)

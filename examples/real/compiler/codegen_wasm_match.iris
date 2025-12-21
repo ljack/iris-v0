@@ -15,7 +15,7 @@
                     (let* ((offset (+ 8 (* index 8)))
                            (addr (call ws.s "i64.add" (list (call ws.s "local.get" (list target_v)) (call ws.s "i64.const" (list (i64.to_string offset))))))
                            (val  (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list addr)))))
-                           (set  (call ws.s "local.set" (list (str.concat "$" (call ws.sanitize_identifier h)) val)))
+                           (set  (call ws.s "local.set" (list (call ws.local_id h) val)))
                            (rest (call gen_match_bindings t target_v (+ index 1))))
                         (call ws.lines (list set rest))
                     )

@@ -69,7 +69,7 @@
         (match names
           (case (tag "nil" ()) "")
           (case (tag "cons" (h t))
-            (let* ((decl (call ws.s "local" (list (str.concat "$" (call ws.sanitize_identifier h)) "i64")))
+            (let* ((decl (call ws.s "local" (list (call ws.local_id h) "i64")))
                    (rest (call gen_local_decls t)))
               (call ws.lines (list decl rest))
             ))
@@ -82,7 +82,7 @@
             (match args_list
                 (case (tag "nil" ()) "")
                 (case (tag "cons" (h t))
-                  (let* ((param (call ws.s "param" (list (str.concat "$" (call ws.sanitize_identifier h.name)) "i64")))
+                  (let* ((param (call ws.s "param" (list (call ws.local_id h.name) "i64")))
                          (rest (call gen_params t)))
                     (call ws.lines (list param rest))
                   ))
