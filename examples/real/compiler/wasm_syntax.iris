@@ -83,6 +83,18 @@
       )
     )
 
+    (deffn (name quote_string) (args (s Str)) (ret Str) (eff !Pure)
+      (body
+        (str.concat "\"" (str.concat (call escape_string s) "\""))
+      )
+    )
+
+    (deffn (name block_comment) (args (s Str)) (ret Str) (eff !Pure)
+      (body
+        (str.concat "(; " (str.concat (call escape_string s) " ;)"))
+      )
+    )
+
     (deffn (name join_with) (args (parts (List Str)) (sep Str)) (ret Str) (eff !Pure)
       (body
         (match parts

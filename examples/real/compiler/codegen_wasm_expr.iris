@@ -179,7 +179,7 @@
                     )
                   )
                   (else
-                    (str.concat " unknown intrinsic " op)
+                    (call ws.block_comment (call ws.join_with (list "unknown intrinsic" op) " "))
                   )
                 )
             )

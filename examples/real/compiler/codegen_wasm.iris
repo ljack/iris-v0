@@ -101,7 +101,15 @@
                           (let (locals (call gen_local_decls (list.unique vars)))
                           (let (body_code (call cwe.codegen_expr f.body))
                           (let (params (call gen_params f.args))
-                          (let* ((head (str.concat "func $" (str.concat (call ws.sanitize_identifier f.name) (str.concat " (export \"" (str.concat (call ws.escape_string f.name) (str.concat "\") " (str.concat params "(result i64)")))))))
+                          (let* ((sig (if (= params "")
+                                          "(result i64)"
+                                          (call ws.join_with (list params "(result i64)") " ")))
+                                 (head (call ws.join_with (list
+                                    "func"
+                                    (call ws.local_id f.name)
+                                    (call ws.s "export" (list (call ws.quote_string f.name)))
+                                    sig
+                                  ) " "))
                                  (fixed_locals (call ws.lines (list "(local $t0 i64)" "(local $t1 i64)" "(local $t2 i64)" "(local $target i64)")))
                                  (body (if (= locals "")
                                         (call ws.lines (list fixed_locals body_code))
