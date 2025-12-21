@@ -144,6 +144,17 @@
       (body (record (op "i64.const") (args (list (tag "Text" value)))))
     )
 
+    (deffn (name i64_const_arg) (args (value Str)) (ret WasmArg) (eff !Pure)
+      (body (tag "Instr" (call i64_const_instr value)))
+    )
+
+    (deffn (name i64_const_node) (args (value Str)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_const_instr value)))
+    )
+
+    (deffn (name local_get_node) (args (name Str)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call local_get_instr name)))
+    )
     (deffn (name i64_load) (args (addr WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.load") (args (list addr))))
     )
