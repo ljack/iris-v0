@@ -17,6 +17,7 @@
       (union
         (tag "Instr" (WasmInstr))
         (tag "Block" ((Record (head Str) (body (List WasmNode)))))
+        (tag "Raw" (Str))
       )
     )
 
@@ -38,6 +39,10 @@
 
     (deffn (name node_block) (args (head Str) (body (List WasmNode))) (ret WasmNode) (eff !Pure)
       (body (tag "Block" (record (head head) (body body))))
+    )
+
+    (deffn (name node_raw) (args (line Str)) (ret WasmNode) (eff !Pure)
+      (body (tag "Raw" line))
     )
 
     (deffn (name i64_const) (args (v I64)) (ret WasmNode) (eff !Pure)

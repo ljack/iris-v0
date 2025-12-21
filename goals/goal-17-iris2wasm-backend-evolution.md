@@ -116,6 +116,7 @@ Status:
 - Minimal `wasm_ir.iris` + `wasm_ir_to_wat.iris` exist in `examples/real/compiler`, with `tests/t161_wasm_ir_render.ts`.
 - `codegen_wasm_expr.iris` routes literal I64/Bool through the IR renderer (`tests/t162_wasm_ir_codegen_literal.ts`).
 - Var/Let now render `local.get`/`local.set` via IR helpers (`tests/t163_wasm_ir_codegen_var_let.ts`).
+- `gen_match_cases` now builds IR nodes and renders them (`tests/t164_wasm_ir_match_cases.ts`).
 
 Success criteria:
 - Generator code manipulates structured nodes, not text.

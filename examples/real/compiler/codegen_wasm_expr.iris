@@ -43,33 +43,53 @@
     )
 
     (deffn (name gen_match_cases) (args (cases (List ast.MatchCase)) (target_v Str) (level I64)) (ret Str) (eff !Pure)
-        (body
-            (match cases
-                (case (tag "nil" ()) "(unreachable)")
-                (case (tag "cons" (h t))
-                    (let* ((tag_name h.variantTag)
-                           (vars h.vars)
-                           (body_code (call codegen_expr h.body))
-                           (idx_str (call match.get_tag_index tag_name))
-                           (cond (if (= tag_name "_")
-                                     (call ws.s "i32.const" (list "1"))
-                                     (call ws.s "i64.eq" (list
-                                       (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list target_v)))))
-                                       )
-                                       (call ws.s "i64.const" (list idx_str))
-                                     ))))
-                           (bindings (call match.gen_match_bindings vars target_v 0))
-                           (then_body (if (= bindings "") body_code (call ws.lines (list bindings body_code))))
-                           (then_block (call ws.block "then" then_body))
-                           (else_body (call gen_match_cases t target_v (+ level 1)))
-                           (else_block (call ws.block "else" else_body))
-                           (body (call ws.lines (list then_block else_block)))
-                           (head (call ws.head "if (result i64)" (list cond))))
-                        (call ws.lines (list head body ")"))
-                    )
-                )
+      (body
+        (call wrt.render_nodes (call gen_match_cases_nodes cases target_v level))
+      )
+    )
+
+    (deffn (name gen_match_cases_nodes) (args (cases (List ast.MatchCase)) (target_v Str) (level I64)) (ret (List wir.WasmNode)) (eff !Pure)
+      (body
+        (match cases
+          (case (tag "nil" ())
+            (cons (call wir.node_raw "(unreachable)") (list))
+          )
+          (case (tag "cons" (h t))
+            (let* ((tag_name h.variantTag)
+                   (vars h.vars)
+                   (body_code (call codegen_expr h.body))
+                   (idx_str (call match.get_tag_index tag_name))
+                   (cond_instr
+                     (if (= tag_name "_")
+                       (call wir.instr "i32.const" (list (call wir.arg_text "1")))
+                       (call wir.instr "i64.eq" (list
+                         (call wir.arg_instr
+                           (call wir.instr "i64.load" (list
+                             (call wir.arg_instr
+                               (call wir.instr "i32.wrap_i64" (list
+                                 (call wir.arg_instr (call wir.instr "local.get" (list (call wir.arg_text target_v))))
+                               ))
+                             )
+                           ))
+                         )
+                         (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text idx_str))))
+                       ))
+                     ))
+                   (cond_node (call wir.node_instr cond_instr))
+                   (bindings (call match.gen_match_bindings vars target_v 0))
+                   (then_nodes (if (= bindings "")
+                                 (list (call wir.node_raw body_code))
+                                 (list (call wir.node_raw bindings) (call wir.node_raw body_code))))
+                   (then_block (call wir.node_block "then" then_nodes))
+                   (else_nodes (call gen_match_cases_nodes t target_v (+ level 1)))
+                   (else_block (call wir.node_block "else" else_nodes))
+                   (if_body (list cond_node then_block else_block)))
+                (cons (call wir.node_block "if (result i64)" if_body) (list))
+            )
+          )
         )
-    ))
+      )
+    )
 
     (deffn (name codegen_expr) (args (e ast.Expr)) (ret Str) (eff !Pure)
       (body

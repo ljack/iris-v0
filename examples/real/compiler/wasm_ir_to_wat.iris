@@ -40,6 +40,7 @@
           (case (tag "Block" (b))
             (call ws.block b.head (call render_nodes b.body))
           )
+          (case (tag "Raw" (line)) line)
         )
       )
     )
