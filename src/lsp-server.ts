@@ -14,12 +14,17 @@ import {
   FileChangeType,
   Location,
   Range,
+  CodeAction,
+  CodeActionKind,
+  CodeLens,
+  ExecuteCommandParams,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { check } from "./main";
 import path from "path";
 import fs from "fs";
+import { spawn } from "child_process";
 import { buildDiagnosticsForError } from "./lsp-diagnostics";
 import {
   collectIrisFiles,
@@ -49,6 +54,7 @@ const importProgramsByUri = new Map<
   Map<string, { uri: string; program: Program }>
 >();
 const qualifiedDefinitionsByUri = new Map<string, Map<string, Location[]>>();
+const RUN_COMMAND = "iris.run";
 
 connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
@@ -72,6 +78,11 @@ connection.onInitialize((params: InitializeParams) => {
       typeDefinitionProvider: true,
       implementationProvider: true,
       referencesProvider: true,
+      codeLensProvider: { resolveProvider: false },
+      codeActionProvider: true,
+      executeCommandProvider: {
+        commands: [RUN_COMMAND],
+      },
     },
   };
   return result;
@@ -370,6 +381,102 @@ connection.onReferences(async (params) => {
   return references;
 });
 
+connection.onCodeLens((params): CodeLens[] => {
+  const doc =
+    documents.get(params.textDocument.uri) ??
+    loadDocumentFromUri(params.textDocument.uri);
+  if (!doc) {
+    return [];
+  }
+  const program = programsByUri.get(params.textDocument.uri) ?? parseProgram(doc.getText());
+  if (!program) {
+    return [];
+  }
+  const mainDefs = findMainDefinitions(program);
+  return mainDefs.map((def) => ({
+    range: spanToRange(def.nameSpan),
+    command: {
+      title: "Run Iris main",
+      command: RUN_COMMAND,
+      arguments: [params.textDocument.uri],
+    },
+  }));
+});
+
+connection.onCodeAction((params): CodeAction[] => {
+  const doc =
+    documents.get(params.textDocument.uri) ??
+    loadDocumentFromUri(params.textDocument.uri);
+  if (!doc) {
+    return [];
+  }
+  const program = programsByUri.get(params.textDocument.uri) ?? parseProgram(doc.getText());
+  if (!program) {
+    return [];
+  }
+  if (findMainDefinitions(program).length === 0) {
+    return [];
+  }
+  return [
+    {
+      title: "Run Iris main",
+      kind: CodeActionKind.Source,
+      command: {
+        title: "Run Iris main",
+        command: RUN_COMMAND,
+        arguments: [params.textDocument.uri],
+      },
+    },
+  ];
+});
+
+connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
+  if (params.command !== RUN_COMMAND) {
+    return null;
+  }
+
+  const uri = typeof params.arguments?.[0] === "string" ? params.arguments?.[0] : null;
+  if (!uri) {
+    connection.window.showErrorMessage("Iris run failed: no file URI provided.");
+    return null;
+  }
+
+  const filePath = uriToPath(uri);
+  if (!filePath) {
+    connection.window.showErrorMessage(`Iris run failed: invalid URI ${uri}.`);
+    return null;
+  }
+
+  const program = programsByUri.get(uri);
+  if (program && findMainDefinitions(program).length === 0) {
+    connection.window.showErrorMessage("Iris run failed: no main function found.");
+    return null;
+  }
+
+  const root = workspaceRoots[0] ?? path.dirname(filePath);
+  const binPath = path.join(root, "bin", "iris");
+  if (!fs.existsSync(binPath)) {
+    connection.window.showErrorMessage(`Iris run failed: ${binPath} not found.`);
+    return null;
+  }
+
+  const runTarget = filePath.startsWith(root) ? path.relative(root, filePath) : filePath;
+  const output = await runIrisProgram(binPath, root, runTarget);
+  if (output.stderr) {
+    connection.window.showErrorMessage(
+      `Iris run failed:\n${output.stderr.trim()}`.slice(0, 4000),
+    );
+  } else {
+    connection.window.showInformationMessage(
+      `Iris run complete:\n${output.stdout.trim()}`.slice(0, 4000),
+    );
+  }
+  connection.console.log(
+    `Iris run output (${runTarget}):\n${output.stdout}${output.stderr ? `\n${output.stderr}` : ""}`,
+  );
+  return output.stdout;
+});
+
 // Validate IRIS document using the actual parser and type checker
 async function validateIrisDocument(textDocument: TextDocument): Promise<void> {
   const diagnostics = computeDiagnostics(textDocument);
@@ -489,6 +596,15 @@ function updateIndexForUri(uri: string, text: string): void {
     definitionsByUri.set(uri, defs);
   }
   indexImportedDefinitions(uri, program);
+}
+
+function findMainDefinitions(program: Program): { nameSpan: SourceSpan }[] {
+  return program.defs.filter(
+    (def) =>
+      (def.kind === "DefFn" || def.kind === "DefTool") &&
+      def.name === "main" &&
+      def.nameSpan,
+  ) as { nameSpan: SourceSpan }[];
 }
 
 function resolveDefinitionLocations(
@@ -632,6 +748,30 @@ function removeIndexForUri(uri: string): void {
   modulesByUri.delete(uri);
   qualifiedDefinitionsByUri.delete(uri);
   importProgramsByUri.delete(uri);
+}
+
+async function runIrisProgram(
+  binPath: string,
+  cwd: string,
+  target: string,
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(binPath, ["run", target], { cwd });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("close", () => resolve({ stdout, stderr }));
+    child.on("error", (err) =>
+      resolve({ stdout, stderr: `${stderr}\n${err.message}` }),
+    );
+  });
 }
 
 function parseProgram(text: string): Program | null {

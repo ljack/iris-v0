@@ -20,6 +20,7 @@ This extension provides comprehensive editor support for IRIS language files (`.
 - Smart indentation
 - Bracket auto-pairing
 - Symbol outline view
+- Run Iris `main` via in-editor CodeLens and code action
 
 ## Installation
 

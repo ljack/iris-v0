@@ -1,6 +1,6 @@
 id = "iris"
 name = "Iris Language Support"
-version = "0.1.0"
+version = "0.1.2"
 schema_version = 1
 description = "Syntax highlighting and editor support for IRIS (.iris) files."
 repository = "https://github.com/ljack/iris-v0"
