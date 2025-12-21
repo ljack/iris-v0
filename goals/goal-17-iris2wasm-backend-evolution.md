@@ -117,6 +117,7 @@ Status:
 - `codegen_wasm_expr.iris` routes literal I64/Bool through the IR renderer (`tests/t162_wasm_ir_codegen_literal.ts`).
 - Var/Let now render `local.get`/`local.set` via IR helpers (`tests/t163_wasm_ir_codegen_var_let.ts`).
 - `gen_match_cases` now builds IR nodes and renders them (`tests/t164_wasm_ir_match_cases.ts`).
+- Added `node_if` helper for structured if/then/else blocks (covered in `tests/t161_wasm_ir_render.ts`).
 
 Success criteria:
 - Generator code manipulates structured nodes, not text.

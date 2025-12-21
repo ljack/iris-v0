@@ -45,6 +45,27 @@
       (body (tag "Raw" line))
     )
 
+    (deffn (name node_if) (args (cond WasmNode) (then_body (List WasmNode)) (else_body (List WasmNode))) (ret WasmNode) (eff !Pure)
+      (body
+        (tag "Block"
+          (record
+            (head "if (result i64)")
+            (body
+              (cons cond
+                (cons
+                  (tag "Block" (record (head "then") (body then_body)))
+                  (cons
+                    (tag "Block" (record (head "else") (body else_body)))
+                    (list)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+
     (deffn (name i64_const) (args (v I64)) (ret WasmNode) (eff !Pure)
       (body
         (tag "Instr"

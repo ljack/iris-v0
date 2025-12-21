@@ -7,6 +7,10 @@
     (import "wasm_syntax" (as "ws"))
   )
   (defs
+    (deffn (name node_if) (args (cond wir.WasmNode) (then_body (List wir.WasmNode)) (else_body (List wir.WasmNode))) (ret wir.WasmNode) (eff !Pure)
+      (body (call wir.node_if cond then_body else_body))
+    )
+
     (deffn (name render_arg) (args (a wir.WasmArg)) (ret Str) (eff !Pure)
       (body
         (match a

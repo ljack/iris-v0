@@ -71,6 +71,17 @@ export const t161_wasm_ir_render = {
     const resBlock = await interpreter.callFunction('render_node', [block]);
     assertStr(resBlock, '(then\n(i64.const 0)\n(i64.const 1)\n)');
 
+    const nodeIf = await interpreter.callFunction('node_if', [
+      nodeInstr('i32.const', [argText('1')]),
+      valList([nodeInstr('i64.const', [argText('7')])]),
+      valList([nodeInstr('i64.const', [argText('8')])])
+    ]);
+    const resIf = await interpreter.callFunction('render_node', [nodeIf]);
+    assertStr(
+      resIf,
+      '(if (result i64)\n(i32.const 1)\n(then\n(i64.const 7)\n)\n(else\n(i64.const 8)\n)\n)'
+    );
+
     console.log('T161 Passed: WASM IR renders to WAT correctly.');
   }
 };
