@@ -107,10 +107,27 @@
                            (icode (call codegen_expr (call get_arg args 1)))
                            (part1 (str.concat lcode "\n(local.set $t0)\n"))
                            (part2 (str.concat icode "\n(local.set $t1)\n"))
-                           (part3 "(if (result i64) (i64.lt_u (local.get $t1) (i64.load (i32.wrap_i64 (local.get $t0))))\n")
-                           (part4 "  (then\n    (call $alloc (i64.const 16))\n(local.set $t2)\n    (i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 1))\n    (i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8))) \n      (i64.load (i32.wrap_i64 (i64.add (i64.add (local.get $t0) (i64.const 8)) (i64.mul (local.get $t1) (i64.const 8)))))\n    )\n    (local.get $t2)\n  )\n")
-                           (part5 "  (else\n    (call $alloc (i64.const 16))\n(local.set $t2)\n    (i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 0))\n    (local.get $t2)\n  )\n)"))
-                        (str.concat part1 (str.concat part2 (str.concat part3 (str.concat part4 part5))))
+                           (cond "(i64.lt_u (local.get $t1) (i64.load (i32.wrap_i64 (local.get $t0))))")
+                           (then_body (call ws.lines (list
+                             "(call $alloc (i64.const 16))"
+                             "(local.set $t2)"
+                             "(i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 1))"
+                             "(i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8)))"
+                             "  (i64.load (i32.wrap_i64 (i64.add (i64.add (local.get $t0) (i64.const 8)) (i64.mul (local.get $t1) (i64.const 8)))))"
+                             " )"
+                             "(local.get $t2)"
+                           )))
+                           (then_block (call ws.block "then" then_body))
+                           (else_body (call ws.lines (list
+                             "(call $alloc (i64.const 16))"
+                             "(local.set $t2)"
+                             "(i64.store (i32.wrap_i64 (local.get $t2)) (i64.const 0))"
+                             "(local.get $t2)"
+                           )))
+                           (else_block (call ws.block "else" else_body))
+                           (body (call ws.lines (list then_block else_block)))
+                           (head (call ws.head "if (result i64)" (list cond))))
+                        (str.concat part1 (str.concat part2 (str.concat head (str.concat "\n" (str.concat body "\n)")))))
                     )
                   )
                   (case (= op "cons")

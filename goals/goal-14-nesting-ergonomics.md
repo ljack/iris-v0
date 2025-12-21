@@ -19,6 +19,7 @@ This makes files harder to read, increases edit cost, and raises the risk of mis
 - Parser and typechecker modules have dense `match` trees with multi-step binding chains.
 - App-level CLIs (http_client, iris_curl) suffer from repetitive config updates and flag parsing ladders.
 - Codegen files mix structural assembly with formatting, leading to deep nesting around string concatenation and recursion.
+- WAT generation adds extra “paren soup” because strings embed WebAssembly S-exprs.
 
 ## Nesting report (after helper refactors)
 Measured by max paren depth before/after applying `let*`, `cond`, and `record.update` refactors:
@@ -48,6 +49,10 @@ Note: “before” is `HEAD` prior to these uncommitted changes; “after” is 
 4. **Validation**
    - Add parser/linter tests for new constructs.
    - Ensure diagnostics and ranges remain precise after refactors.
+5. **WAT builder helpers for codegen**
+   - Add small `wasm_syntax` helpers (`lines`, `block`, `head`, `s`) to reduce manual parens.
+   - Refactor WAT generators incrementally (one function per commit).
+   - Keep formatting changes minimal, update tests if output changes.
 
 ## Success criteria
 - `iris_curl.iris` nesting depth reduced by at least 30%.
