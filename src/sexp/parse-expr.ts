@@ -42,6 +42,28 @@ export function parseExpr(ctx: ParserContext): Expr {
         ctx.consume();
 
         // Special forms
+        if (op === 'let*') {
+            // (let* ((x EXPR) (y EXPR) ...) BODY)
+            ctx.expect('LParen');
+            const bindings: { name: string; value: Expr }[] = [];
+            while (!ctx.check('RParen')) {
+                ctx.expect('LParen');
+                const name = ctx.expectSymbol();
+                const val = parseExpr(ctx);
+                ctx.expect('RParen');
+                bindings.push({ name, value: val });
+            }
+            ctx.expect('RParen');
+            const body = parseExpr(ctx);
+            ctx.expect('RParen');
+
+            let expr = body;
+            for (let i = bindings.length - 1; i >= 0; i -= 1) {
+                const binding = bindings[i];
+                expr = { kind: 'Let', name: binding.name, value: binding.value, body: expr };
+            }
+            return expr;
+        }
         if (op === 'let') {
             // (let (x EXPR) BODY)
             ctx.expect('LParen');
@@ -87,12 +109,64 @@ export function parseExpr(ctx: ParserContext): Expr {
             ctx.expect('RParen');
             return { kind: 'Record', fields };
         }
+        if (op === 'record.update') {
+            // (record.update REC (k v) ...)
+            const target = parseExpr(ctx);
+            const updates: { key: string; value: Expr }[] = [];
+            while (!ctx.check('RParen')) {
+                ctx.expect('LParen');
+                const key = ctx.expectSymbol();
+                const val = parseExpr(ctx);
+                ctx.expect('RParen');
+                updates.push({ key, value: val });
+            }
+            ctx.expect('RParen');
+
+            let expr = target;
+            for (const update of updates) {
+                const keyExpr: Expr = { kind: 'Literal', value: { kind: 'Str', value: update.key } };
+                expr = { kind: 'Intrinsic', op: 'record.set', args: [expr, keyExpr, update.value] };
+            }
+            return expr;
+        }
         if (op === 'if') {
             const cond = parseExpr(ctx);
             const thenBr = parseExpr(ctx);
             const elseBr = parseExpr(ctx);
             ctx.expect('RParen');
             return { kind: 'If', cond, then: thenBr, else: elseBr };
+        }
+        if (op === 'cond') {
+            // (cond (case COND EXPR) ... (else EXPR))
+            const cases: { cond: Expr; body: Expr }[] = [];
+            let elseExpr: Expr | null = null;
+            while (!ctx.check('RParen')) {
+                ctx.expect('LParen');
+                const clause = ctx.expectSymbol();
+                if (clause === 'case') {
+                    const cond = parseExpr(ctx);
+                    const body = parseExpr(ctx);
+                    ctx.expect('RParen');
+                    cases.push({ cond, body });
+                    continue;
+                }
+                if (clause === 'else') {
+                    if (elseExpr) throw new Error("cond may only have one else clause");
+                    elseExpr = parseExpr(ctx);
+                    ctx.expect('RParen');
+                    continue;
+                }
+                throw new Error(`cond clause must be 'case' or 'else', got '${clause}'`);
+            }
+            ctx.expect('RParen');
+            if (!elseExpr) throw new Error("cond requires an else clause");
+
+            let expr = elseExpr;
+            for (let i = cases.length - 1; i >= 0; i -= 1) {
+                const entry = cases[i];
+                expr = { kind: 'If', cond: entry.cond, then: entry.body, else: expr };
+            }
+            return expr;
         }
         if (op === 'match') {
             const target = parseExpr(ctx);

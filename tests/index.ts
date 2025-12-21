@@ -86,6 +86,7 @@ export {
   t504_curl_live_post,
 } from './t500_iris_curl';
 export { t505_iris_parse_smoke } from './t505_iris_parse_smoke';
+export { t510_let_star, t511_record_update, t512_cond } from './t510_syntax_sugar';
 export { t80 } from './t80';
 export { t81 } from './t81';
 export { t82 } from './t82';
@@ -319,6 +320,7 @@ import {
   t504_curl_live_post,
 } from './t500_iris_curl';
 import { t505_iris_parse_smoke } from './t505_iris_parse_smoke';
+import { t510_let_star, t511_record_update, t512_cond } from './t510_syntax_sugar';
 
 export const TESTS = [
   t01, t02, t03, t04, t05, t06, t07, t08, t09, t10,
@@ -349,6 +351,7 @@ export const TESTS = [
   t247_sys_self, t248_sys_send_recv, t249_http_post, t250_io_file_exists, t251_io_write_file,
   t500_curl_get, t501_curl_head, t502_curl_output, t503_curl_live_get, t504_curl_live_post,
   t505_iris_parse_smoke,
+  t510_let_star, t511_record_update, t512_cond,
   // Advanced sync tests
   t252_sync_match_tagged, t253_sync_match_list, t254_sync_match_result, t255_sync_match_option,
   t256_sync_tco_let, t257_sync_tco_if, t258_sync_tco_call, t259_sync_tuple_access_error,

@@ -249,6 +249,22 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
         throw new Error("tuple.get requires literal index for type safety");
     }
 
+    if (expr.op === 'record.set') {
+        if (argTypes.length !== 3) throw new Error("record.set expects 3 args (record, key, value)");
+        const [rec, k, v] = argTypes;
+        if (rec.type !== 'Record') throw new Error("record.set expects Record");
+        if (k.type !== 'Str') throw new Error("record.set expects Str key");
+
+        if (expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'Str') {
+            const keyVal = expr.args[1].value.value;
+            const fieldType = rec.fields[keyVal];
+            if (!fieldType) throw new Error(`Record has no field '${keyVal}'`);
+            expectType(ctx, fieldType, v, `record.set value mismatch for '${keyVal}'`);
+            return { type: rec, eff: joinedEff };
+        }
+        throw new Error("record.set requires literal string key");
+    }
+
     if (expr.op === 'record.get') {
         if (argTypes.length !== 2) throw new Error("record.get expects 2 args");
         const [rec, k] = argTypes;

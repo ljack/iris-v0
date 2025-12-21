@@ -114,7 +114,7 @@ export type IntrinsicOp =
   | 'http.get' | 'http.post'
   | 'map.make' | 'map.put' | 'map.get' | 'map.contains' | 'map.keys'
   | 'list.length' | 'list.get' | 'list.concat' | 'list.unique'
-  | 'tuple.get' | 'record.get'
+  | 'tuple.get' | 'record.get' | 'record.set'
   | 'str.len' | 'str.concat' | 'str.contains' | 'str.ends_with'
   | 'str.get' | 'str.substring' | 'str.from_code' | 'str.index_of'
   | 'i64.from_string' | 'i64.to_string';

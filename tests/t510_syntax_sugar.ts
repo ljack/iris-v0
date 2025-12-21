@@ -1,0 +1,48 @@
+import { TestCase } from '../src/test-types';
+
+export const t510_let_star: TestCase = {
+  name: 'Test 510: let* sequential bindings',
+  expect: '4',
+  source: `(program
+ (module (name "t510") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body
+      (let* ((x 1) (y (+ x 2)))
+        (+ x y))))))`
+};
+
+export const t511_record_update: TestCase = {
+  name: 'Test 511: record.update sugar',
+  expect: '"b"',
+  source: `(program
+ (module (name "t511") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret Str)
+    (eff !Pure)
+    (body
+      (let* ((cfg (record (url "a") (verbose false)))
+             (cfg (record.update cfg (url "b") (verbose true))))
+        (record.get cfg "url"))))))`
+};
+
+export const t512_cond: TestCase = {
+  name: 'Test 512: cond sugar',
+  expect: '2',
+  source: `(program
+ (module (name "t512") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body
+      (cond
+        (case false 1)
+        (else 2))))))`
+};

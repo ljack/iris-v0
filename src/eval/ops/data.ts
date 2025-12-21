@@ -75,6 +75,12 @@ export function evalData(op: IntrinsicOp, args: Value[]): Value | undefined {
         }
     }
 
+    if (op === 'record.set') {
+        const r = args[0]; const f = args[1]; const v = args[2];
+        if (r.kind !== 'Record' || f.kind !== 'Str') throw new Error("record.set expects Record and Str");
+        return { kind: 'Record', fields: { ...r.fields, [f.value]: v } };
+    }
+
     if (op === 'record.get') {
         const r = args[0]; const f = args[1];
         if (r.kind !== 'Record' || f.kind !== 'Str') throw new Error("record.get expects Record and Str");

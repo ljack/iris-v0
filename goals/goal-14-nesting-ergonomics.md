@@ -20,6 +20,14 @@ This makes files harder to read, increases edit cost, and raises the risk of mis
 - App-level CLIs (http_client, iris_curl) suffer from repetitive config updates and flag parsing ladders.
 - Codegen files mix structural assembly with formatting, leading to deep nesting around string concatenation and recursion.
 
+## Nesting report (after helper refactors)
+Measured by max paren depth before/after applying `let*`, `cond`, and `record.update` refactors:
+
+- `examples/real/apps/iris_curl.iris`: 29 → 17 (peak line moved from ~322 to ~256).
+- `examples/real/apps/http_client.iris`: 31 → 12 (peak line moved from ~42 to ~118).
+
+Note: “before” is `HEAD` prior to these uncommitted changes; “after” is the current working tree.
+
 ## Goals
 - Reduce visual nesting without changing semantics.
 - Provide safe, minimal syntax sugar that improves readability.
