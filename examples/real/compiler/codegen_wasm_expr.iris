@@ -167,8 +167,10 @@
           (case (tag "Var" (v)) (str.concat "(local.get $" (str.concat (call ws.sanitize_identifier v.name) ")")))
 
           (case (tag "Let" (l))
-            (let* ((vcode (call codegen_expr l.value)))
-                (str.concat vcode (str.concat "\n(local.set $" (str.concat (call ws.sanitize_identifier l.name) (str.concat ")\n" (call codegen_expr l.body)))))
+            (let* ((vcode (call codegen_expr l.value))
+                   (set_line (str.concat "(local.set $" (str.concat (call ws.sanitize_identifier l.name) ")")))
+                   (body_code (call codegen_expr l.body)))
+                (call ws.lines (list vcode set_line body_code))
             )
           )
 
