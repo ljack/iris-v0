@@ -109,6 +109,7 @@ export { t148_wasm_snippet_cons } from './t148_wasm_snippet_cons';
 export { t149_wasm_snippet_list_items } from './t149_wasm_snippet_list_items';
 export { t150_wasm_snippet_call_args } from './t150_wasm_snippet_call_args';
 export { t151_wasm_snippet_gen_defs } from './t151_wasm_snippet_gen_defs';
+export { t152_wasm_snippet_params_locals } from './t152_wasm_snippet_params_locals';
 import { t01 } from './t01';
 import { t02 } from './t02';
 import { t03 } from './t03';
@@ -213,6 +214,7 @@ import { t148_wasm_snippet_cons } from './t148_wasm_snippet_cons';
 import { t149_wasm_snippet_list_items } from './t149_wasm_snippet_list_items';
 import { t150_wasm_snippet_call_args } from './t150_wasm_snippet_call_args';
 import { t151_wasm_snippet_gen_defs } from './t151_wasm_snippet_gen_defs';
+import { t152_wasm_snippet_params_locals } from './t152_wasm_snippet_params_locals';
 import {
   t200_http_parse_response, t200_http_parse_response_headers, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
@@ -435,6 +437,7 @@ export const TESTS = [
   t149_wasm_snippet_list_items,
   t150_wasm_snippet_call_args,
   t151_wasm_snippet_gen_defs,
+  t152_wasm_snippet_params_locals,
 ];
 // Advanced/experimental tests (some may fail):
 // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145
