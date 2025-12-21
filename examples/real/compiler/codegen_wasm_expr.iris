@@ -133,13 +133,23 @@
                   (case (= op "cons")
                     (let* ((a1 (call codegen_expr (call get_arg args 0)))
                            (a2 (call codegen_expr (call get_arg args 1)))
-                           (instr1 (str.concat a1 "\n(local.set $t0)\n"))
-                           (instr2 (str.concat a2 "\n(local.set $t1)\n"))
-                           (instr3 "(call $alloc (i64.add (i64.const 16) (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8))))\n")
-                           (instr4 "(local.set $t2)\n(i64.store (i32.wrap_i64 (local.get $t2)) (i64.add (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 1)))\n")
-                           (instr5 "(i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8))) (local.get $t0))\n")
-                           (instr6 "(memory.copy\n  (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 16)))\n  (i32.wrap_i64 (i64.add (local.get $t1) (i64.const 8)))\n  (i32.wrap_i64 (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8)))\n)\n(local.get $t2)"))
-                        (str.concat instr1 (str.concat instr2 (str.concat instr3 (str.concat instr4 (str.concat instr5 instr6)))))
+                           (lines (list
+                             a1
+                             "(local.set $t0)"
+                             a2
+                             "(local.set $t1)"
+                             "(call $alloc (i64.add (i64.const 16) (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8))))"
+                             "(local.set $t2)"
+                             "(i64.store (i32.wrap_i64 (local.get $t2)) (i64.add (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 1)))"
+                             "(i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8))) (local.get $t0))"
+                             "(memory.copy"
+                             "  (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 16)))"
+                             "  (i32.wrap_i64 (i64.add (local.get $t1) (i64.const 8)))"
+                             "  (i32.wrap_i64 (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8)))"
+                             ")"
+                             "(local.get $t2)"
+                           )))
+                        (call ws.lines lines)
                     )
                   )
                   (else
