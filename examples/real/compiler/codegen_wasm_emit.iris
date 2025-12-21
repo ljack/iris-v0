@@ -1,0 +1,27 @@
+;; Compiler module: WebAssembly string emit helpers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
+(program
+  (module (name "codegen_wasm_emit") (version 1))
+  (imports
+    (import "str" (as "str"))
+  )
+  (defs
+    (deffn (name gen_string_bytes) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
+      (body
+        (if (= i len)
+          ""
+          (let (char_opt (str.get s i))
+            (match char_opt
+              (case (tag "Some" (code))
+                (let* ((addr (str.concat "(i64.add (local.get $t0) (i64.const " (str.concat (i64.to_string (+ 8 i)) "))")))
+                       (store (str.concat "(i64.store8 (i32.wrap_i64 " (str.concat addr (str.concat ") (i64.const " (str.concat (i64.to_string code) "))\n"))))))
+                  (str.concat store (call gen_string_bytes s (+ i 1) len))
+                ))
+              (case (tag "None" ()) "")
+            )
+          )
+        )
+      )
+    )
+  )
+)
