@@ -61,5 +61,16 @@
         )
       )
     )
+
+    (deffn (name local_set) (args (name Str)) (ret WasmNode) (eff !Pure)
+      (body
+        (tag "Instr"
+          (record
+            (op "local.set")
+            (args (cons (tag "Text" name) (list)))
+          )
+        )
+      )
+    )
   )
 )

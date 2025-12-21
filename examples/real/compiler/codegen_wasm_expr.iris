@@ -219,12 +219,12 @@
           )
 
           (case (tag "Var" (v))
-            (call ws.s "local.get" (list (call ws.local_id v.name)))
+            (call wrt.render_node (call wir.local_get (call ws.local_id v.name)))
           )
 
           (case (tag "Let" (l))
             (let* ((vcode (call codegen_expr l.value))
-                   (set_line (call ws.s "local.set" (list (call ws.local_id l.name))))
+                   (set_line (call wrt.render_node (call wir.local_set (call ws.local_id l.name))))
                    (body_code (call codegen_expr l.body)))
                 (call ws.lines (list vcode set_line body_code))
             )
