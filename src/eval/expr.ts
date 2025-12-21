@@ -64,6 +64,14 @@ export async function evalExpr(ctx: IInterpreter, expr: Expr, env?: LinkedEnv): 
             return evalExpr(ctx, expr.body, newEnv);
         }
 
+        case 'Do': {
+            let result: Value = { kind: 'Bool', value: false };
+            for (let i = 0; i < expr.exprs.length; i++) {
+                result = await evalExpr(ctx, expr.exprs[i], env);
+            }
+            return result;
+        }
+
         case 'If': {
             const cond = await evalExpr(ctx, expr.cond, env);
             if (cond.kind !== 'Bool') throw new Error("If condition must be Bool");

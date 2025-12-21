@@ -46,3 +46,20 @@ export const t512_cond: TestCase = {
         (case false 1)
         (else 2))))))`
 };
+
+export const t513_do: TestCase = {
+  name: 'Test 513: do sequencing',
+  expect: '4',
+  source: `(program
+ (module (name "t513") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body
+      (do
+        1
+        2
+        (+ 1 3))))))`
+};

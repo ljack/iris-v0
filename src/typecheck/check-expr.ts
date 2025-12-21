@@ -14,6 +14,7 @@ export function checkExprFull(ctx: TypeCheckerContext, expr: Expr, env: Map<stri
         case 'Let':
         case 'If':
         case 'Match':
+        case 'Do':
             return checkControl(checkExprFull, ctx, expr, env, expectedType);
 
         case 'Record':

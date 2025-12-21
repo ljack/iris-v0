@@ -110,6 +110,15 @@ function evalExprSyncInternal(
         continue;
       }
 
+      case "Do": {
+        const exprs = currentExpr.exprs;
+        for (let i = 0; i < exprs.length - 1; i++) {
+          evalExprSync(ctx, exprs[i], currentEnv);
+        }
+        currentExpr = exprs[exprs.length - 1];
+        continue;
+      }
+
       case "If": {
         const cond = evalExprSync(ctx, currentExpr.cond, currentEnv);
         if (cond.kind !== "Bool") throw new Error("If condition must be Bool");

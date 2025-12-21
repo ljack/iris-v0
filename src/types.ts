@@ -87,6 +87,7 @@ export type Expr =
   | { kind: 'Let'; name: string; value: Expr; body: Expr }
   | { kind: 'If'; cond: Expr; then: Expr; else: Expr }
   | { kind: 'Match'; target: Expr; cases: MatchCase[] }
+  | { kind: 'Do'; exprs: Expr[] }
   | { kind: 'Call'; fn: string; fnSpan?: SourceSpan; args: Expr[] }
   | {
     kind: 'Intrinsic';

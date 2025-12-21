@@ -24,6 +24,19 @@ export function checkControl(check: CheckFn, ctx: TypeCheckerContext, expr: Expr
         return { type: expectedType || thenBr.type, eff: joinEffects(cond.eff, joinEffects(thenBr.eff, elseBr.eff)) };
     }
 
+    if (expr.kind === 'Do') {
+        let joinedEff: IrisEffect = '!Pure';
+        let lastType: IrisType | null = null;
+        for (let i = 0; i < expr.exprs.length; i++) {
+            const isLast = i === expr.exprs.length - 1;
+            const res = check(ctx, expr.exprs[i], env, isLast ? expectedType : undefined);
+            joinedEff = joinEffects(joinedEff, res.eff);
+            lastType = res.type;
+        }
+        if (!lastType) throw new Error("TypeError: do requires at least one expression");
+        return { type: expectedType || lastType, eff: joinedEff };
+    }
+
     if (expr.kind === 'Match') {
         const target = check(ctx, expr.target, env);
         let retType: IrisType | null = null;

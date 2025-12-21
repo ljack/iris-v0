@@ -116,6 +116,9 @@ connection.onCompletion((_textDocumentPosition) => {
     { label: "deftype", kind: CompletionItemKind.Keyword },
     { label: "defconst", kind: CompletionItemKind.Keyword },
     { label: "let", kind: CompletionItemKind.Keyword },
+    { label: "let*", kind: CompletionItemKind.Keyword },
+    { label: "do", kind: CompletionItemKind.Keyword },
+    { label: "cond", kind: CompletionItemKind.Keyword },
     { label: "if", kind: CompletionItemKind.Keyword },
     { label: "call", kind: CompletionItemKind.Keyword },
     { label: "match", kind: CompletionItemKind.Keyword },
@@ -928,6 +931,11 @@ function collectExprReferences(
     case "Let":
       collectExprReferences(expr.value, name, uri, addLocation);
       collectExprReferences(expr.body, name, uri, addLocation);
+      return;
+    case "Do":
+      for (const subExpr of expr.exprs) {
+        collectExprReferences(subExpr, name, uri, addLocation);
+      }
       return;
     case "If":
       collectExprReferences(expr.cond, name, uri, addLocation);

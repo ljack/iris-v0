@@ -42,6 +42,28 @@ export function parseExpr(ctx: ParserContext): Expr {
         ctx.consume();
 
         // Special forms
+        if (op === 'let') {
+            // (let (x EXPR) BODY)
+            ctx.expect('LParen');
+            const name = ctx.expectSymbol();
+            const val = parseExpr(ctx);
+            ctx.expect('RParen');
+            const body = parseExpr(ctx);
+            ctx.expect('RParen');
+            return { kind: 'Let', name, value: val, body };
+        }
+        if (op === 'do') {
+            // (do EXPR ...)
+            const exprs: Expr[] = [];
+            while (!ctx.check('RParen')) {
+                exprs.push(parseExpr(ctx));
+            }
+            ctx.expect('RParen');
+            if (exprs.length === 0) {
+                throw new Error("do requires at least one expression");
+            }
+            return { kind: 'Do', exprs };
+        }
         if (op === 'let*') {
             // (let* ((x EXPR) (y EXPR) ...) BODY)
             ctx.expect('LParen');
@@ -63,16 +85,6 @@ export function parseExpr(ctx: ParserContext): Expr {
                 expr = { kind: 'Let', name: binding.name, value: binding.value, body: expr };
             }
             return expr;
-        }
-        if (op === 'let') {
-            // (let (x EXPR) BODY)
-            ctx.expect('LParen');
-            const name = ctx.expectSymbol();
-            const val = parseExpr(ctx);
-            ctx.expect('RParen');
-            const body = parseExpr(ctx);
-            ctx.expect('RParen');
-            return { kind: 'Let', name, value: val, body };
         }
         if (op === 'lambda') {
             // (lambda (args (x T) ...) (ret T) (eff !E) (body E))
