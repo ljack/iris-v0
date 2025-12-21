@@ -7,6 +7,8 @@
     (import "list" (as "list"))
     (import "str" (as "str"))
     (import "wasm_syntax" (as "ws"))
+    (import "wasm_ir" (as "wir"))
+    (import "wasm_ir_to_wat" (as "wrt"))
     (import "codegen_wasm_emit" (as "emit"))
     (import "codegen_wasm_match" (as "match"))
   )
@@ -74,8 +76,12 @@
         (match e
           (case (tag "Literal" (v))
             (match v
-              (case (tag "I64" (i)) (call ws.s "i64.const" (list (i64.to_string i))))
-              (case (tag "Bool" (b)) (call ws.s "i64.const" (list (if b "1" "0"))))
+              (case (tag "I64" (i))
+                (call wrt.render_node (call wir.i64_const i))
+              )
+              (case (tag "Bool" (b))
+                (call wrt.render_node (call wir.i64_const (if b 1 0)))
+              )
               (case (tag "Str" (s))
                 (let* ((len (str.len s))
                        (aligned (+ 8 (+ len (if (= (% (+ 8 len) 8) 0) 0 (- 8 (% (+ 8 len) 8))))))

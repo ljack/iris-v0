@@ -1,0 +1,65 @@
+;; Compiler module: minimal structured WASM IR.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
+(program
+  (module (name "wasm_ir") (version 1))
+  (imports)
+  (defs
+    (type WasmArg
+      (union
+        (tag "Text" (Str))
+        (tag "Instr" ((Record (op Str) (args (List WasmArg)))))
+      )
+    )
+
+    (type WasmInstr (Record (op Str) (args (List WasmArg))))
+
+    (type WasmNode
+      (union
+        (tag "Instr" (WasmInstr))
+        (tag "Block" ((Record (head Str) (body (List WasmNode)))))
+      )
+    )
+
+    (deffn (name arg_text) (args (s Str)) (ret WasmArg) (eff !Pure)
+      (body (tag "Text" s))
+    )
+
+    (deffn (name arg_instr) (args (i WasmInstr)) (ret WasmArg) (eff !Pure)
+      (body (tag "Instr" i))
+    )
+
+    (deffn (name instr) (args (op Str) (args (List WasmArg))) (ret WasmInstr) (eff !Pure)
+      (body (record (op op) (args args)))
+    )
+
+    (deffn (name node_instr) (args (i WasmInstr)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" i))
+    )
+
+    (deffn (name node_block) (args (head Str) (body (List WasmNode))) (ret WasmNode) (eff !Pure)
+      (body (tag "Block" (record (head head) (body body))))
+    )
+
+    (deffn (name i64_const) (args (v I64)) (ret WasmNode) (eff !Pure)
+      (body
+        (tag "Instr"
+          (record
+            (op "i64.const")
+            (args (cons (tag "Text" (i64.to_string v)) (list)))
+          )
+        )
+      )
+    )
+
+    (deffn (name local_get) (args (name Str)) (ret WasmNode) (eff !Pure)
+      (body
+        (tag "Instr"
+          (record
+            (op "local.get")
+            (args (cons (tag "Text" name) (list)))
+          )
+        )
+      )
+    )
+  )
+)

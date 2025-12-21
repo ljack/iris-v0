@@ -119,6 +119,8 @@ export { t158_wasm_snippet_string_literal } from './t158_wasm_snippet_string_lit
 export { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes';
 export { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
 export { t800_iris_tests } from './t800_iris';
+export { t161_wasm_ir_render } from './t161_wasm_ir_render';
+export { t162_wasm_ir_codegen_literal } from './t162_wasm_ir_codegen_literal';
 import { t01 } from './t01';
 import { t02 } from './t02';
 import { t03 } from './t03';
@@ -233,6 +235,8 @@ import { t158_wasm_snippet_string_literal } from './t158_wasm_snippet_string_lit
 import { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes';
 import { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
 import { t800_iris_tests } from './t800_iris';
+import { t161_wasm_ir_render } from './t161_wasm_ir_render';
+import { t162_wasm_ir_codegen_literal } from './t162_wasm_ir_codegen_literal';
 import {
   t200_http_parse_response, t200_http_parse_response_headers, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
@@ -437,8 +441,8 @@ export const TESTS = [
   t392_async_var_from_env, t393_async_var_shadowing, t394_async_match_result_ok,
   t395_async_match_result_err, t396_async_match_option_some, t397_async_match_option_none,
   t398_async_match_list_nil, t399_async_match_list_cons, t400_async_match_list_cons_two_vars,
-  ...t401_tests,
-  ...t420_tests,
+  t401_tests,
+  t420_tests,
   t430_async_import_success, t431_async_import_fail,
   t391_unit_coverage,
   t392_sync_coverage,
@@ -464,7 +468,9 @@ export const TESTS = [
   t158_wasm_snippet_string_literal,
   t159_wasm_snippet_string_bytes,
   t160_wasm_snippet_option_constructors,
-  ...t800_iris_tests,
+  t800_iris_tests,
+  t161_wasm_ir_render,
+  t162_wasm_ir_codegen_literal,
 ];
 // Advanced/experimental tests (some may fail):
 // t130, t131, t132, t133, t134, t135, t136, t137, t138, t140, t141, t142, t143, t144, t145

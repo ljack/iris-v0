@@ -1,0 +1,65 @@
+;; Compiler module: render structured WASM IR to WAT text.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
+(program
+  (module (name "wasm_ir_to_wat") (version 1))
+  (imports
+    (import "wasm_ir" (as "wir"))
+    (import "wasm_syntax" (as "ws"))
+  )
+  (defs
+    (deffn (name render_arg) (args (a wir.WasmArg)) (ret Str) (eff !Pure)
+      (body
+        (match a
+          (case (tag "Text" (s)) s)
+          (case (tag "Instr" (i)) (call render_instr i))
+        )
+      )
+    )
+
+    (deffn (name render_args) (args (args (List wir.WasmArg))) (ret (List Str)) (eff !Pure)
+      (body
+        (match args
+          (case (tag "nil" ()) (list))
+          (case (tag "cons" (h t))
+            (cons (call render_arg h) (call render_args t))
+          )
+        )
+      )
+    )
+
+    (deffn (name render_instr) (args (i wir.WasmInstr)) (ret Str) (eff !Pure)
+      (body
+        (call ws.s i.op (call render_args i.args))
+      )
+    )
+
+    (deffn (name render_node) (args (n wir.WasmNode)) (ret Str) (eff !Pure)
+      (body
+        (match n
+          (case (tag "Instr" (i)) (call render_instr i))
+          (case (tag "Block" (b))
+            (call ws.block b.head (call render_nodes b.body))
+          )
+        )
+      )
+    )
+
+    (deffn (name render_nodes) (args (nodes (List wir.WasmNode))) (ret Str) (eff !Pure)
+      (body
+        (match nodes
+          (case (tag "nil" ()) "")
+          (case (tag "cons" (h t))
+            (let (line (call render_node h))
+              (let (rest (call render_nodes t))
+                (if (= rest "")
+                  line
+                  (call ws.lines (list line rest))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)

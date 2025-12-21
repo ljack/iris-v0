@@ -112,6 +112,10 @@ Actions:
 - Implement a renderer:
   - `wasm_ir_to_wat` for debugging and tests.
 
+Status:
+- Minimal `wasm_ir.iris` + `wasm_ir_to_wat.iris` exist in `examples/real/compiler`, with `tests/t161_wasm_ir_render.ts`.
+- `codegen_wasm_expr.iris` routes literal I64/Bool through the IR renderer (`tests/t162_wasm_ir_codegen_literal.ts`).
+
 Success criteria:
 - Generator code manipulates structured nodes, not text.
 - WAT exists only as a rendering output.
