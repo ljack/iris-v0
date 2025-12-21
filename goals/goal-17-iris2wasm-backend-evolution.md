@@ -112,6 +112,9 @@ Actions:
 - Implement a renderer:
   - `wasm_ir_to_wat` for debugging and tests.
 
+Status:
+- Minimal `wasm_ir.iris` + `wasm_ir_to_wat.iris` exist in `examples/real/compiler`, with `tests/t161_wasm_ir_render.ts`.
+
 Success criteria:
 - Generator code manipulates structured nodes, not text.
 - WAT exists only as a rendering output.
