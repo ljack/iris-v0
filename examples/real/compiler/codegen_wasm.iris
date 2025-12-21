@@ -119,11 +119,25 @@
     (deffn (name codegen_module) (args (p ast.Program)) (ret Str) (eff !Pure)
       (doc "Generate WebAssembly text (WAT) for a program.")
         (body
-        (let (imports "(type $print_type (func (param i64) (result i64)))\n(import \"io\" \"print\" (func $io.print (type $print_type)))\n(memory $memory 1)\n(export \"memory\" (memory $memory))\n")
-        (let (alloc "(func $alloc (export \"alloc\") (param $size i64) (result i64)\n  (local $ptr i64)\n  (local.set $ptr (i64.extend_i32_u (i32.load (i32.const 0))))\n  (if (i64.eqz (local.get $ptr)) (then (local.set $ptr (i64.const 4))))\n  (i32.store (i32.const 0) (i32.add (i32.wrap_i64 (local.get $ptr)) (i32.wrap_i64 (local.get $size))))\n  (local.get $ptr)\n)\n")
+        (let (imports (call ws.lines (list
+          "(type $print_type (func (param i64) (result i64)))"
+          "(import \"io\" \"print\" (func $io.print (type $print_type)))"
+          "(memory $memory 1)"
+          "(export \"memory\" (memory $memory))"
+        )))
+        (let (imports (str.concat imports "\n"))
+        (let* ((alloc_body (call ws.lines (list
+                  "  (local $ptr i64)"
+                  "  (local.set $ptr (i64.extend_i32_u (i32.load (i32.const 0))))"
+                  "  (if (i64.eqz (local.get $ptr)) (then (local.set $ptr (i64.const 4))))"
+                  "  (i32.store (i32.const 0) (i32.add (i32.wrap_i64 (local.get $ptr)) (i32.wrap_i64 (local.get $size))))"
+                  "  (local.get $ptr)"
+                )))
+               (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body))
+               (alloc (str.concat alloc "\n")))
         (let (defs (call gen_defs p.progDefs))
           (str.concat (call ws.block "module" (str.concat imports (str.concat alloc defs))) "\n")
-        ))))
+        ))))))
       )
     )
   )
