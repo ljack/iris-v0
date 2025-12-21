@@ -119,6 +119,7 @@ Status:
 - `gen_match_cases` now builds IR nodes and renders them (`tests/t164_wasm_ir_match_cases.ts`).
 - Added `node_if` helper for structured if/then/else blocks (covered in `tests/t161_wasm_ir_render.ts`).
 - `If` and `Call` codegen now use IR rendering (`tests/t165_wasm_ir_codegen_if.ts`, `tests/t166_wasm_ir_codegen_call.ts`).
+- `Match` entrypoint and `list.get` intrinsic now emit IR nodes (see `tests/t147_wasm_snippet_list_get.ts` for updated formatting).
 
 Success criteria:
 - Generator code manipulates structured nodes, not text.

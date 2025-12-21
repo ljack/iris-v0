@@ -109,5 +109,21 @@
         )
       )
     )
+
+    (deffn (name i64_add) (args (a WasmArg) (b WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.add") (args (list a b))))
+    )
+
+    (deffn (name i64_mul) (args (a WasmArg) (b WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.mul") (args (list a b))))
+    )
+
+    (deffn (name i64_load) (args (addr WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.load") (args (list addr))))
+    )
+
+    (deffn (name i32_wrap_i64) (args (value WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i32.wrap_i64") (args (list value))))
+    )
   )
 )

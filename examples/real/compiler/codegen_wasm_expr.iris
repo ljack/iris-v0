@@ -22,6 +22,15 @@
       )
     )
 
+    (deffn (name nodes_append) (args (a (List wir.WasmNode)) (b (List wir.WasmNode))) (ret (List wir.WasmNode)) (eff !Pure)
+      (body
+        (match a
+          (case (tag "nil" ()) b)
+          (case (tag "cons" (h t)) (cons h (call nodes_append t b)))
+        )
+      )
+    )
+
     (deffn (name gen_list_items) (args (items (List ast.Expr)) (index I64)) (ret Str) (eff !Pure)
       (body
         (match (list.get items index)
@@ -154,41 +163,58 @@
                   (case (= op "list.get")
                     (let* ((lcode (call codegen_expr (call get_arg args 0)))
                            (icode (call codegen_expr (call get_arg args 1)))
-                           (part1 (call ws.lines (list lcode "(local.set $t0)")))
-                           (part2 (call ws.lines (list icode "(local.set $t1)")))
-                           (cond (call ws.s "i64.lt_u" (list
-                             (call ws.s "local.get" (list (call ws.local_id "t1")))
-                             (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t0"))))))
-                             )
+                           (t0 (call ws.local_id "t0"))
+                           (t1 (call ws.local_id "t1"))
+                           (t2 (call ws.local_id "t2"))
+                           (get_t0 (call wir.instr "local.get" (list (call wir.arg_text t0))))
+                           (get_t1 (call wir.instr "local.get" (list (call wir.arg_text t1))))
+                           (get_t2 (call wir.instr "local.get" (list (call wir.arg_text t2))))
+                           (cond_instr (call wir.instr "i64.lt_u" (list
+                             (call wir.arg_instr get_t1)
+                             (call wir.arg_instr (call wir.i64_load (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t0)))))
                            )))
-                           (then_body (call ws.lines (list
-                             (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
-                             (call ws.s "local.set" (list (call ws.local_id "t2")))
-                             (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t2"))))) (call ws.s "i64.const" (list "1"))))
-                             (call ws.s "i64.store" (list
-                               (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t2"))) (call ws.s "i64.const" (list "8"))))))
-                               (call ws.s "i64.load" (list
-                                 (call ws.s "i32.wrap_i64" (list
-                                   (call ws.s "i64.add" (list
-                                     (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t0"))) (call ws.s "i64.const" (list "8"))))
-                                     (call ws.s "i64.mul" (list (call ws.s "local.get" (list (call ws.local_id "t1"))) (call ws.s "i64.const" (list "8")))
-                                   ))
-                                 ))
-                               ))
-                             )))
-                             (call ws.s "local.get" (list (call ws.local_id "t2")))
+                           (cond_node (call wir.node_instr cond_instr))
+                           (alloc_node (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$alloc") (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text "16"))))))))
+                           (set_t2 (call wir.local_set t2))
+                           (store_flag_one (call wir.node_instr (call wir.instr "i64.store" (list
+                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t2)))
+                             (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text "1"))))
+                           ))))
+                           (addr_t2_plus_8 (call wir.i64_add (call wir.arg_instr get_t2) (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text "8"))))))
+                           (addr_t0_plus_8 (call wir.i64_add (call wir.arg_instr get_t0) (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text "8"))))))
+                           (index_mul (call wir.i64_mul (call wir.arg_instr get_t1) (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text "8"))))))
+                           (load_addr (call wir.i64_add (call wir.arg_instr addr_t0_plus_8) (call wir.arg_instr index_mul)))
+                           (load_value (call wir.i64_load (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr load_addr)))))
+                           (store_value (call wir.node_instr (call wir.instr "i64.store" (list
+                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr addr_t2_plus_8)))
+                             (call wir.arg_instr load_value)
+                           ))))
+                           (then_nodes (list
+                             alloc_node
+                             set_t2
+                             store_flag_one
+                             store_value
+                             (call wir.node_instr get_t2)
+                           ))
+                           (store_flag_zero (call wir.node_instr (call wir.instr "i64.store" (list
+                             (call wir.arg_instr (call wir.i32_wrap_i64 (call wir.arg_instr get_t2)))
+                             (call wir.arg_instr (call wir.instr "i64.const" (list (call wir.arg_text "0"))))
+                           ))))
+                           (else_nodes (list
+                             alloc_node
+                             set_t2
+                             store_flag_zero
+                             (call wir.node_instr get_t2)
+                           ))
+                           (if_node (call wir.node_if cond_node then_nodes else_nodes))
+                           (nodes (list
+                             (call wir.node_raw lcode)
+                             (call wir.local_set t0)
+                             (call wir.node_raw icode)
+                             (call wir.local_set t1)
+                             if_node
                            )))
-                           (then_block (call ws.block "then" then_body))
-                           (else_body (call ws.lines (list
-                             (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "16"))))
-                             (call ws.s "local.set" (list (call ws.local_id "t2")))
-                             (call ws.s "i64.store" (list (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "t2"))))) (call ws.s "i64.const" (list "0"))))
-                             (call ws.s "local.get" (list (call ws.local_id "t2")))
-                           )))
-                           (else_block (call ws.block "else" else_body))
-                           (body (call ws.lines (list then_block else_block)))
-                           (head (call ws.head "if (result i64)" (list cond))))
-                        (call ws.lines (list part1 part2 head body ")"))
+                        (call wrt.render_nodes nodes)
                     )
                   )
                   (case (= op "cons")
@@ -260,8 +286,14 @@
           )
 
           (case (tag "Match" (m))
-            (let (tcode (call codegen_expr m.target))
-                (call ws.lines (list tcode "(local.set $target)" (call gen_match_cases m.cases "$target" 0)))
+            (let* ((tcode (call codegen_expr m.target))
+                   (seed (list
+                     (call wir.node_raw tcode)
+                     (call wir.local_set (call ws.local_id "target"))
+                   ))
+                   (cases_nodes (call gen_match_cases_nodes m.cases "$target" 0))
+                   (nodes (call nodes_append seed cases_nodes)))
+                (call wrt.render_nodes nodes)
             )
           )
 
