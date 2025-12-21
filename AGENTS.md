@@ -11,6 +11,7 @@
 - `npm install` installs dependencies.
 - `npm run build` compiles TypeScript to `dist/` (required for `bin/iris` CLI runs).
 - `npm test` runs the main test suite via `src/tests.ts`.
+- `npm test -- --grep "parse smoke"` runs the Iris parse smoke test.
 - `npm run test:coverage` runs tests with `c8` coverage reporting.
 - `node scripts/build_web.js` rebuilds `web/iris.js`/`web/iris.js.map` for the playground.
 
@@ -23,6 +24,7 @@
 - Framework: custom test harness in `src/tests.ts` with cases in `tests/`.
 - Coverage is kept high (target ~99%); add tests for new branches/paths.
 - Register new tests in `tests/index.ts` and ensure they pass under `npm test`.
+- Parse smoke test covers `examples/real/apps` and `stdlib` to catch missing parentheses.
 
 ## Commit & Pull Request Guidelines
 - Commit messages: short, imperative summaries (e.g., “Add tool host docs”).

@@ -59,6 +59,16 @@ npm install
 npm test
 ```
 
+## Iris Guardrails
+
+Install the pre-commit hook to catch missing parentheses in staged `.iris` files:
+
+```bash
+scripts/install-iris-hooks.sh
+```
+
+This runs `./bin/iris check` on staged `.iris` files and blocks commits on parse errors.
+
 ### Hello World
 
 ```iris
