@@ -1,0 +1,39 @@
+;; Compiler module: WebAssembly match helpers.
+;; Part of the Iris compiler pipeline in examples/real/compiler.
+(program
+  (module (name "codegen_wasm_match") (version 1))
+  (imports
+    (import "str" (as "str"))
+    (import "wasm_syntax" (as "ws"))
+  )
+  (defs
+    (deffn (name gen_match_bindings) (args (vars (List Str)) (target_v Str) (index I64)) (ret Str) (eff !Pure)
+        (body
+            (match vars
+                (case (tag "nil" ()) "")
+                (case (tag "cons" (h t))
+                    (let* ((offset (+ 8 (* index 8)))
+                           (addr (str.concat "(i64.add (local.get " (str.concat target_v (str.concat ") (i64.const " (str.concat (i64.to_string offset) "))")))))
+                           (val  (str.concat "(i64.load (i32.wrap_i64 " (str.concat addr "))")))
+                           (set  (str.concat "(local.set $" (str.concat (call ws.sanitize_identifier h) (str.concat " " (str.concat val ")\n"))))))
+                        (str.concat set (call gen_match_bindings t target_v (+ index 1)))
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name get_tag_index) (args (tag Str)) (ret Str) (eff !Pure)
+        (body
+            (if (= tag "None") "0"
+            (if (= tag "Some") "1"
+            (if (= tag "Err") "0"
+            (if (= tag "Ok") "1"
+            (if (= tag "cons") "1"
+            (if (= tag "nil") "0"
+                "0"
+            ))))))
+        )
+    )
+  )
+)
