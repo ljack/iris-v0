@@ -16,6 +16,7 @@
         (match a
           (case (tag "Text" (s)) s)
           (case (tag "Instr" (i)) (call render_instr i))
+          (case (tag "Raw" (s)) s)
         )
       )
     )

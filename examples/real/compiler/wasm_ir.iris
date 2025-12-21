@@ -8,6 +8,7 @@
       (union
         (tag "Text" (Str))
         (tag "Instr" ((Record (op Str) (args (List WasmArg)))))
+        (tag "Raw" (Str))
       )
     )
 
@@ -27,6 +28,10 @@
 
     (deffn (name arg_instr) (args (i WasmInstr)) (ret WasmArg) (eff !Pure)
       (body (tag "Instr" i))
+    )
+
+    (deffn (name arg_raw) (args (s Str)) (ret WasmArg) (eff !Pure)
+      (body (tag "Raw" s))
     )
 
     (deffn (name instr) (args (op Str) (args (List WasmArg))) (ret WasmInstr) (eff !Pure)
@@ -127,8 +132,16 @@
       (body (record (op "i64.mul") (args (list a b))))
     )
 
+    (deffn (name i64_ne) (args (a WasmArg) (b WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.ne") (args (list a b))))
+    )
+
     (deffn (name i64_lt_u) (args (a WasmArg) (b WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.lt_u") (args (list a b))))
+    )
+
+    (deffn (name i64_const_instr) (args (value Str)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.const") (args (list (tag "Text" value)))))
     )
 
     (deffn (name i64_load) (args (addr WasmArg)) (ret WasmInstr) (eff !Pure)

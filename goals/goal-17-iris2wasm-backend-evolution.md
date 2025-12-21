@@ -121,6 +121,7 @@ Status:
 - `If` and `Call` codegen now use IR rendering (`tests/t165_wasm_ir_codegen_if.ts`, `tests/t166_wasm_ir_codegen_call.ts`).
 - `Match` entrypoint and `list.get` intrinsic now emit IR nodes (see `tests/t147_wasm_snippet_list_get.ts` for updated formatting).
 - Added IR helpers for `local.get` (instr), `i64.store`, `i64.lt_u`, and refactored `cons` to emit IR nodes (`tests/t148_wasm_snippet_cons.ts` still passes).
+- Added IR helpers for `arg_raw`, `i64.ne`, `i64.const` (instr), and shifted `+`, `io.print`, and `If` condition building to IR helpers (`tests/t156_wasm_snippet_intrinsics.ts`, `tests/t165_wasm_ir_codegen_if.ts`).
 
 Success criteria:
 - Generator code manipulates structured nodes, not text.
