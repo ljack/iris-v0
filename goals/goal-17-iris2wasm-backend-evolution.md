@@ -118,6 +118,7 @@ Status:
 - Var/Let now render `local.get`/`local.set` via IR helpers (`tests/t163_wasm_ir_codegen_var_let.ts`).
 - `gen_match_cases` now builds IR nodes and renders them (`tests/t164_wasm_ir_match_cases.ts`).
 - Added `node_if` helper for structured if/then/else blocks (covered in `tests/t161_wasm_ir_render.ts`).
+- `If` and `Call` codegen now use IR rendering (`tests/t165_wasm_ir_codegen_if.ts`, `tests/t166_wasm_ir_codegen_call.ts`).
 
 Success criteria:
 - Generator code manipulates structured nodes, not text.

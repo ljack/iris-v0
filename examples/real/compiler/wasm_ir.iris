@@ -98,5 +98,16 @@
         )
       )
     )
+
+    (deffn (name call) (args (name Str)) (ret WasmNode) (eff !Pure)
+      (body
+        (tag "Instr"
+          (record
+            (op "call")
+            (args (cons (tag "Text" name) (list)))
+          )
+        )
+      )
+    )
   )
 )
