@@ -126,6 +126,7 @@ Status:
 - Added IR helpers for `i32.wrap_i64`/`i64.load` as args and applied them to `list.get` and `cons` to reduce raw wrappers.
 - `cons` now builds `memory.copy` arguments via IR helpers, reducing raw WAT lines further.
 - Added shallow IR node generation for literal/var arguments inside `list.get`/`cons` to trim raw strings further.
+- Introduced `codegen_expr_nodes` (full node pipeline) and made `codegen_expr` render it directly.
 - `Call` argument sequencing now emits IR nodes via `gen_call_args_nodes` (`tests/t155_wasm_snippet_var_call.ts` still passes).
 - String literal codegen now uses IR `local.get` nodes (validated by `tests/t158_wasm_snippet_string_literal.ts`).
 
