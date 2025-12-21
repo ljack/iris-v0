@@ -83,12 +83,21 @@
                 ))
               (case (tag "Some" (val))
                 (let* ((vcode (call codegen_expr (tag "Literal" val)))
-                       (s1 "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 1))\n")
-                       (s2 (str.concat "(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) " (str.concat vcode ")\n"))))
-                    (str.concat s1 (str.concat s2 "(local.get $t0)"))
+                       (alloc (call ws.lines (list
+                         "(call $alloc (i64.const 16))"
+                         "(local.set $t0)"
+                         "(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 1))"
+                       )))
+                       (store (call ws.s "i64.store" (list "(i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8)))" vcode))))
+                    (call ws.lines (list alloc store "(local.get $t0)"))
                 ))
               (case (tag "None" ())
-                "(call $alloc (i64.const 16))\n(local.set $t0)\n(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 0))\n(local.get $t0)"
+                (call ws.lines (list
+                  "(call $alloc (i64.const 16))"
+                  "(local.set $t0)"
+                  "(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 0))"
+                  "(local.get $t0)"
+                ))
               )
               (case (tag "_" ()) "(i64.const 0)")
             )
