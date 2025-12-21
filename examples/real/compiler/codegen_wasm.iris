@@ -107,7 +107,9 @@
                                         (call ws.lines (list fixed_locals body_code))
                                         (call ws.lines (list fixed_locals locals body_code))))
                                  (func_block (call ws.block head body)))
-                            (str.concat func_block (str.concat "\n" (call gen_defs t))))
+                            (let (rest (call gen_defs t))
+                              (if (= rest "") func_block (call ws.lines (list func_block rest)))
+                            ))
                           )))))
                         (case (tag "_" ()) (call gen_defs t))
                     )
@@ -125,7 +127,6 @@
           "(memory $memory 1)"
           "(export \"memory\" (memory $memory))"
         )))
-        (let (imports (str.concat imports "\n"))
         (let* ((alloc_body (call ws.lines (list
                   "  (local $ptr i64)"
                   "  (local.set $ptr (i64.extend_i32_u (i32.load (i32.const 0))))"
@@ -133,11 +134,12 @@
                   "  (i32.store (i32.const 0) (i32.add (i32.wrap_i64 (local.get $ptr)) (i32.wrap_i64 (local.get $size))))"
                   "  (local.get $ptr)"
                 )))
-               (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body))
-               (alloc (str.concat alloc "\n")))
+               (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body)))
         (let (defs (call gen_defs p.progDefs))
-          (str.concat (call ws.block "module" (str.concat imports (str.concat alloc defs))) "\n")
-        ))))))
+          (let (body (call ws.lines (list imports alloc defs)))
+            (call ws.lines (list (call ws.block "module" body) ""))
+          )
+        )))))
       )
     )
   )

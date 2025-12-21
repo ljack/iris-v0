@@ -73,8 +73,7 @@ export const t151_wasm_snippet_gen_defs = {
       '(local $t2 i64)',
       '(local $target i64)',
       '(i64.const 1)',
-      ')',
-      ''
+      ')'
     ].join('\n');
 
     assertEx(res, expected);
