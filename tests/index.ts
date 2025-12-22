@@ -99,6 +99,7 @@ export { t110 } from './t110';
 export { t111 } from './t111';
 export { t112 } from './t112';
 export { t113 } from './t113';
+export { t215_capability_validator } from './t215_capability_validator';
 export { t121 } from './t121';
 export { t129 } from './t129_recursive_types';
 export { t500_llm_metadata } from './t500_llm_metadata';
@@ -211,6 +212,7 @@ import { t110 } from './t110';
 import { t111 } from './t111';
 import { t112 } from './t112';
 import { t113 } from './t113';
+import { t215_capability_validator } from './t215_capability_validator';
 import { t121 } from './t121';
 import { T125 } from './t125';
 import { T126 } from './t126';
@@ -368,7 +370,7 @@ export const TESTS = [
   t61, t62, t63, t64, t65, t66, t67, t68, t69, t70,
   t71, t72, t73, t74, t75, t76, t77, t78, t79, t80,
   t81, t82, t90, t100, t101, t102, t103, t104, t105,
-  t106, t107, t108, t110, t111, t112, t113, t121, T125, T126, t128, t129,
+  t106, t107, t108, t110, t111, t112, t113, t215_capability_validator, t121, T125, T126, t128, t129,
   // Coverage improvement tests
   t200_http_parse_response, t200_http_parse_response_headers, t201_http_get, t202_str_len, t203_str_get, t204_str_get_out_of_bounds,
   t205_str_substring, t206_str_from_code, t207_str_index_of, t208_str_index_of_not_found,
