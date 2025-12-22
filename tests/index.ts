@@ -121,6 +121,7 @@ export { t157_wasm_snippet_match_bindings } from './t157_wasm_snippet_match_bind
 export { t158_wasm_snippet_string_literal } from './t158_wasm_snippet_string_literal';
 export { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes';
 export { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
+export { t171_capability_profiles } from './t171_capability_profiles';
 export { t167_wasm_binary_header } from './t167_wasm_binary_header';
 export { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
 export { t169_wasm_binary_memory_required } from './t169_wasm_binary_memory_required';
@@ -240,6 +241,7 @@ import { t157_wasm_snippet_match_bindings } from './t157_wasm_snippet_match_bind
 import { t158_wasm_snippet_string_literal } from './t158_wasm_snippet_string_literal';
 import { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes';
 import { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
+import { t171_capability_profiles } from './t171_capability_profiles';
 import { t167_wasm_binary_header } from './t167_wasm_binary_header';
 import { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
 import { t169_wasm_binary_memory_required } from './t169_wasm_binary_memory_required';
