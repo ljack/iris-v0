@@ -69,9 +69,6 @@ export function validateCapabilities(
     profileName: CapabilityProfileName
 ): CapabilityValidationResult {
     const profile = capabilityProfiles[profileName];
-    if (!profile) {
-        return { ok: false, profile: profileName, error: 'E_CAPABILITY', missing: requested.slice() };
-    }
 
     const granted = new Set(profile.capabilities);
     const missing: Capability[] = [];

@@ -9,7 +9,7 @@ import { TestCase } from '../src/test-types';
 function assertOk(requested: Capability[], profile: CapabilityProfileName) {
     const result = validateCapabilities(requested, profile);
     if (!result.ok) {
-        throw new Error(`Expected ok for ${profile}, missing: ${(result as any).missing?.join(', ')}`);
+        throw new Error(`Expected ok for ${profile}, missing: ${result.missing.join(', ')}`);
     }
 }
 
@@ -22,6 +22,12 @@ function assertMissing(requested: Capability[], profile: CapabilityProfileName, 
     for (const cap of missing) {
         if (!missingSet.has(cap)) {
             throw new Error(`Expected missing capability ${cap} under ${profile}`);
+        }
+    }
+    const expectedSet = new Set(missing);
+    for (const cap of missingSet) {
+        if (!expectedSet.has(cap)) {
+            throw new Error(`Unexpected missing capability ${cap} under ${profile}`);
         }
     }
 }

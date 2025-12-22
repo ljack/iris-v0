@@ -75,11 +75,11 @@ Host enforces:
 Define standard profiles so “anywhere” stays predictable:
 
 **Profile: `pure`**
-- Allowed: `log.debug` (optional), `limits.*`
+- Allowed: `log.debug` (optional), `limits.fuel_remaining`, `limits.request_yield`
 - Denied: `io`, `net`, `fs`, `clock`, `rand`, `device`
 
 **Profile: `browser_playground`**
-- Allowed: `io.print`, `net.http_fetch` (optional, CORS-limited), `clock.now_ms` (optional), `rand.u64` (optional)
+- Allowed: `io.print`, `net.http_request` (CORS-limited), `clock.wall_ms`, `rand.u64`
 - Denied: `fs` (unless sandboxed via IndexedDB wrapper), `device.*`
 
 **Profile: `server_agent`**
@@ -87,7 +87,7 @@ Define standard profiles so “anywhere” stays predictable:
 - Optional: `process.spawn` should be **denied by default**.
 
 **Profile: `iot_min`**
-- Allowed: `io.print`, `device.gpio`, `device.i2c`, `clock.monotonic_ms`
+- Allowed: `io.print`, `device.gpio_write`/`device.gpio_read`, `device.i2c_tx`/`device.i2c_rx`, `clock.monotonic_ms`
 - Denied: `net` unless explicitly enabled
 
 ---
@@ -98,21 +98,21 @@ Define standard profiles so “anywhere” stays predictable:
 - **ABI tag:** `iris-host-abi/0.1.0` (bump the minor when adding non-breaking imports; bump the major when changing signatures).
 - Hosts surface the ABI tag and **reject modules** that declare a required ABI higher than the host supports or that request capabilities outside the active profile.
 - Capability → import mapping (v0.1.0):
-  - `!Pure` → `limits.*`, `log.debug`
+  - `!Pure` → `limits.fuel_remaining`, `limits.request_yield`, `log.debug`
   - `!IO` → `io.print_utf8`, `io.read_line`
   - `!Net` → `net.http_request`
   - `!FS` → `fs.open_dir`, `fs.read_file`, `fs.write_file`
   - `!Clock` → `clock.monotonic_ms`, `clock.wall_ms`
   - `!Rand` → `rand.u64`, `rand.bytes`
-  - `!Device` → `device.gpio_*`, `device.i2c_*`
+  - `!Device` → `device.gpio_write`, `device.gpio_read`, `device.i2c_tx`, `device.i2c_rx`
 
 Profile matrix (✅ = import family available by default, ⚪️ = optional/host-flag):
 
 | Profile | `!Pure` | `!IO` | `!Net` | `!FS` | `!Clock` | `!Rand` | `!Device` |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `pure` | ✅ |  |  |  |  |  |  |
-| `browser_playground` | ✅ | ✅ | ⚪️ |  | ⚪️ | ⚪️ |  |
-| `server_agent` | ✅ | ✅ | ✅ | ⚪️ (scoped) | ✅ | ✅ |  |
+| `browser_playground` | ✅ | ✅ | ✅ |  | ✅ | ✅ |  |
+| `server_agent` | ✅ | ✅ | ✅ | ✅ (scoped) | ✅ | ✅ |  |
 | `iot_min` | ✅ | ✅ |  |  | ✅ (monotonic) |  | ✅ |
 
 Hosts may extend profiles, but any requested capability not granted by the active profile must fail with `E_CAPABILITY` **before** program execution.
@@ -269,7 +269,7 @@ Prefer: JS imports + explicit directory capabilities.
 
 ### Phase 2 — Browser host (2–4 days)
 - [ ] Build `iris_runtime.wasm` and load in the playground
-- [ ] Implement JS imports: `io.print_utf8`, `limits.*`
+- [ ] Implement JS imports: `io.print_utf8`, `limits.fuel_remaining`, `limits.request_yield`
 - [ ] Wire a `pure` and `browser_playground` profile
 - [ ] Add conformance tests (same IRIS program yields same output)
 
@@ -283,7 +283,7 @@ Prefer: JS imports + explicit directory capabilities.
 
 ### Phase 4 — Embedded host (time varies)
 - [ ] Build a minimal C host for wasm3 or WAMR
-- [ ] Implement `io.print_utf8` + `device.gpio_*`
+- [ ] Implement `io.print_utf8` + `device.gpio_write`/`device.gpio_read`
 - [ ] Run a “blink LED” IRIS sample under `iot_min`
 
 ### Phase 5 — Polish
