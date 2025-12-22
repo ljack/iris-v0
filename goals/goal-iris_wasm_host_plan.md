@@ -16,6 +16,8 @@ Goal: Run **AI-generated IRIS programs** safely and consistently on:
 
 ## 0. Outcome Targets
 
+**ABI version tag (host interface)**: `iris-host-abi/0.1.0` (semantic, bump on breaking import changes).
+
 ### Must-have
 - **Same IRIS program** runs (or fails) consistently across platforms.
 - **Effect safety**: programs can only perform effects explicitly allowed by the host.
@@ -90,6 +92,24 @@ Define standard profiles so “anywhere” stays predictable:
 - Allowed: `io.print`, `device.gpio`, `device.i2c`, `clock.monotonic_ms`
 - Denied: `net` unless explicitly enabled
 
+**Capability ↔ profile matrix** (imports marked ✓ are wired; blank = rejected/absent):
+
+| Import module/function | Capability | pure | browser_playground | server_agent | iot_min |
+| --- | --- | --- | --- | --- | --- |
+| `io.print_utf8` | `!IO` |  | ✓ | ✓ | ✓ |
+| `io.read_line` | `!IO` |  |  | ✓ |  |
+| `net.http_request` | `!Net` |  | ✓ | ✓ |  |
+| `fs.*` (dir handles + read/write) | `!FS` |  |  | ✓ |  |
+| `clock.monotonic_ms` | `!Clock` |  |  | ✓ | ✓ |
+| `clock.wall_ms` | `!Clock` |  | ✓ | ✓ |  |
+| `rand.u64` | `!Rand` |  | ✓ | ✓ |  |
+| `rand.bytes` | `!Rand` |  |  | ✓ |  |
+| `device.gpio_*` | `!Device` |  |  |  | ✓ |
+| `device.i2c_*` | `!Device` |  |  |  | ✓ |
+| `limits.*` | `!Pure` (always safe) | ✓ | ✓ | ✓ | ✓ |
+
+Host enforcement rule (all profiles): modules that declare required capabilities outside the chosen profile **must be rejected before instantiating the Wasm** (e.g., deny instantiation in Wasmtime/JS with a clear error explaining the missing capability).
+
 ---
 
 ## 3. Host Interface (Imports) – Minimal v1
@@ -100,7 +120,20 @@ Define standard profiles so “anywhere” stays predictable:
 - No ambient authority: every resource is a handle
 - Return error codes + messages (no panics across boundary)
 
-### 3.2 ABI choice
+### 3.2 ABI declaration
+- ABI tag: `iris-host-abi/0.1.0` (host rejects modules declaring a different major version).
+- Import namespace summary (each import implies the capability in parentheses):
+  - `io.print_utf8`, `io.read_line` (`!IO`)
+  - `net.http_request` (`!Net`)
+  - `fs.open_dir`, `fs.read_file`, `fs.write_file` (`!FS`)
+  - `clock.monotonic_ms`, `clock.wall_ms` (`!Clock`)
+  - `rand.u64`, `rand.bytes` (`!Rand`)
+  - `device.gpio_*`, `device.i2c_*` (`!Device`)
+  - `limits.fuel_remaining`, `limits.request_yield` (`!Pure` safe helpers)
+
+Modules should embed the ABI tag and declared capability set in custom sections or WIT/world metadata so the host can fast-fail incompatible binaries.
+
+### 3.3 ABI choice
 Pick one for v1:
 
 **Option A (fastest to ship): C-style ABI**
@@ -118,7 +151,7 @@ Recommendation:
 - Start with **Option A** for speed and embedded friendliness.
 - Plan migration to **Option B** once stable.
 
-### 3.3 Common types
+### 3.4 Common types
 Encode values as **CBOR** (binary, small, good for embedded) with these shapes:
 - `{"t":"int","v":123}`
 - `{"t":"str","v":"hi"}`
@@ -127,7 +160,7 @@ Encode values as **CBOR** (binary, small, good for embedded) with these shapes:
 - `{"t":"err","code":"E_IO","msg":"..."}`
 Or use a compact tagged format if performance demands later.
 
-### 3.4 Import surface (v1)
+### 3.5 Import surface (v1)
 
 #### `io`
 - `io.print_utf8(ptr,len) -> err_code`
@@ -176,7 +209,7 @@ Or use a compact tagged format if performance demands later.
 
 ### 4.2 Config CBOR
 `config` example:
-- `{"profile":"server_agent","max_steps":10_000_000,"max_bytes":50_000_000,"enable_tracing":false}`
+- `{"abi_version":"iris-host-abi/0.1.0","profile":"server_agent","max_steps":10_000_000,"max_bytes":50_000_000,"enable_tracing":false}`
 
 ---
 
