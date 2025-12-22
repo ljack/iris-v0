@@ -39,7 +39,7 @@ export const t_unit_process_manager: TestCase = {
         const pendingRecv = pm.recv(pidWaiting);
         const raceResult = await Promise.race([
             pendingRecv.then(() => 'resolved'),
-            new Promise(resolve => setTimeout(() => resolve('timeout'), 10))
+            new Promise(resolve => setTimeout(() => resolve('timeout'), 50))
         ]);
         if (raceResult !== 'timeout') {
             throw new Error('Expected no queued messages after waking receiver');
