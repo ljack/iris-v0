@@ -119,6 +119,8 @@ export { t157_wasm_snippet_match_bindings } from './t157_wasm_snippet_match_bind
 export { t158_wasm_snippet_string_literal } from './t158_wasm_snippet_string_literal';
 export { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes';
 export { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
+export { t167_wasm_binary_header } from './t167_wasm_binary_header';
+export { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
 export { t601_error_paths } from './t601_error_paths';
 export { t800_iris_tests } from './t800_iris';
 import { t01 } from './t01';
@@ -234,6 +236,8 @@ import { t157_wasm_snippet_match_bindings } from './t157_wasm_snippet_match_bind
 import { t158_wasm_snippet_string_literal } from './t158_wasm_snippet_string_literal';
 import { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes';
 import { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
+import { t167_wasm_binary_header } from './t167_wasm_binary_header';
+import { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
 import { t601_error_paths } from './t601_error_paths';
 import { t800_iris_tests } from './t800_iris';
 import {
@@ -468,6 +472,8 @@ export const TESTS = [
   t158_wasm_snippet_string_literal,
   t159_wasm_snippet_string_bytes,
   t160_wasm_snippet_option_constructors,
+  t167_wasm_binary_header,
+  t168_wasm_binary_golden,
   t601_error_paths,
   ...t800_iris_tests,
 ];
