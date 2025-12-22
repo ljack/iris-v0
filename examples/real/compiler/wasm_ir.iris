@@ -172,6 +172,14 @@
     (deffn (name i64_load_arg) (args (addr WasmArg)) (ret WasmArg) (eff !Pure)
       (body (tag "Instr" (call i64_load addr)))
     )
+
+    (deffn (name i64_store_node) (args (addr WasmArg) (value WasmArg)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_store addr value)))
+    )
+
+    (deffn (name i64_store_node_instr) (args (addr WasmInstr) (value WasmArg)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_store (call arg_instr addr) value)))
+    )
     (deffn (name i64_load) (args (addr WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.load") (args (list addr))))
     )
