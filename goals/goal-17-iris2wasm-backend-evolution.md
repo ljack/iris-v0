@@ -131,6 +131,7 @@ Status:
 - String literal allocation now uses IR alloc/store helpers (bytes still emitted as raw WAT).
 - `gen_match_bindings_nodes` now emits IR nodes; match cases use node bindings instead of raw binding strings.
 - `codegen_expr_nodes` now powers `gen_list_items`, and option constructors use IR store helpers end-to-end.
+- `cons` now emits a `memory.copy` block node instead of raw `(` and `)` lines.
 - `gen_match_cases_nodes` now uses `codegen_expr_nodes` for case bodies (bindings still emitted as raw).
 - `Call` argument sequencing now emits IR nodes via `gen_call_args_nodes` (`tests/t155_wasm_snippet_var_call.ts` still passes).
 - String literal codegen now uses IR `local.get` nodes (validated by `tests/t158_wasm_snippet_string_literal.ts`).

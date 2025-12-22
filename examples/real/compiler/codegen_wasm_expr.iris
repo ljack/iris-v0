@@ -221,7 +221,6 @@
                              (call wir.i32_wrap_i64_arg (call wir.arg_instr addr_t2_plus_8))
                              (call wir.arg_instr get_t0)
                            )))
-                           (mem_line1 (call ws.head "memory.copy" (list)))
                            (mem_dst (call wir.i32_wrap_i64_arg (call wir.arg_instr (call wir.i64_add
                              (call wir.arg_instr get_t2)
                              (call wir.i64_const_arg "16")
@@ -237,15 +236,16 @@
                            (mem_line2 (call ws.indent2 (call wrt.render_arg mem_dst)))
                            (mem_line3 (call ws.indent2 (call wrt.render_arg mem_src)))
                            (mem_line4 (call ws.indent2 (call wrt.render_arg mem_len)))
+                           (mem_block (call wir.node_block "memory.copy" (list
+                             (call wir.node_raw mem_line2)
+                             (call wir.node_raw mem_line3)
+                             (call wir.node_raw mem_line4)
+                           )))
                            (seed (call nodes_append a1_nodes (list (call wir.local_set t0))))
                            (seed2 (call nodes_append seed a2_nodes))
                            (seed3 (call nodes_append seed2 (list (call wir.local_set t1))))
                            (rest (list alloc_node set_t2 store_len store_head
-                                      (call wir.node_raw mem_line1)
-                                      (call wir.node_raw mem_line2)
-                                      (call wir.node_raw mem_line3)
-                                      (call wir.node_raw mem_line4)
-                                      (call wir.node_raw ")")
+                                      mem_block
                                       (call wir.node_instr get_t2)))
                            (all_nodes (call nodes_append seed3 rest)))
                         all_nodes
@@ -306,6 +306,12 @@
 
     (deffn (name gen_list_items) (args (items (List ast.Expr)) (index I64)) (ret Str) (eff !Pure)
       (body
+        (call wrt.render_nodes (call gen_list_items_nodes items index))
+      )
+    )
+
+    (deffn (name gen_list_items_nodes) (args (items (List ast.Expr)) (index I64)) (ret (List wir.WasmNode)) (eff !Pure)
+      (body
         (match (list.get items index)
           (case (tag "Some" (item))
             (let* ((val_nodes (call codegen_expr_nodes item))
@@ -318,10 +324,10 @@
                      (call wir.i32_wrap_i64_arg (call wir.arg_instr addr))
                      (call wir.arg_raw (call wrt.render_nodes val_nodes))
                    ))
-                   (rest (call gen_list_items items (+ index 1))))
-                (call wrt.render_nodes (call nodes_append (list store) (if (= rest "") (list) (list (call wir.node_raw rest)))))
+                   (rest (call gen_list_items_nodes items (+ index 1))))
+                (call nodes_append (list store) rest)
             ))
-          (case (tag "None" ()) "")
+          (case (tag "None" ()) (list))
         )
       )
     )

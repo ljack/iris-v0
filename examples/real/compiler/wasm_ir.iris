@@ -71,6 +71,7 @@
       )
     )
 
+
     (deffn (name i64_const) (args (v I64)) (ret WasmNode) (eff !Pure)
       (body
         (tag "Instr"
