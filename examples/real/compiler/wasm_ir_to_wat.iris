@@ -45,6 +45,7 @@
           (case (tag "Block" (b))
             (call ws.block b.head (call render_nodes b.body))
           )
+          (case (tag "Comment" (text)) (call ws.block_comment text))
           (case (tag "Raw" (line)) line)
         )
       )

@@ -247,7 +247,7 @@
                     )
                   )
                   (else
-                    (list (call wir.node_raw (call ws.block_comment (call ws.join_with (list "unknown intrinsic" op) " "))))
+                    (list (call wir.node_comment (call ws.join_with (list "unknown intrinsic" op) " ")))
                   )
                 )
             )
