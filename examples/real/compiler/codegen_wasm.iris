@@ -101,16 +101,22 @@
                           (let (locals (call gen_local_decls (list.unique vars)))
                           (let (body_code (call cwe.codegen_expr f.body))
                           (let (params (call gen_params f.args))
-                          (let* ((sig (if (= params "")
-                                          "(result i64)"
-                                          (call ws.join_with (list params "(result i64)") " ")))
+                          (let* ((result_sig (call ws.s "result" (list "i64")))
+                                 (sig (if (= params "")
+                                          result_sig
+                                          (call ws.join_with (list params result_sig) " ")))
                                  (head (call ws.join_with (list
                                     "func"
                                     (call ws.local_id f.name)
                                     (call ws.s "export" (list (call ws.quote_string f.name)))
                                     sig
                                   ) " "))
-                                 (fixed_locals (call ws.lines (list "(local $t0 i64)" "(local $t1 i64)" "(local $t2 i64)" "(local $target i64)")))
+                                 (fixed_locals (call ws.lines (list
+                                  (call ws.s "local" (list (call ws.local_id "t0") "i64"))
+                                  (call ws.s "local" (list (call ws.local_id "t1") "i64"))
+                                  (call ws.s "local" (list (call ws.local_id "t2") "i64"))
+                                  (call ws.s "local" (list (call ws.local_id "target") "i64"))
+                                 )))
                                  (body (if (= locals "")
                                         (call ws.lines (list fixed_locals body_code))
                                         (call ws.lines (list fixed_locals locals body_code))))
@@ -130,17 +136,26 @@
       (doc "Generate WebAssembly text (WAT) for a program.")
         (body
         (let (imports (call ws.lines (list
-          "(type $print_type (func (param i64) (result i64)))"
-          "(import \"io\" \"print\" (func $io.print (type $print_type)))"
-          "(memory $memory 1)"
-          "(export \"memory\" (memory $memory))"
+          (call ws.s "type" (list "$print_type" (call ws.s "func" (list (call ws.s "param" (list "i64")) (call ws.s "result" (list "i64"))))))
+          (call ws.s "import" (list (call ws.quote_string "io") (call ws.quote_string "print") (call ws.s "func" (list "$io.print" (call ws.s "type" (list "$print_type"))))))
+          (call ws.s "memory" (list "$memory" "1"))
+          (call ws.s "export" (list (call ws.quote_string "memory") (call ws.s "memory" (list "$memory"))))
         )))
         (let* ((alloc_body (call ws.lines (list
-                  "  (local $ptr i64)"
-                  "  (local.set $ptr (i64.extend_i32_u (i32.load (i32.const 0))))"
-                  "  (if (i64.eqz (local.get $ptr)) (then (local.set $ptr (i64.const 4))))"
-                  "  (i32.store (i32.const 0) (i32.add (i32.wrap_i64 (local.get $ptr)) (i32.wrap_i64 (local.get $size))))"
-                  "  (local.get $ptr)"
+                  (call ws.indent2 (call ws.s "local" (list (call ws.local_id "ptr") "i64")))
+                  (call ws.indent2 (call ws.s "local.set" (list (call ws.local_id "ptr") (call ws.s "i64.extend_i32_u" (list (call ws.s "i32.load" (list (call ws.s "i32.const" (list "0")))))))))
+                  (call ws.indent2 (call ws.s "if" (list
+                    (call ws.s "i64.eqz" (list (call ws.s "local.get" (list (call ws.local_id "ptr")))))
+                    (call ws.s "then" (list (call ws.s "local.set" (list (call ws.local_id "ptr") (call ws.s "i64.const" (list "4"))))))
+                  )))
+                  (call ws.indent2 (call ws.s "i32.store" (list
+                    (call ws.s "i32.const" (list "0"))
+                    (call ws.s "i32.add" (list
+                      (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "ptr")))))
+                      (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "size")))))
+                    ))
+                  )))
+                  (call ws.indent2 (call ws.s "local.get" (list (call ws.local_id "ptr"))))
                 )))
                (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body)))
         (let (defs (call gen_defs p.progDefs))
