@@ -108,7 +108,7 @@ Define standard profiles so “anywhere” stays predictable:
 | `device.i2c_*` | `!Device` |  |  |  | ✓ |
 | `limits.*` | `!Pure` (always safe) | ✓ | ✓ | ✓ | ✓ |
 
-Host enforcement rule (all profiles): modules that declare required capabilities outside the chosen profile **must be rejected before instantiating the Wasm** (e.g., deny instantiation in Wasmtime/JS with a clear error explaining the missing capability).
+Host enforcement rule (all profiles): modules that declare required capabilities outside the chosen profile **must be rejected before instantiating the Wasm** (e.g., deny instantiation in Wasmtime/JS with a clear error explaining the missing capability, reported using the standard error code format defined in §3.4 / Appendix A).
 
 ---
 
