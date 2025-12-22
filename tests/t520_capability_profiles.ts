@@ -6,14 +6,18 @@ function createCap(name: string): Capability {
     return { name, type: { type: 'Bool' } };
 }
 
-function expectFailure(result: ReturnType<typeof validateHostRequest>) {
+function expectFailure(result: ReturnType<typeof validateHostRequest>, expectedMissing: string[]) {
     if (result.ok) throw new Error('Expected validation failure');
     if (result.error.code !== 'E_CAPABILITY') throw new Error(`Unexpected error code ${result.error.code}`);
-    if (result.error.missing.length === 0) throw new Error('Missing capabilities list should be populated');
+    const missing = result.error.missing.slice().sort().join(',');
+    const expected = expectedMissing.slice().sort().join(',');
+    if (missing !== expected) {
+        throw new Error(`Missing capabilities mismatch: expected ${expected}, got ${missing}`);
+    }
 }
 
 export const t520_capability_profiles: TestCase = {
-    name: 't520_capability_profiles',
+    name: 'Test 520: capability profiles',
     fn: async () => {
         const netReq = createCap('Net');
 
@@ -23,13 +27,18 @@ export const t520_capability_profiles: TestCase = {
         }
 
         const deniedBrowser = validateHostRequest('browser_playground', [netReq]);
-        expectFailure(deniedBrowser);
+        expectFailure(deniedBrowser, ['net']);
 
         const pureResult = validateHostRequest('pure', [netReq], ['net']);
-        expectFailure(pureResult);
+        expectFailure(pureResult, ['net']);
 
         const strictProfile: HostProfile = 'pure';
         const emptyRequest = validateHostRequest(strictProfile, []);
         if (!emptyRequest.ok) throw new Error('Empty capability list should always succeed');
+
+        const caseInsensitive = validateHostRequest('browser_playground', [netReq], ['Net']);
+        if (!caseInsensitive.ok) {
+            throw new Error(`Expected case-insensitive match for Net: ${caseInsensitive.error.message}`);
+        }
     },
 };

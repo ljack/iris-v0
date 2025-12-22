@@ -12,11 +12,6 @@ export type HostValidationResult =
     | { ok: true }
     | { ok: false; error: HostValidationError };
 
-const PROFILE_CAPS: Record<HostProfile, string[]> = {
-    pure: [],
-    browser_playground: [],
-};
-
 function normalize(cap: string): string {
     return cap.trim().toLowerCase();
 }
@@ -29,19 +24,18 @@ export function validateHostRequest(
     if (profile === 'pure') {
         if (requiredCaps.length === 0) return { ok: true };
 
-        const missingPureCaps = requiredCaps.map((cap) => normalize(cap.name));
+        const missing = requiredCaps.map((cap) => normalize(cap.name));
         return {
             ok: false,
             error: {
                 code: 'E_CAPABILITY',
-                message: `Missing capabilities: ${missingPureCaps.join(', ')}`,
-                missing: missingPureCaps,
+                message: `Pure profile does not support capabilities: ${missing.join(', ')}`,
+                missing,
             },
         };
     }
 
-    const baseAllowed = PROFILE_CAPS[profile] || [];
-    const allowed = new Set([...baseAllowed, ...allowedCaps.map(normalize)]);
+    const allowed = new Set(allowedCaps.map(normalize));
 
     const missing = requiredCaps
         .map((cap) => normalize(cap.name))
