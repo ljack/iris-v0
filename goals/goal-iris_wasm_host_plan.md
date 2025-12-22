@@ -94,6 +94,29 @@ Define standard profiles so “anywhere” stays predictable:
 
 ## 3. Host Interface (Imports) – Minimal v1
 
+### 3.0 ABI versioning + capability map
+- **ABI tag:** `iris-host-abi/0.1.0` (bump the minor when adding non-breaking imports; bump the major when changing signatures).
+- Hosts surface the ABI tag and **reject modules** that declare a required ABI higher than the host supports or that request capabilities outside the active profile.
+- Capability → import mapping (v0.1.0):
+  - `!Pure` → `limits.*`, `log.debug`
+  - `!IO` → `io.print_utf8`, `io.read_line`
+  - `!Net` → `net.http_request`
+  - `!FS` → `fs.open_dir`, `fs.read_file`, `fs.write_file`
+  - `!Clock` → `clock.monotonic_ms`, `clock.wall_ms`
+  - `!Rand` → `rand.u64`, `rand.bytes`
+  - `!Device` → `device.gpio_*`, `device.i2c_*`
+
+Profile matrix (✅ = import family available by default, ⚪️ = optional/host-flag):
+
+| Profile | `!Pure` | `!IO` | `!Net` | `!FS` | `!Clock` | `!Rand` | `!Device` |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `pure` | ✅ |  |  |  |  |  |  |
+| `browser_playground` | ✅ | ✅ | ⚪️ |  | ⚪️ | ⚪️ |  |
+| `server_agent` | ✅ | ✅ | ✅ | ⚪️ (scoped) | ✅ | ✅ |  |
+| `iot_min` | ✅ | ✅ |  |  | ✅ (monotonic) |  | ✅ |
+
+Hosts may extend profiles, but any requested capability not granted by the active profile must fail with `E_CAPABILITY` **before** program execution.
+
 ### 3.1 Design rules
 - Keep imports **small and stable**
 - Prefer **copy-less** or bounded-copy patterns

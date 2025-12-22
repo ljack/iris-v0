@@ -57,6 +57,7 @@ This matches IRIS’s effect mindset and improves safety, portability, and repro
   - IRIS-to-WASM import/export interface
 - Programs should declare minimum compatible host/tool versions.
 - Breaking changes must be surfaced early and clearly.
+- **Current host ABI tag:** `iris-host-abi/0.1.0` (aligns with capability/profile matrix in `goal-iris_wasm_host_plan.md`).
 
 ### 4) Separate structure from representation (especially codegen)
 - Stop building structured targets (like WAT) via deep string concatenation.
