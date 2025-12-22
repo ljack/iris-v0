@@ -1,4 +1,4 @@
-export enum Capability {
+export enum HostCapability {
     Pure = 'Pure',
     IO = 'IO',
     Net = 'Net',
@@ -10,11 +10,24 @@ export enum Capability {
 
 export type CapabilityProfileName = 'pure' | 'browser_playground' | 'server_agent' | 'iot_min';
 
-export const CapabilityProfiles: Record<CapabilityProfileName, Capability[]> = {
-    pure: [Capability.Pure],
-    browser_playground: [Capability.Pure, Capability.IO, Capability.Net, Capability.Clock, Capability.Rand],
-    server_agent: [Capability.Pure, Capability.IO, Capability.Net, Capability.FS, Capability.Clock, Capability.Rand],
-    iot_min: [Capability.Pure, Capability.IO, Capability.Clock, Capability.Device],
+export const CapabilityProfiles: Record<CapabilityProfileName, HostCapability[]> = {
+    pure: [HostCapability.Pure],
+    browser_playground: [
+        HostCapability.Pure,
+        HostCapability.IO,
+        HostCapability.Net,
+        HostCapability.Clock,
+        HostCapability.Rand,
+    ],
+    server_agent: [
+        HostCapability.Pure,
+        HostCapability.IO,
+        HostCapability.Net,
+        HostCapability.FS,
+        HostCapability.Clock,
+        HostCapability.Rand,
+    ],
+    iot_min: [HostCapability.Pure, HostCapability.IO, HostCapability.Clock, HostCapability.Device],
 };
 
 export type CapabilityValidationResult =
@@ -23,29 +36,38 @@ export type CapabilityValidationResult =
         ok: false;
         tag: 'E_CAPABILITY';
         profile: CapabilityProfileName;
-        missing: Capability[];
-        required: Capability[];
+        missing: HostCapability[];
+        required: HostCapability[];
     };
 
-function normalizeCapabilities(required: Iterable<Capability | string> | null | undefined): Capability[] {
+function isHostCapability(value: unknown): value is HostCapability {
+    return Object.values(HostCapability).includes(value as HostCapability);
+}
+
+function normalizeCapabilities(
+    required: Iterable<HostCapability | string> | null | undefined,
+): HostCapability[] {
     if (!required) return [];
-    const unique = new Set<Capability>();
+    const unique = new Set<HostCapability>();
     for (const cap of required) {
-        const normalized = typeof cap === 'string' ? (Capability as any)[cap as keyof typeof Capability] || cap : cap;
-        if (Object.values(Capability).includes(normalized as Capability)) unique.add(normalized as Capability);
+        const normalized =
+            typeof cap === 'string'
+                ? HostCapability[cap as keyof typeof HostCapability] ?? cap
+                : cap;
+        if (isHostCapability(normalized)) unique.add(normalized);
     }
-    return Array.from(unique.values());
+    return Array.from(unique);
 }
 
 export function validateCapabilities(
-    required: Iterable<Capability | string> | null | undefined,
+    required: Iterable<HostCapability | string> | null | undefined,
     profile: CapabilityProfileName,
 ): CapabilityValidationResult {
     const requiredList = normalizeCapabilities(required);
     if (requiredList.length === 0) return { ok: true };
 
     const allowed = new Set(CapabilityProfiles[profile]);
-    const missing: Capability[] = [];
+    const missing: HostCapability[] = [];
 
     for (const cap of requiredList) {
         if (!allowed.has(cap)) missing.push(cap);
