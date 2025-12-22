@@ -357,10 +357,10 @@
                        ))
                      ))
                    (cond_node (call wir.node_instr cond_instr))
-                   (bindings (call match.gen_match_bindings vars target_v 0))
-                   (then_nodes (if (= bindings "")
-                                 body_nodes
-                                 (cons (call wir.node_raw bindings) body_nodes)))
+                   (bindings (call match.gen_match_bindings_nodes vars target_v 0))
+                   (then_nodes (match bindings
+                                 (case (tag "nil" ()) body_nodes)
+                                 (case (tag "cons" (_ _)) (call nodes_append bindings body_nodes))))
                    (else_nodes (call gen_match_cases_nodes t target_v (+ level 1))))
                 (cons (call wir.node_if cond_node then_nodes else_nodes) (list))
             )

@@ -156,6 +156,15 @@
       (body (tag "Instr" (call local_get_instr name)))
     )
 
+    (deffn (name local_set_value) (args (name Str) (value WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body
+        (record
+          (op "local.set")
+          (args (list (tag "Text" name) value))
+        )
+      )
+    )
+
     (deffn (name i32_wrap_i64_arg) (args (value WasmArg)) (ret WasmArg) (eff !Pure)
       (body (tag "Instr" (call i32_wrap_i64 value)))
     )
