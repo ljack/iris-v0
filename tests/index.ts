@@ -121,6 +121,7 @@ export { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes
 export { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
 export { t167_wasm_binary_header } from './t167_wasm_binary_header';
 export { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
+export { t169_wasm_binary_memory_required } from './t169_wasm_binary_memory_required';
 export { t601_error_paths } from './t601_error_paths';
 export { t800_iris_tests } from './t800_iris';
 import { t01 } from './t01';
@@ -238,6 +239,7 @@ import { t159_wasm_snippet_string_bytes } from './t159_wasm_snippet_string_bytes
 import { t160_wasm_snippet_option_constructors } from './t160_wasm_snippet_option_constructors';
 import { t167_wasm_binary_header } from './t167_wasm_binary_header';
 import { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
+import { t169_wasm_binary_memory_required } from './t169_wasm_binary_memory_required';
 import { t601_error_paths } from './t601_error_paths';
 import { t800_iris_tests } from './t800_iris';
 import {
@@ -474,6 +476,7 @@ export const TESTS = [
   t160_wasm_snippet_option_constructors,
   t167_wasm_binary_header,
   t168_wasm_binary_golden,
+  t169_wasm_binary_memory_required,
   t601_error_paths,
   ...t800_iris_tests,
 ];

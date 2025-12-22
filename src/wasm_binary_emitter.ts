@@ -66,6 +66,9 @@ const OPCODES: Record<string, number> = {
 };
 
 export function emitWasmBinary(module: WasmModule): Uint8Array {
+    if (!module.memory && hasMemoryOp(module.funcs)) {
+        throw new Error('Wasm module uses memory ops but no memory section was declared');
+    }
     const bytes: number[] = [];
 
     append(bytes, 0x00, 0x61, 0x73, 0x6d); // magic
@@ -200,7 +203,7 @@ function buildCodeSection(funcs: WasmFunc[]): number[] {
 function encodeLocals(out: number[], locals: ValType[]) {
     const counts = new Map<ValType, number>();
     locals.forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
-    const entries = Array.from(counts.entries());
+    const entries = Array.from(counts.entries()).sort((a, b) => valTypeOrder(a[0]) - valTypeOrder(b[0]));
     encodeVector(out, entries, ([type, count]) => {
         encodeU32(out, count);
         append(out, VAL_TYPE_CODE[type]);
@@ -232,7 +235,8 @@ function encodeInstructions(out: number[], instrs: WasmInstruction[]) {
             case 'i64.store':
             case 'i64.store8': {
                 append(out, OPCODES[instr.kind]);
-                encodeU32(out, instr.align ?? 0);
+                const defaultAlign = instr.kind === 'i64.store8' ? 0 : 3;
+                encodeU32(out, instr.align ?? defaultAlign);
                 encodeU32(out, instr.offset ?? 0);
                 break;
             }
@@ -306,4 +310,26 @@ function encodeS64(out: number[], value: bigint) {
 
 function append(out: number[], ...vals: number[]) {
     out.push(...vals);
+}
+
+function valTypeOrder(type: ValType): number {
+    return type === 'i32' ? 0 : 1;
+}
+
+function hasMemoryOp(funcs: WasmFunc[]): boolean {
+    return funcs.some((fn) => containsMemoryOp(fn.body));
+}
+
+function containsMemoryOp(instrs: WasmInstruction[]): boolean {
+    for (const instr of instrs) {
+        if (instr.kind === 'i64.load' || instr.kind === 'i64.store' || instr.kind === 'i64.store8' || instr.kind === 'memory.copy') {
+            return true;
+        }
+        if (instr.kind === 'if') {
+            if (containsMemoryOp(instr.thenInstrs) || (instr.elseInstrs && containsMemoryOp(instr.elseInstrs))) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
