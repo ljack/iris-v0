@@ -46,7 +46,7 @@ export const t159_wasm_snippet_string_bytes = {
     const valStr = (s: string) => ({ kind: 'Str', value: s });
     const valI64 = (n: bigint) => ({ kind: 'I64', value: n } as any);
 
-    const res = await interpreter.callFunction('gen_string_bytes', [valStr('hi'), valI64(0n), valI64(2n)]);
+    const res = await interpreter.callFunction('gen_string_bytes_wat', [valStr('hi'), valI64(0n), valI64(2n)]);
 
     const expected = [
       '(i64.store8 (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) (i64.const 104))',
