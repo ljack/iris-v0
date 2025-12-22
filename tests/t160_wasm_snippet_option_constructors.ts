@@ -57,7 +57,9 @@ export const t160_wasm_snippet_option_constructors = {
       '(call $alloc (i64.const 16))',
       '(local.set $t0)',
       '(i64.store (i32.wrap_i64 (local.get $t0)) (i64.const 1))',
-      '(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) (i64.const 9))',
+      '(i64.const 9)',
+      '(local.set $t1)',
+      '(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) (local.get $t1))',
       '(local.get $t0)'
     ].join('\n');
 

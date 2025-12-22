@@ -5,6 +5,7 @@
   (imports
     (import "str" (as "str"))
     (import "wasm_syntax" (as "ws"))
+    (import "wasm_ir" (as "wir"))
   )
   (defs
     (deffn (name gen_match_bindings) (args (vars (List Str)) (target_v Str) (index I64)) (ret Str) (eff !Pure)
@@ -22,6 +23,26 @@
                 )
             )
         )
+    )
+
+    (deffn (name gen_match_bindings_nodes) (args (vars (List Str)) (target_v Str) (index I64)) (ret (List wir.WasmNode)) (eff !Pure)
+      (body
+        (match vars
+          (case (tag "nil" ()) (list))
+          (case (tag "cons" (h t))
+            (let* ((offset (+ 8 (* index 8)))
+                   (addr (call wir.i64_add
+                     (call wir.arg_instr (call wir.local_get_instr target_v))
+                     (call wir.i64_const_arg (i64.to_string offset))
+                   ))
+                   (val (call wir.i64_load_arg (call wir.i32_wrap_i64_arg (call wir.arg_instr addr))))
+                   (set (call wir.node_instr (call wir.local_set_value (call ws.local_id h) val)))
+                   (rest (call gen_match_bindings_nodes t target_v (+ index 1))))
+              (cons set rest)
+            )
+          )
+        )
+      )
     )
 
     (deffn (name get_tag_index) (args (tag Str)) (ret Str) (eff !Pure)

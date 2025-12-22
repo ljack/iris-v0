@@ -18,7 +18,7 @@
       (union
         (tag "Instr" (WasmInstr))
         (tag "Block" ((Record (head Str) (body (List WasmNode)))))
-        (tag "Raw" (Str))
+        (tag "Comment" (Str))
       )
     )
 
@@ -46,8 +46,8 @@
       (body (tag "Block" (record (head head) (body body))))
     )
 
-    (deffn (name node_raw) (args (line Str)) (ret WasmNode) (eff !Pure)
-      (body (tag "Raw" line))
+    (deffn (name node_comment) (args (text Str)) (ret WasmNode) (eff !Pure)
+      (body (tag "Comment" text))
     )
 
     (deffn (name node_if) (args (cond WasmNode) (then_body (List WasmNode)) (else_body (List WasmNode))) (ret WasmNode) (eff !Pure)
@@ -70,6 +70,7 @@
         )
       )
     )
+
 
     (deffn (name i64_const) (args (v I64)) (ret WasmNode) (eff !Pure)
       (body
@@ -156,6 +157,15 @@
       (body (tag "Instr" (call local_get_instr name)))
     )
 
+    (deffn (name local_set_value) (args (name Str) (value WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body
+        (record
+          (op "local.set")
+          (args (list (tag "Text" name) value))
+        )
+      )
+    )
+
     (deffn (name i32_wrap_i64_arg) (args (value WasmArg)) (ret WasmArg) (eff !Pure)
       (body (tag "Instr" (call i32_wrap_i64 value)))
     )
@@ -163,12 +173,28 @@
     (deffn (name i64_load_arg) (args (addr WasmArg)) (ret WasmArg) (eff !Pure)
       (body (tag "Instr" (call i64_load addr)))
     )
+
+    (deffn (name i64_store_node) (args (addr WasmArg) (value WasmArg)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_store addr value)))
+    )
+
+    (deffn (name i64_store_node_instr) (args (addr WasmInstr) (value WasmArg)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_store (call arg_instr addr) value)))
+    )
     (deffn (name i64_load) (args (addr WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.load") (args (list addr))))
     )
 
     (deffn (name i64_store) (args (addr WasmArg) (value WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i64.store") (args (list addr value))))
+    )
+
+    (deffn (name i64_store8) (args (addr WasmArg) (value WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.store8") (args (list addr value))))
+    )
+
+    (deffn (name i64_store8_node) (args (addr WasmArg) (value WasmArg)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_store8 addr value)))
     )
 
     (deffn (name i32_wrap_i64) (args (value WasmArg)) (ret WasmInstr) (eff !Pure)
