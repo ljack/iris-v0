@@ -15,7 +15,7 @@
           (let (char_opt (str.get s i))
             (match char_opt
               (case (tag "Some" (code))
-                (let* ((addr (call ws.s "i64.add" (list "(local.get $t0)" (call ws.s "i64.const" (list (i64.to_string (+ 8 i)))))))
+                (let* ((addr (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "t0"))) (call ws.s "i64.const" (list (i64.to_string (+ 8 i)))))))
                        (store (call ws.s "i64.store8" (list (call ws.s "i32.wrap_i64" (list addr)) (call ws.s "i64.const" (list (i64.to_string code))))))
                        (rest (call gen_string_bytes s (+ i 1) len)))
                   (if (= rest "") store (call ws.lines (list store rest)))
