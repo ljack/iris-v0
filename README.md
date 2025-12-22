@@ -278,6 +278,12 @@ npm run test:watch
 npx tsc --noEmit
 ```
 
+### Iris tests
+
+- Place `.iris` test programs under `tests/iris/` (e.g., `t800_example.iris`).
+- Import `test/assert` to access `assert-eq`, `assert-true`, and `assert-error`, and have `main` return a list of assertion records.
+- `npm test` will run the Iris suite alongside existing TypeScript cases.
+
 ### Running Examples
 
 ```bash

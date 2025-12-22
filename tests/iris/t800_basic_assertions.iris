@@ -1,0 +1,15 @@
+(program
+  (module (name "t800_basic_assertions") (version 0))
+  (imports (import "test/assert" (as "assert")))
+  (defs
+    (deffn (name main) (args) (ret (List assert.AssertResult)) (eff !Pure)
+      (body
+        (list
+          (assert.assert-eq "adds" (assert.i64 (+ 1 2)) (assert.i64 3))
+          (assert.assert-true "truthy" (= 1 1))
+          (assert.assert-eq "strings" (assert.str "hi") (assert.str (str.concat "h" "i")))
+        )
+      )
+    )
+  )
+)
