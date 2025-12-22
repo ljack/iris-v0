@@ -23,18 +23,20 @@ export const t_unit_process_manager: TestCase = {
         pm.reset();
         const pidWaiting = pm.getNextPid();
         pm.register(pidWaiting);
-        let resolvedImmediately = false;
-        const waitingRecv = pm.recv(pidWaiting).then(msg => {
-            resolvedImmediately = true;
-            return msg;
-        });
+        const waitingRecv = pm.recv(pidWaiting);
         const sendWhileWaiting = pm.send(pidWaiting, 'wake');
         if (!sendWhileWaiting) {
             throw new Error('Expected send to succeed while receiver waits');
         }
-        const waitingResult = await waitingRecv;
-        if (!resolvedImmediately || waitingResult !== 'wake') {
-            throw new Error(`Expected waiting receiver to resolve with wake, got ${waitingResult}`);
+        const waitingRace = await Promise.race([
+            waitingRecv.then(msg => ({ status: 'resolved', msg })),
+            new Promise(resolve => setTimeout(() => resolve({ status: 'timeout' }), 50))
+        ]) as { status: 'resolved' | 'timeout'; msg?: string };
+        if (waitingRace.status !== 'resolved') {
+            throw new Error('Expected waiting receiver to resolve immediately after send');
+        }
+        if (waitingRace.msg !== 'wake') {
+            throw new Error(`Expected waiting receiver to resolve with "wake", got ${waitingRace.msg}`);
         }
         const pendingRecv = pm.recv(pidWaiting);
         const raceResult = await Promise.race([
