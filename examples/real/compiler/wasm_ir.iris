@@ -19,7 +19,6 @@
         (tag "Instr" (WasmInstr))
         (tag "Block" ((Record (head Str) (body (List WasmNode)))))
         (tag "Comment" (Str))
-        (tag "Raw" (Str))
       )
     )
 
@@ -49,10 +48,6 @@
 
     (deffn (name node_comment) (args (text Str)) (ret WasmNode) (eff !Pure)
       (body (tag "Comment" text))
-    )
-
-    (deffn (name node_raw) (args (line Str)) (ret WasmNode) (eff !Pure)
-      (body (tag "Raw" line))
     )
 
     (deffn (name node_if) (args (cond WasmNode) (then_body (List WasmNode)) (else_body (List WasmNode))) (ret WasmNode) (eff !Pure)
