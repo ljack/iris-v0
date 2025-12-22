@@ -189,6 +189,14 @@
       (body (record (op "i64.store") (args (list addr value))))
     )
 
+    (deffn (name i64_store8) (args (addr WasmArg) (value WasmArg)) (ret WasmInstr) (eff !Pure)
+      (body (record (op "i64.store8") (args (list addr value))))
+    )
+
+    (deffn (name i64_store8_node) (args (addr WasmArg) (value WasmArg)) (ret WasmNode) (eff !Pure)
+      (body (tag "Instr" (call i64_store8 addr value)))
+    )
+
     (deffn (name i32_wrap_i64) (args (value WasmArg)) (ret WasmInstr) (eff !Pure)
       (body (record (op "i32.wrap_i64") (args (list value))))
     )

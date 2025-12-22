@@ -69,11 +69,7 @@ export const t148_wasm_snippet_cons = {
       '(local.set $t2)',
       '(i64.store (i32.wrap_i64 (local.get $t2)) (i64.add (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 1)))',
       '(i64.store (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 8))) (local.get $t0))',
-      '(memory.copy',
-      '  (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 16)))',
-      '  (i32.wrap_i64 (i64.add (local.get $t1) (i64.const 8)))',
-      '  (i32.wrap_i64 (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8)))',
-      ')',
+      '(memory.copy (i32.wrap_i64 (i64.add (local.get $t2) (i64.const 16))) (i32.wrap_i64 (i64.add (local.get $t1) (i64.const 8))) (i32.wrap_i64 (i64.mul (i64.load (i32.wrap_i64 (local.get $t1))) (i64.const 8))))',
       '(local.get $t2)'
     ].join('\n');
 
