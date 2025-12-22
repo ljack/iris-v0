@@ -63,8 +63,7 @@ export const t149_wasm_snippet_list_items = {
 
     const expected = [
       '(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 8))) (i64.const 1))',
-      '(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 16))) (i64.const 2))',
-      ''
+      '(i64.store (i32.wrap_i64 (i64.add (local.get $t0) (i64.const 16))) (i64.const 2))'
     ].join('\n');
 
     assertEx(res, expected);
