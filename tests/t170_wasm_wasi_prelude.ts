@@ -65,5 +65,8 @@ export const t170_wasm_wasi_prelude = {
     if (!res.value.includes('(func $host.print')) {
       throw new Error('Expected host.print shim function in WASI prelude.');
     }
+    if (!res.value.includes('(export "_start")')) {
+      throw new Error('Expected _start export in WASI prelude.');
+    }
   }
 };
