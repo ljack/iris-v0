@@ -9,22 +9,22 @@
     (import "compiler_lib" (as "clib"))
   )
   (defs
-    (deffn (name main) (args) (ret I64) (eff !IO)
+    (deffn (name main) (args) (ret Str) (eff !IO)
         (doc "CLI wrapper around compiler_lib.compile_file.")
         (body
             (let (args (sys.args))
                 (if (< (list.length args) 1)
-                    (let (_ (io.print "Usage: compile_file <file> [target]")) 1)
+                    "Usage: compile_file <file> [target]"
                     (let (file_opt (list.get args 0))
                         (match file_opt
-                            (case (tag "None") 1)
+                            (case (tag "None") "Usage: compile_file <file> [target]")
                             (case (tag "Some" (file))
                                 (let (target_opt (list.get args 1))
                                     (let (target (match target_opt (case (tag "Some" (t)) t) (case (tag "None") "wasm")))
                                         (let (res (call clib.compile_file file target))
                                             (match res
-                                                (case (tag "Ok" (out)) (let (_ (io.print out)) 0))
-                                                (case (tag "Err" (msg)) (let (_ (io.print msg)) 1))
+                                                (case (tag "Ok" (out)) out)
+                                                (case (tag "Err" (msg)) msg)
                                             )
                                         )
                                     )

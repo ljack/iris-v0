@@ -180,6 +180,54 @@
         )
     )
 
+    (deffn (name skip_to_rparen) (args (p base.Parser)) (ret base.Parser) (eff !Pure)
+        (body
+            (let (t (call base.parser_peek p))
+                (if (= t.kind "RPAREN")
+                    p
+                    (call skip_to_rparen (call base.parser_consume p))
+                )
+            )
+        )
+    )
+
+    (deffn (name skip_meta_form) (args (p base.Parser)) (ret base.Parser) (eff !Pure)
+        (body
+            ;; Assumes current token is the metadata keyword, and we're inside "(<kw> ...)".
+            (let (p2 (call base.parser_consume p))
+                (let (p3 (call skip_to_rparen p2))
+                    (call base.parser_consume p3)
+                )
+            )
+        )
+    )
+
+    (deffn (name parse_body_with_meta) (args (p base.Parser)) (ret (Tuple base.Parser ast.Expr)) (eff !Pure)
+        (body
+            ;; Handles optional (doc ...), (requires ...), (ensures ...), (caps ...) before (body ...).
+            (let* ((p2 (call base.parser_consume p)) ;; consume lparen
+                   (t_kw (call base.parser_peek p2)))
+                (cond
+                    (case (= t_kw.value "body")
+                        (let* ((p3 (call base.parser_consume p2)) ;; consume body keyword
+                               (res_body (call parser_expr.parse_expr p3))
+                               (p4 (tuple.get res_body 0))
+                               (body (tuple.get res_body 1))
+                               (p5 (call base.parser_consume p4))) ;; consume rparen
+                            (tuple p5 body)
+                        )
+                    )
+                    (case (|| (= t_kw.value "doc") (|| (= t_kw.value "requires") (|| (= t_kw.value "ensures") (= t_kw.value "caps"))))
+                        (call parse_body_with_meta (call skip_meta_form p2))
+                    )
+                    (else
+                        (tuple p2 (tag "Literal" (tag "I64" 998)))
+                    )
+                )
+            )
+        )
+    )
+
     (deffn (name parse_deffn) (args (p base.Parser)) (ret (Tuple base.Parser ast.Definition)) (eff !Pure)
         (body
             ;; (deffn (name NAME) (args ...) (ret TYPE) (eff EFF) (body EXPR))
@@ -204,14 +252,11 @@
                    (t_eff (call base.parser_peek p14))
                    (p15 (call base.parser_consume p14))
                    (p16 (call base.parser_consume p15)) ;; skip rparen
-                   (p17 (call base.parser_consume p16)) ;; skip lparen
-                   (p18 (call base.parser_consume p17)) ;; skip body
-                   (res_body (call parser_expr.parse_expr p18))
-                   (p19 (tuple.get res_body 0))
+                   (res_body (call parse_body_with_meta p16))
+                   (p17 (tuple.get res_body 0))
                    (body (tuple.get res_body 1))
-                   (p20 (call base.parser_consume p19)) ;; skip rparen for body
-                   (p21 (call base.parser_consume p20))) ;; skip rparen for deffn
-                (tuple p21 (tag "DefFn" (record (name t_name.value) (args args) (ret ret_ty) (eff t_eff.value) (body body))))
+                   (p18 (call base.parser_consume p17))) ;; skip rparen for deffn
+                (tuple p18 (tag "DefFn" (record (name t_name.value) (args args) (ret ret_ty) (eff t_eff.value) (body body))))
             )
         )
     )

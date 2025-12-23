@@ -12,11 +12,19 @@ Usage: iris [command] [options]
 Commands:
   run <file>    Run an IRIS program
   check <file>  Type-check an IRIS program
+  run-wasm <file>  Compile IRIS to wasm and run it
   version       Show version
   help          Show this help message
 
 Options:
   --debug       Enable debug logging
+  --raw         Print raw string output (unescape quoted strings)
+  --no-run      For run-wasm: compile only, do not execute
+  --quiet       For run-wasm: suppress 'main returned' output
+  --print-wat   For run-wasm: print WAT to stdout
+  --wat-out <file>   For run-wasm: write WAT to file
+  --wasm-out <file>  For run-wasm: write wasm binary to file
+  --compiler <file>  For run-wasm: path to compiler.iris
 `);
 }
 
@@ -204,7 +212,8 @@ class NodeNetwork implements INetwork {
 
 export async function cli(args: string[]) {
     const debug = args.includes('--debug');
-    const cleanArgs = args.filter(a => a !== '--debug');
+    const rawOutput = args.includes('--raw');
+    const cleanArgs = args.filter(a => a !== '--debug' && a !== '--raw');
 
     const command = cleanArgs[0];
     const file = cleanArgs[1];
@@ -219,7 +228,7 @@ export async function cli(args: string[]) {
         return;
     }
 
-    if (command === 'run' || command === 'check') {
+    if (command === 'run' || command === 'check' || command === 'run-wasm') {
         if (!file) {
             console.error('Error: No file specified.');
             process.exit(1);
@@ -274,6 +283,128 @@ export async function cli(args: string[]) {
 
         const nodeNet = new NodeNetwork();
 
+        if (command === 'run-wasm') {
+            const wasmArgs = cleanArgs.slice(2);
+            let noRun = false;
+            let quiet = false;
+            let printWat = false;
+            let watOut: string | null = null;
+            let wasmOut: string | null = null;
+            let compilerOverride: string | null = null;
+
+            for (let i = 0; i < wasmArgs.length; i++) {
+                const arg = wasmArgs[i];
+                if (arg === '--no-run') {
+                    noRun = true;
+                } else if (arg === '--quiet') {
+                    quiet = true;
+                } else if (arg === '--print-wat') {
+                    printWat = true;
+                } else if (arg === '--wat-out') {
+                    watOut = wasmArgs[i + 1] ?? null;
+                    i++;
+                } else if (arg === '--wasm-out') {
+                    wasmOut = wasmArgs[i + 1] ?? null;
+                    i++;
+                } else if (arg === '--compiler') {
+                    compilerOverride = wasmArgs[i + 1] ?? null;
+                    i++;
+                }
+            }
+
+            const compilerPath = path.resolve(
+                compilerOverride ?? path.resolve(__dirname, '../../examples/real/compiler/compiler.iris'),
+            );
+            if (!fs.existsSync(compilerPath)) {
+                console.error(`Error: Compiler not found at ${compilerPath}`);
+                process.exit(1);
+            }
+            const compilerSource = fs.readFileSync(compilerPath, 'utf-8');
+            const compilerModules = loadAllModulesRecursively(compilerPath);
+
+            const compileArgs = [absolutePath, 'wasm'];
+            const watResult = await run(compilerSource, nodeFs, compilerModules, nodeNet, compileArgs, debug);
+            let wat = watResult;
+            if (wat.startsWith('"') && wat.endsWith('"')) {
+                try {
+                    wat = JSON.parse(wat);
+                } catch {
+                    console.error('Error: Failed to parse compiler output.');
+                    process.exit(1);
+                }
+            }
+
+            let wasmBytes: Uint8Array;
+            try {
+                const wabt = await require('wabt')();
+                const module = wabt.parseWat('module.wat', wat);
+                const { buffer } = module.toBinary({ write_debug_names: true });
+                wasmBytes = new Uint8Array(buffer);
+            } catch (err: any) {
+                console.error(`Error: Failed to compile WAT to wasm: ${err?.message ?? err}`);
+                process.exit(1);
+            }
+
+            if (printWat) {
+                console.log(wat);
+            }
+            if (watOut) {
+                try {
+                    fs.writeFileSync(path.resolve(watOut), wat, 'utf-8');
+                } catch (err: any) {
+                    console.error(`Error: Failed to write WAT: ${err?.message ?? err}`);
+                    process.exit(1);
+                }
+            }
+            if (wasmOut) {
+                try {
+                    fs.writeFileSync(path.resolve(wasmOut), Buffer.from(wasmBytes));
+                } catch (err: any) {
+                    console.error(`Error: Failed to write wasm: ${err?.message ?? err}`);
+                    process.exit(1);
+                }
+            }
+
+            if (noRun) {
+                return;
+            }
+
+            let memory: WebAssembly.Memory | null = null;
+            const importObj = {
+                io: {
+                    print: (ptr: bigint) => {
+                        if (!memory) return 0n;
+                        const view = new DataView(memory.buffer);
+                        const base = Number(ptr);
+                        const len = Number(view.getBigInt64(base, true));
+                        const bytes = new Uint8Array(memory.buffer, base + 8, len);
+                        const text = new TextDecoder('utf-8').decode(bytes);
+                        console.log(text);
+                        return 0n;
+                    },
+                },
+            };
+            try {
+                const instantiated = await WebAssembly.instantiate(wasmBytes, importObj);
+                const instResult = instantiated as unknown as WebAssembly.WebAssemblyInstantiatedSource;
+                const instance = instResult.instance ?? (instantiated as WebAssembly.Instance);
+                memory = (instance.exports.memory as WebAssembly.Memory) ?? null;
+                const main = instance.exports.main as (() => bigint) | undefined;
+                if (!main) {
+                    console.error('Error: wasm module does not export main.');
+                    process.exit(1);
+                }
+                const res = main();
+                if (!quiet) {
+                    console.log(`main returned ${res}`);
+                }
+                return;
+            } catch (err: any) {
+                console.error(`Error: Failed to run wasm: ${err?.message ?? err}`);
+                process.exit(1);
+            }
+        }
+
         const result = check(source, modules, debug);
         if (!result.success) {
             console.error(result.error);
@@ -282,6 +413,17 @@ export async function cli(args: string[]) {
 
         const programArgs = cleanArgs.slice(2);
         const runResult = await run(source, nodeFs, modules, nodeNet, programArgs, debug);
+        if (runResult.startsWith('"') && runResult.endsWith('"')) {
+            try {
+                const raw = JSON.parse(runResult);
+                if (rawOutput || (raw.startsWith('(module') && raw.trimEnd().endsWith(')'))) {
+                    console.log(raw);
+                    return;
+                }
+            } catch {
+                // Fall through to default printing if parsing fails.
+            }
+        }
         console.log(runResult);
 
     } else {

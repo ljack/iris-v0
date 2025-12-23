@@ -10,7 +10,25 @@
   )
   (defs
     (deffn (name is_intrinsic) (args (op Str)) (ret Bool) (eff !Pure)
-        (body (|| (= op "+") (|| (= op "-") (|| (= op "*") (|| (= op "/") (|| (= op "%") (|| (= op "&&") (|| (= op "||") (|| (= op "&") (|| (= op "|") (|| (= op "=") (|| (= op ">") (|| (= op "<") (= op ">="))))))))))))))
+        (body
+            (cond
+                (case (= op "+") true)
+                (case (= op "-") true)
+                (case (= op "*") true)
+                (case (= op "/") true)
+                (case (= op "%") true)
+                (case (= op "&&") true)
+                (case (= op "||") true)
+                (case (= op "&") true)
+                (case (= op "|") true)
+                (case (= op "=") true)
+                (case (= op ">") true)
+                (case (= op "<") true)
+                (case (= op ">=") true)
+                (case (= op "io.print") true)
+                (else false)
+            )
+        )
     )
 
     (deffn (name parse_expr) (args (p base.Parser)) (ret (Tuple base.Parser ast.Expr)) (eff !Pure)
@@ -317,4 +335,3 @@
     )
   )
 )
-
