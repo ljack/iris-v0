@@ -25,6 +25,7 @@ Options:
   --wat-out <file>   For run-wasm: write WAT to file
   --wasm-out <file>  For run-wasm: write wasm binary to file
   --compiler <file>  For run-wasm: path to compiler.iris
+  --wasm-profile <host|wasi>  For run-wasm: select ABI profile (default: host)
 `);
 }
 
@@ -291,6 +292,7 @@ export async function cli(args: string[]) {
             let watOut: string | null = null;
             let wasmOut: string | null = null;
             let compilerOverride: string | null = null;
+            let wasmProfile: 'host' | 'wasi' = 'host';
 
             for (let i = 0; i < wasmArgs.length; i++) {
                 const arg = wasmArgs[i];
@@ -309,6 +311,15 @@ export async function cli(args: string[]) {
                 } else if (arg === '--compiler') {
                     compilerOverride = wasmArgs[i + 1] ?? null;
                     i++;
+                } else if (arg === '--wasm-profile') {
+                    const next = wasmArgs[i + 1];
+                    if (next === 'host' || next === 'wasi') {
+                        wasmProfile = next;
+                    } else {
+                        console.error('Error: --wasm-profile must be host or wasi.');
+                        process.exit(1);
+                    }
+                    i++;
                 }
             }
 
@@ -322,7 +333,7 @@ export async function cli(args: string[]) {
             const compilerSource = fs.readFileSync(compilerPath, 'utf-8');
             const compilerModules = loadAllModulesRecursively(compilerPath);
 
-            const compileArgs = [absolutePath, 'wasm'];
+            const compileArgs = [absolutePath, wasmProfile === 'wasi' ? 'wasm-wasi' : 'wasm'];
             const watResult = await run(compilerSource, nodeFs, compilerModules, nodeNet, compileArgs, debug);
             let wat = watResult;
             if (wat.startsWith('"') && wat.endsWith('"')) {
@@ -363,6 +374,11 @@ export async function cli(args: string[]) {
                     console.error(`Error: Failed to write wasm: ${err?.message ?? err}`);
                     process.exit(1);
                 }
+            }
+
+            if (wasmProfile === 'wasi' && !noRun) {
+                console.error('Error: WASI profile selected. Use --no-run and run with wasmtime/wasmer.');
+                process.exit(1);
             }
 
             if (noRun) {

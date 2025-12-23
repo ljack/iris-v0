@@ -126,6 +126,7 @@ export { t171_capability_profiles } from './t171_capability_profiles';
 export { t167_wasm_binary_header } from './t167_wasm_binary_header';
 export { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
 export { t169_wasm_binary_memory_required } from './t169_wasm_binary_memory_required';
+export { t170_wasm_wasi_prelude } from './t170_wasm_wasi_prelude';
 export { t601_error_paths } from './t601_error_paths';
 export { t800_iris_tests } from './t800_iris';
 import { t01 } from './t01';
@@ -246,6 +247,7 @@ import { t171_capability_profiles } from './t171_capability_profiles';
 import { t167_wasm_binary_header } from './t167_wasm_binary_header';
 import { t168_wasm_binary_golden } from './t168_wasm_binary_golden';
 import { t169_wasm_binary_memory_required } from './t169_wasm_binary_memory_required';
+import { t170_wasm_wasi_prelude } from './t170_wasm_wasi_prelude';
 import { t601_error_paths } from './t601_error_paths';
 import { t800_iris_tests } from './t800_iris';
 import {
@@ -486,6 +488,7 @@ export const TESTS = [
   t167_wasm_binary_header,
   t168_wasm_binary_golden,
   t169_wasm_binary_memory_required,
+  t170_wasm_wasi_prelude,
   t601_error_paths,
   ...t800_iris_tests,
 ];

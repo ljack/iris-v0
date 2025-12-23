@@ -70,3 +70,7 @@ world iris-app {
 1. Keep **Profile A** (current) as the minimal stable baseline.
 2. Add **Profile B** for standard WASI runtimes.
 3. Prototype **Profile C** for future typed interoperability.
+
+## Compiler/CLI Notes
+- `compiler.iris` accepts targets like `wasm` (host ABI) and `wasm-wasi` (WASI profile).
+- `bin/iris run-wasm` supports `--wasm-profile host|wasi`.

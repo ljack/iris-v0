@@ -90,6 +90,84 @@
         )
     )
 
+    (deffn (name gen_imports) (args (profile Str)) (ret Str) (eff !Pure)
+      (body
+        (let* ((print_type (call ws.s "type"
+                              (list "$print_type"
+                                (call ws.s "func"
+                                  (list
+                                    (call ws.s "param" (list "i64"))
+                                    (call ws.s "result" (list "i64"))
+                                  )))))
+               (memory (call ws.s "memory" (list "$memory" "1")))
+               (mem_export (call ws.s "export" (list (call ws.quote_string "memory") (call ws.s "memory" (list "$memory"))))))
+          (if (= profile "wasi")
+            (call ws.lines (list
+              print_type
+              (call ws.s "type" (list "$fd_write_type" (call ws.s "func" (list (call ws.s "param" (list "i32")) (call ws.s "param" (list "i32")) (call ws.s "param" (list "i32")) (call ws.s "param" (list "i32")) (call ws.s "result" (list "i32"))))))
+              (call ws.s "import" (list (call ws.quote_string "wasi_snapshot_preview1") (call ws.quote_string "fd_write") (call ws.s "func" (list "$fd_write" (call ws.s "type" (list "$fd_write_type"))))))
+              memory
+              mem_export
+            ))
+            (call ws.lines (list
+              print_type
+              (call ws.s "import" (list (call ws.quote_string "host") (call ws.quote_string "print") (call ws.s "func" (list "$host.print" (call ws.s "type" (list "$print_type"))))))
+              memory
+              mem_export
+            ))
+          )
+        )
+      )
+    )
+
+    (deffn (name gen_wasi_print) (args) (ret Str) (eff !Pure)
+      (body
+        (let* ((param (call ws.s "param" (list (call ws.local_id "ptr") "i64")))
+               (result (call ws.s "result" (list "i64")))
+               (head (call ws.join_with (list "func" (call ws.local_id "host.print" ) param result) " "))
+               (locals (call ws.lines (list
+                 (call ws.s "local" (list (call ws.local_id "len") "i64"))
+                 (call ws.s "local" (list (call ws.local_id "buf") "i64"))
+                 (call ws.s "local" (list (call ws.local_id "iov") "i64"))
+                 (call ws.s "local" (list (call ws.local_id "nwritten") "i64"))
+               )))
+               (get_ptr (call ws.s "local.get" (list (call ws.local_id "ptr"))))
+               (load_len (call ws.s "local.set" (list (call ws.local_id "len") (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list get_ptr)))))))
+               (buf_ptr (call ws.s "local.set" (list (call ws.local_id "buf") (call ws.s "i64.add" (list get_ptr (call ws.s "i64.const" (list "8")))))))
+               (iov_alloc (call ws.s "local.set" (list (call ws.local_id "iov") (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "8")))))))
+               (iov_store_ptr (call ws.s "i32.store" (list
+                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "iov")))))
+                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "buf")))))
+               )))
+               (iov_store_len (call ws.s "i32.store" (list
+                 (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "iov"))) (call ws.s "i64.const" (list "4"))))))
+                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "len")))))
+               )))
+               (nwritten_alloc (call ws.s "local.set" (list (call ws.local_id "nwritten") (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "4")))))))
+               (fd_write (call ws.s "call" (list
+                 "$fd_write"
+                 (call ws.s "i32.const" (list "1"))
+                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "iov")))))
+                 (call ws.s "i32.const" (list "1"))
+                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "nwritten")))))
+               )))
+               (body (call ws.lines (list
+                 (call ws.indent2 locals)
+                 (call ws.indent2 load_len)
+                 (call ws.indent2 buf_ptr)
+                 (call ws.indent2 iov_alloc)
+                 (call ws.indent2 iov_store_ptr)
+                 (call ws.indent2 iov_store_len)
+                 (call ws.indent2 nwritten_alloc)
+                 (call ws.indent2 fd_write)
+                 (call ws.indent2 (call ws.s "drop" (list)))
+                 (call ws.indent2 (call ws.s "i64.const" (list "0")))
+               ))))
+          (call ws.block head body)
+        )
+      )
+    )
+
     (deffn (name gen_defs) (args (defs (List ast.Definition))) (ret Str) (eff !Pure)
         (body
             (match defs
@@ -132,15 +210,10 @@
         )
     )
 
-    (deffn (name codegen_module) (args (p ast.Program)) (ret Str) (eff !Pure)
-      (doc "Generate WebAssembly text (WAT) for a program.")
-        (body
-        (let (imports (call ws.lines (list
-          (call ws.s "type" (list "$print_type" (call ws.s "func" (list (call ws.s "param" (list "i64")) (call ws.s "result" (list "i64"))))))
-          (call ws.s "import" (list (call ws.quote_string "host") (call ws.quote_string "print") (call ws.s "func" (list "$host.print" (call ws.s "type" (list "$print_type"))))))
-          (call ws.s "memory" (list "$memory" "1"))
-          (call ws.s "export" (list (call ws.quote_string "memory") (call ws.s "memory" (list "$memory"))))
-        )))
+    (deffn (name codegen_module_profile) (args (p ast.Program) (profile Str)) (ret Str) (eff !Pure)
+      (doc "Generate WebAssembly text (WAT) for a program with a selected ABI profile.")
+      (body
+        (let (imports (call gen_imports profile))
         (let* ((alloc_body (call ws.lines (list
                   (call ws.indent2 (call ws.s "local" (list (call ws.local_id "ptr") "i64")))
                   (call ws.indent2 (call ws.s "local.set" (list (call ws.local_id "ptr") (call ws.s "i64.extend_i32_u" (list (call ws.s "i32.load" (list (call ws.s "i32.const" (list "0")))))))))
@@ -157,13 +230,20 @@
                   )))
                   (call ws.indent2 (call ws.s "local.get" (list (call ws.local_id "ptr"))))
                 )))
-               (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body)))
+               (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body))
+               (wasi_print (if (= profile "wasi") (call gen_wasi_print) "")))
         (let (defs (call gen_defs p.progDefs))
-          (let (body (call ws.lines (list imports alloc defs)))
+          (let (body (if (= wasi_print "")
+                        (call ws.lines (list imports alloc defs))
+                        (call ws.lines (list imports alloc wasi_print defs))))
             (call ws.lines (list (call ws.block "module" body) ""))
           )
-        )))))
+        ))))
       )
+
+    (deffn (name codegen_module) (args (p ast.Program)) (ret Str) (eff !Pure)
+      (doc "Generate WebAssembly text (WAT) for a program.")
+      (body (call codegen_module_profile p "host"))
     )
   )
 )

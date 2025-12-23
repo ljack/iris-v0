@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>IRIS WASM Runner</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 24px; }
+      #log { white-space: pre-wrap; background: #f6f6f6; padding: 12px; border-radius: 8px; }
+      .row { margin-bottom: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>IRIS WASM Runner</h1>
+    <div class="row">
+      <input id="file" type="file" accept=".wasm" />
+      <button id="run" disabled>Run</button>
+    </div>
+    <div id="log">(waiting)</div>
+
+    <script>
+      const fileInput = document.getElementById('file');
+      const runBtn = document.getElementById('run');
+      const logEl = document.getElementById('log');
+
+      let wasmBytes = null;
+
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        wasmBytes = new Uint8Array(await file.arrayBuffer());
+        runBtn.disabled = false;
+        logEl.textContent = `Loaded ${file.name}`;
+      });
+
+      runBtn.addEventListener('click', async () => {
+        if (!wasmBytes) return;
+        logEl.textContent = '';
+        let memory = null;
+        const importObj = {
+          host: {
+            print: (ptr) => {
+              if (!memory) return 0n;
+              const view = new DataView(memory.buffer);
+              const base = Number(ptr);
+              const len = Number(view.getBigInt64(base, true));
+              const bytes = new Uint8Array(memory.buffer, base + 8, len);
+              const text = new TextDecoder('utf-8').decode(bytes);
+              logEl.textContent += text + '\n';
+              return 0n;
+            },
+          },
+        };
+        try {
+          const { instance } = await WebAssembly.instantiate(wasmBytes, importObj);
+          memory = instance.exports.memory;
+          const main = instance.exports.main;
+          if (typeof main !== 'function') {
+            logEl.textContent += 'Error: wasm module does not export main.';
+            return;
+          }
+          const res = main();
+          logEl.textContent += `main returned ${res}`;
+        } catch (err) {
+          logEl.textContent += `Error: ${err.message || err}`;
+        }
+      });
+    </script>
+  </body>
+</html>
