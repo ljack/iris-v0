@@ -86,6 +86,7 @@ export {
   t504_curl_live_post,
 } from './t500_iris_curl';
 export { t505_iris_parse_smoke } from './t505_iris_parse_smoke';
+export { t506_wasm_smoke } from './t506_wasm_smoke';
 export { t510_let_star, t511_record_update, t512_cond, t513_do } from './t510_syntax_sugar';
 export { t514_parser_metadata, t514_parser_unknown_section_trace } from './t514_parser_metadata';
 export { t520_capability_profiles } from './t520_capability_profiles';
@@ -366,6 +367,7 @@ import {
   t504_curl_live_post,
 } from './t500_iris_curl';
 import { t505_iris_parse_smoke } from './t505_iris_parse_smoke';
+import { t506_wasm_smoke } from './t506_wasm_smoke';
 import { t510_let_star, t511_record_update, t512_cond, t513_do } from './t510_syntax_sugar';
 import { t514_parser_metadata, t514_parser_unknown_section_trace } from './t514_parser_metadata';
 import { t520_capability_profiles } from './t520_capability_profiles';
@@ -398,7 +400,7 @@ export const TESTS = [
   t243_net_listen, t244_net_accept, t245_net_read_write, t246_net_connect,
   t247_sys_self, t248_sys_send_recv, t249_http_post, t250_io_file_exists, t251_io_write_file,
   t500_curl_get, t501_curl_head, t502_curl_output, t503_curl_live_get, t504_curl_live_post,
-  t505_iris_parse_smoke,
+  t505_iris_parse_smoke, t506_wasm_smoke,
   t510_let_star, t511_record_update, t512_cond, t513_do, t514_parser_metadata, t514_parser_unknown_section_trace,
   t520_capability_profiles,
   // Advanced sync tests
