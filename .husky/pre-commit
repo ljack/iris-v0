@@ -1,0 +1,17 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+set -e
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+files="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.iris$' || true)"
+if [ -n "$files" ]; then
+  for file in $files; do
+    if [ -f "$file" ]; then
+      ./bin/iris check "$file"
+    fi
+  done
+fi
+
+npm test -- --grep "t507_examples_typecheck|t506_wasm_smoke"
