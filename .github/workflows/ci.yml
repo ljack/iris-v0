@@ -41,15 +41,16 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Run Tests and Coverage
-      # Using || true to prevent failure from failing tests for now if desired, but typically CI should fail.
-      # User requested "tests run", implying standard CI behavior (fail on error).
-      # However, current codebase has many failing tests (202 failed). 
-      # If I make it fail on error, the CI will always be red.
-      # I will verify with the user or simply implement strict CI and let them fix tests.
-      # Usually "CI" implies "Green Build". 
-      # Validating if I should use `allow-failure` or similar? 
-      # For now, I will run it strictly. If it fails, it fails correctly.
+    - name: Run Tests
+      run: npm test
+
+    - name: Run Web Tests
+      run: npm run test:web
+
+    - name: Run CLI Tests
+      run: npm run test-cli
+
+    - name: Run Coverage
       run: npm run test:coverage
 
     - name: Upload coverage report
