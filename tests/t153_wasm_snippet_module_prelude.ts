@@ -59,7 +59,7 @@ export const t153_wasm_snippet_module_prelude = {
     const expected = [
       '(module',
       '(type $print_type (func (param i64) (result i64)))',
-      '(import "io" "print" (func $io.print (type $print_type)))',
+      '(import "host" "print" (func $host.print (type $print_type)))',
       '(memory $memory 1)',
       '(export "memory" (memory $memory))',
       '(func $alloc (export "alloc") (param $size i64) (result i64)',

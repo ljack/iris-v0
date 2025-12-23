@@ -129,7 +129,7 @@
                   (case (= op "io.print")
                     (let* ((arg_nodes (call codegen_expr_nodes (call get_arg args 0)))
                            (tail (list
-                             (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$io.print"))))
+                             (call wir.node_instr (call wir.instr "call" (list (call wir.arg_text "$host.print"))))
                              (call wir.node_instr (call wir.instr "drop" (list)))
                              (call wir.node_instr (call wir.i64_const_instr "0"))
                            )))
@@ -297,11 +297,11 @@
                     (arg_nodes (call gen_call_args_nodes args 0))
                     (call_node (call wir.call (call ws.local_id name))))
                  (if (= name "io.print")
-                       (call nodes_append arg_nodes (list
-                         (call wir.call (call ws.local_id "io.print"))
-                         (call wir.node_instr (call wir.instr "drop" (list)))
-                         (call wir.node_instr (call wir.i64_const_instr "0"))
-                       ))
+                     (call nodes_append arg_nodes (list
+                       (call wir.call (call ws.local_id "host.print"))
+                       (call wir.node_instr (call wir.instr "drop" (list)))
+                       (call wir.node_instr (call wir.i64_const_instr "0"))
+                     ))
                      (call nodes_append arg_nodes (list call_node))
                  )
              )

@@ -137,7 +137,7 @@
         (body
         (let (imports (call ws.lines (list
           (call ws.s "type" (list "$print_type" (call ws.s "func" (list (call ws.s "param" (list "i64")) (call ws.s "result" (list "i64"))))))
-          (call ws.s "import" (list (call ws.quote_string "io") (call ws.quote_string "print") (call ws.s "func" (list "$io.print" (call ws.s "type" (list "$print_type"))))))
+          (call ws.s "import" (list (call ws.quote_string "host") (call ws.quote_string "print") (call ws.s "func" (list "$host.print" (call ws.s "type" (list "$print_type"))))))
           (call ws.s "memory" (list "$memory" "1"))
           (call ws.s "export" (list (call ws.quote_string "memory") (call ws.s "memory" (list "$memory"))))
         )))

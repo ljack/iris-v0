@@ -371,7 +371,7 @@ export async function cli(args: string[]) {
 
             let memory: WebAssembly.Memory | null = null;
             const importObj = {
-                io: {
+                host: {
                     print: (ptr: bigint) => {
                         if (!memory) return 0n;
                         const view = new DataView(memory.buffer);

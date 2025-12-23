@@ -59,7 +59,7 @@ export const t156_wasm_snippet_intrinsics = {
     const printRes = await interpreter.callFunction('codegen_expr', [printExpr]);
 
     assertEx(addRes, '(i64.const 1)\n(i64.const 2)\n(i64.add)');
-    assertEx(printRes, '(i64.const 7)\n(call $print)\n(i64.const 1)');
+    assertEx(printRes, '(i64.const 7)\n(call $host.print)\n(drop)\n(i64.const 0)');
     console.log('T156 Passed: intrinsic snippets match expected output.');
   }
 };

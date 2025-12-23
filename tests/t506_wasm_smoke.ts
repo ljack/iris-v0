@@ -70,7 +70,7 @@ export const t506_wasm_smoke: TestCase = {
     const logs: string[] = [];
     let memory: WebAssembly.Memory | null = null;
     const importObj = {
-      io: {
+      host: {
         print: (ptr: bigint) => {
           if (!memory) return 0n;
           const view = new DataView(memory.buffer);
