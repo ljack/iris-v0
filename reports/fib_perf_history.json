@@ -1,0 +1,172 @@
+[
+  {
+    "timestamp": "2025-12-24T16:14:35.810Z",
+    "irisVersion": "0.5.15",
+    "gitCommit": "e456eed4178ce8d2ca06fe2761200aab284205b8",
+    "n": 35,
+    "algorithms": [
+      {
+        "name": "recursive",
+        "samplesMs": [
+          4131.159791,
+          4081.033583
+        ],
+        "minMs": 4081.033583,
+        "maxMs": 4131.159791,
+        "meanMs": 4106.096687
+      },
+      {
+        "name": "iterative",
+        "samplesMs": [
+          34.619625,
+          34.835916
+        ],
+        "minMs": 34.619625,
+        "maxMs": 34.835916,
+        "meanMs": 34.7277705
+      },
+      {
+        "name": "fast-doubling",
+        "samplesMs": [
+          34.968625,
+          35.504834
+        ],
+        "minMs": 34.968625,
+        "maxMs": 35.504834,
+        "meanMs": 35.2367295
+      },
+      {
+        "name": "matrix",
+        "samplesMs": [
+          35.387417,
+          38.242625
+        ],
+        "minMs": 35.387417,
+        "maxMs": 38.242625,
+        "meanMs": 36.815021
+      },
+      {
+        "name": "memoized",
+        "samplesMs": [
+          42.553,
+          42.999042
+        ],
+        "minMs": 42.553,
+        "maxMs": 42.999042,
+        "meanMs": 42.776021
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-12-24T16:33:13.252Z",
+    "irisVersion": "0.5.15",
+    "gitCommit": "e456eed4178ce8d2ca06fe2761200aab284205b8",
+    "n": 35,
+    "backends": {
+      "ts": [
+        {
+          "name": "recursive",
+          "samplesMs": [
+            4015.324875,
+            4086.285916
+          ],
+          "minMs": 4015.324875,
+          "maxMs": 4086.285916,
+          "meanMs": 4050.8053954999996
+        },
+        {
+          "name": "iterative",
+          "samplesMs": [
+            33.636084,
+            33.075875
+          ],
+          "minMs": 33.075875,
+          "maxMs": 33.636084,
+          "meanMs": 33.355979500000004
+        },
+        {
+          "name": "fast-doubling",
+          "samplesMs": [
+            32.808708,
+            33.141459
+          ],
+          "minMs": 32.808708,
+          "maxMs": 33.141459,
+          "meanMs": 32.9750835
+        },
+        {
+          "name": "matrix",
+          "samplesMs": [
+            35.593041,
+            35.390917
+          ],
+          "minMs": 35.390917,
+          "maxMs": 35.593041,
+          "meanMs": 35.491979
+        },
+        {
+          "name": "memoized",
+          "samplesMs": [
+            42.976083,
+            44.626917
+          ],
+          "minMs": 42.976083,
+          "maxMs": 44.626917,
+          "meanMs": 43.801500000000004
+        }
+      ],
+      "wasm": [
+        {
+          "name": "recursive",
+          "samplesMs": [
+            1315.114792,
+            1323.467167
+          ],
+          "minMs": 1315.114792,
+          "maxMs": 1323.467167,
+          "meanMs": 1319.2909795
+        },
+        {
+          "name": "iterative",
+          "samplesMs": [
+            1279.608166,
+            1239.550083
+          ],
+          "minMs": 1239.550083,
+          "maxMs": 1279.608166,
+          "meanMs": 1259.5791245
+        },
+        {
+          "name": "fast-doubling",
+          "samplesMs": [
+            1278.969333,
+            1288.41
+          ],
+          "minMs": 1278.969333,
+          "maxMs": 1288.41,
+          "meanMs": 1283.6896665
+        },
+        {
+          "name": "matrix",
+          "samplesMs": [
+            1281.184333,
+            1288.10025
+          ],
+          "minMs": 1281.184333,
+          "maxMs": 1288.10025,
+          "meanMs": 1284.6422914999998
+        },
+        {
+          "name": "memoized",
+          "samplesMs": [
+            1284.921167,
+            1280.615792
+          ],
+          "minMs": 1280.615792,
+          "maxMs": 1284.921167,
+          "meanMs": 1282.7684795
+        }
+      ]
+    }
+  }
+]
