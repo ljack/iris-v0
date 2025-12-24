@@ -105,7 +105,7 @@ This runs `./bin/iris check` on staged `.iris` files and blocks commits on parse
     (args)
     (ret I64)
     (eff !IO)
-    (body (call pure_computation 42)))))
+    (body (pure_computation 42)))))
 ```
 
 ### Pattern Matching
@@ -118,6 +118,17 @@ This runs `./bin/iris check` on staged `.iris` files and blocks commits on parse
 (match (Ok "success")
   (case (tag "Ok" (v)) v)
   (case (tag "Err" (e)) "error"))
+```
+
+### Dot Access (Sugar)
+
+```iris
+;; Desugars to record.get / tuple.get
+(let (user (record (name "Ada") (age 37)))
+  (user.name))
+
+(let (pair (tuple 1 2))
+  (pair.0))
 ```
 
 ## Project Structure
@@ -238,7 +249,7 @@ Defs    ::= (defs Definition*)
 Definition ::= (deffn (name Symbol) (args Args) (ret Type) (eff Effect) (body Expr))
 
 Expr    ::= Literal | Variable | (let (Symbol Expr) Expr) | (if Expr Expr Expr)
-          | (match Expr Case*) | (call Symbol Expr*) | (record Field*) | Intrinsic
+          | (match Expr Case*) | (Symbol Expr*) | (record Field*) | Intrinsic
 
 Type    ::= I64 | Bool | Str | (Option Type) | (Result Type Type)
           | (List Type) | (Record Field*) | (Tuple Type*) | (Fn Args Type)
@@ -339,13 +350,13 @@ Current implementation prioritizes correctness and clarity over performance. Pla
     (body
       (if (<= n 1)
         1
-        (* n (call factorial (- n 1))))))
+        (* n (factorial (- n 1))))))
 
   (deffn (name main)
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call factorial 5)))))
+    (body (factorial 5)))))
 ```
 
 ### I/O with Error Handling
@@ -367,7 +378,7 @@ Current implementation prioritizes correctness and clarity over performance. Pla
     (args)
     (ret (Result Str Str))
     (eff !IO)
-    (body (call process_file "data.txt")))))
+    (body (process_file "data.txt")))))
 ```
 
 ### Pattern Matching
@@ -389,7 +400,7 @@ Current implementation prioritizes correctness and clarity over performance. Pla
     (args)
     (ret Str)
     (eff !Pure)
-    (body (call process_option (Some 42))))))
+    (body (process_option (Some 42))))))
 ```
 
 ## Philosophy
