@@ -8,10 +8,10 @@
   )
   (defs
     ;; Type Environment: Map from Name to IrisType
-    (type TypeEnv (Record (bindings (Map Str ast.IrisType)) (functions (Map Str ast.IrisType))))
+    (type TypeEnv (Record (bindings (Map Str ast.IrisType)) (functions (Map Str ast.IrisType)) (types (Map Str ast.IrisType))))
 
     (deffn (name env_new) (args) (ret TypeEnv) (eff !Pure)
-        (body (record (bindings (map.make "" (tag "Unit" (record)))) (functions (map.make "" (tag "Unit" (record))))))
+        (body (record (bindings (map.make "" (tag "Unit" (record)))) (functions (map.make "" (tag "Unit" (record)))) (types (map.make "" (tag "Unit" (record))))))
     )
 
     (deffn (name env_get) (args (env TypeEnv) (key Str)) (ret (Option ast.IrisType)) (eff !Pure)
@@ -22,19 +22,27 @@
         (body (map.get env.functions key))
     )
 
+    (deffn (name env_get_type) (args (env TypeEnv) (key Str)) (ret (Option ast.IrisType)) (eff !Pure)
+        (body (map.get env.types key))
+    )
+
     (deffn (name env_put) (args (env TypeEnv) (key Str) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
-        (body (record (bindings (map.put env.bindings key t)) (functions env.functions)))
+        (body (record (bindings (map.put env.bindings key t)) (functions env.functions) (types env.types)))
     )
 
     (deffn (name env_put_fn) (args (env TypeEnv) (key Str) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
-        (body (record (bindings env.bindings) (functions (map.put env.functions key t))))
+        (body (record (bindings env.bindings) (functions (map.put env.functions key t)) (types env.types)))
+    )
+
+    (deffn (name env_put_type) (args (env TypeEnv) (key Str) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
+        (body (record (bindings env.bindings) (functions env.functions) (types (map.put env.types key t))))
     )
     (deffn (name env_put_multi) (args (env TypeEnv) (keys (List Str)) (t ast.IrisType)) (ret TypeEnv) (eff !Pure)
         (body
             (match keys
                 (case (tag "nil") env)
                 (case (tag "cons" (h tail))
-                    (call env_put_multi (call env_put env h t) tail t)
+                    (env_put_multi (env_put env h t) tail t)
                 )
             )
         )

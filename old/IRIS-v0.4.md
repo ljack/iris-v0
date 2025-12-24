@@ -6,7 +6,7 @@ IRIS v0.4 introduces modularity, network capabilities, and a CLI tool, transform
 ## 1. Modules
 - **Syntax**: `(program (module (name "mod") (version 0)) (imports (import "other")) (defs ...))`
 - **Resolution**:
-  - `(call mod.func arg)`: Cross-module call.
+  - `(mod.func arg)`: Cross-module call.
   - Circular imports are detected and rejected.
 - **Type Checking**:
   - Types and effects are checked across module boundaries.

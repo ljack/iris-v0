@@ -7,5 +7,5 @@ export const t23: TestCase = {
  (module (name "t23") (version 0))
  (defs
   (deffn (name p) (args) (ret I64) (eff !Pure) (body (+ 1 2)))
-  (deffn (name main) (args) (ret I64) (eff !IO) (body (call p)))))`
+  (deffn (name main) (args) (ret I64) (eff !IO) (body (p)))))`
 };

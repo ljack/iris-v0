@@ -15,10 +15,10 @@ export const t28: TestCase = {
     (args)
     (ret (Result Str Str))
     (eff !Pure)
-    (body (call helper)))
+    (body (helper)))
   (deffn (name main)
     (args)
     (ret (Result Str Str))
     (eff !Pure)
-    (body (call wrapper)))))`
+    (body (wrapper)))))`
 };

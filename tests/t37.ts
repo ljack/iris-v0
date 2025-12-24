@@ -8,11 +8,11 @@ export const t37: TestCase = {
  (defs
   (deffn (name safe_caller)
     (args) (ret (Result Str Str)) (eff !Pure)
-    (body (call dangerous)))
+    (body (dangerous)))
   (deffn (name dangerous)
     (args) (ret (Result Str Str)) (eff !Infer)
     (body (io.read_file "/secret.txt")))
   (deffn (name main)
     (args) (ret (Result Str Str)) (eff !Pure)
-    (body (call safe_caller)))))`
+    (body (safe_caller)))))`
 };

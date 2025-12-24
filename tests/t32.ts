@@ -12,5 +12,5 @@ export const t32: TestCase = {
     (body x))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call foo 1 2)))))`
+    (body (foo 1 2)))))`
 };

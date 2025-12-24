@@ -8,14 +8,14 @@
   )
   (defs
     (deffn (name node_if) (args (cond wir.WasmNode) (then_body (List wir.WasmNode)) (else_body (List wir.WasmNode))) (ret wir.WasmNode) (eff !Pure)
-      (body (call wir.node_if cond then_body else_body))
+      (body (wir.node_if cond then_body else_body))
     )
 
     (deffn (name render_arg) (args (a wir.WasmArg)) (ret Str) (eff !Pure)
       (body
         (match a
           (case (tag "Text" (s)) s)
-          (case (tag "Instr" (i)) (call render_instr i))
+          (case (tag "Instr" (i)) (render_instr i))
           (case (tag "Raw" (s)) s)
         )
       )
@@ -26,7 +26,7 @@
         (match args
           (case (tag "nil" ()) (list))
           (case (tag "cons" (h t))
-            (cons (call render_arg h) (call render_args t))
+            (cons (render_arg h) (render_args t))
           )
         )
       )
@@ -34,18 +34,18 @@
 
     (deffn (name render_instr) (args (i wir.WasmInstr)) (ret Str) (eff !Pure)
       (body
-        (call ws.s i.op (call render_args i.args))
+        (ws.s i.op (render_args i.args))
       )
     )
 
     (deffn (name render_node) (args (n wir.WasmNode)) (ret Str) (eff !Pure)
       (body
         (match n
-          (case (tag "Instr" (i)) (call render_instr i))
+          (case (tag "Instr" (i)) (render_instr i))
           (case (tag "Block" (b))
-            (call ws.block b.head (call render_nodes b.body))
+            (ws.block b.head (render_nodes b.body))
           )
-          (case (tag "Comment" (text)) (call ws.block_comment text))
+          (case (tag "Comment" (text)) (ws.block_comment text))
         )
       )
     )
@@ -55,11 +55,11 @@
         (match nodes
           (case (tag "nil" ()) "")
           (case (tag "cons" (h t))
-            (let (line (call render_node h))
-              (let (rest (call render_nodes t))
+            (let (line (render_node h))
+              (let (rest (render_nodes t))
                 (if (= rest "")
                   line
-                  (call ws.lines (list line rest))
+                  (ws.lines (list line rest))
                 )
               )
             )

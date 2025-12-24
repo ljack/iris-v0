@@ -24,7 +24,7 @@ export const t113: TestCase = {
         (if (io.file_exists full_path)
            (match (io.read_file full_path)
              (case (tag "Ok" (content))
-                (let (ctype (call get_content_type path))
+                (let (ctype (get_content_type path))
                 (let (header1 (str.concat "HTTP/1.1 200 OK\\r\\nContent-Type: " ctype))
                 (let (header2 (str.concat header1 "\\r\\n\\r\\n"))
                 (Ok (str.concat header2 content))))))
@@ -36,7 +36,7 @@ export const t113: TestCase = {
     (deffn (name main) (args) (ret (Result Str Str)) (eff !IO)
       (body 
         (let (w (io.write_file "./public/index.html" "<html></html>"))
-        (call serve_file "/index.html"))
+        (serve_file "/index.html"))
       )
     )
   )

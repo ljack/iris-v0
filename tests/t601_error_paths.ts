@@ -13,14 +13,14 @@ export const t601_error_paths: TestCase = {
         }
 
         const circularModules = {
-            modA: '(program (module (name "modA") (version 0)) (imports (import "modB" (as "B"))) (defs (deffn (name a) (args) (ret I64) (eff !Pure) (body (call B.b)))))',
-            modB: '(program (module (name "modB") (version 0)) (imports (import "modA" (as "A"))) (defs (deffn (name b) (args) (ret I64) (eff !Pure) (body (call A.a)))))'
+            modA: '(program (module (name "modA") (version 0)) (imports (import "modB" (as "B"))) (defs (deffn (name a) (args) (ret I64) (eff !Pure) (body (B.b)))))',
+            modB: '(program (module (name "modB") (version 0)) (imports (import "modA" (as "A"))) (defs (deffn (name b) (args) (ret I64) (eff !Pure) (body (A.a)))))'
         };
         const circularMain = [
             '(program (module (name "main") (version 0))',
             '  (imports (import "modA" (as "A")))',
             '  (defs (deffn (name main) (args) (ret I64) (eff !Pure)',
-            '      (body (call A.a))))',
+            '      (body (A.a))))',
             ')'
         ].join(' ');
         const circularResult = await run(circularMain, {}, circularModules);

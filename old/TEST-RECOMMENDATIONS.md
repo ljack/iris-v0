@@ -225,7 +225,7 @@ export const thp04: TestCase = {
   (imports (import "nonexistent" (as "X")))
   (defs
     (deffn (name main) (args) (ret I64) (eff !Pure)
-      (body (call X.foo)))))`,
+      (body (X.foo)))))`,
 };
 ```
 
@@ -561,7 +561,7 @@ export const topt02: TestCase = {
     (deffn (name do_io) (args) (ret I64) (eff !IO)
       (body (io.write_file "test.txt" "data")))
     (deffn (name main) (args) (ret I64) (eff !Pure)
-      (body (call do_io)))))`,
+      (body (do_io)))))`,
 };
 ```
 
@@ -630,7 +630,7 @@ export const tNEW: TestCase = {
     (deffn (name helper) (args ARGS) (ret RETURN_TYPE) (eff EFFECT)
       (body BODY))
     (deffn (name main) (args) (ret RETURN_TYPE) (eff EFFECT)
-      (body (call helper ARGS)))))`,
+      (body (helper ARGS)))))`,
 };
 ```
 
@@ -652,7 +652,7 @@ export const tNEW: TestCase = {
   (imports (import "libname" (as "Lib")))
   (defs
     (deffn (name main) (args) (ret RETURN_TYPE) (eff EFFECT)
-      (body (call Lib.func_name ARGS)))))`,
+      (body (Lib.func_name ARGS)))))`,
 };
 ```
 

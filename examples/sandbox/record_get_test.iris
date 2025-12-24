@@ -1,0 +1,8 @@
+(program
+  (module (name "record_get_test") (version 0))
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !Pure)
+      (body (record.get (record (a 1)) "a"))
+    )
+  )
+)

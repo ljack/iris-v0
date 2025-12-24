@@ -137,6 +137,7 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
             return { type: { type: 'I64' }, eff: joinedEff };
         }
         if (expr.op === 'str.concat') return { type: { type: 'Str' }, eff: joinedEff };
+        if (expr.op === 'str.eq') return { type: { type: 'Bool' }, eff: joinedEff };
         if (expr.op === 'str.contains' || expr.op === 'str.ends_with') return { type: { type: 'Bool' }, eff: joinedEff };
         if (expr.op === 'str.get') {
             if (argTypes.length !== 2) throw new Error("str.get expects 2 args (str, index)");

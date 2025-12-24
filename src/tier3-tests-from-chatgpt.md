@@ -14,7 +14,7 @@ expect: (Some 1)
    (body (if flag (Some 1) None)))
   (deffn (name main)
    (args) (ret (Option I64)) (eff !Pure)
-   (body (call choose true))))))
+   (body (choose true))))))
 
 t33 — Same None used in two branches with different inner types must be rejected
 
@@ -119,7 +119,7 @@ expect: TypeError: EffectMismatch
    (body (io.print "hi")))
   (deffn (name main)
    (args) (ret I64) (eff !Pure)
-   (body (let (u (call side)) 0))))))
+   (body (let (u (side)) 0))))))
 
 t41 — !Infer should resolve to !IO when body does IO (inferred)
 
@@ -250,7 +250,7 @@ expect: 0
    (body x))
   (deffn (name main)
    (args) (ret I64) (eff !IO)
-   (body (call id (let (u (io.print "arg")) 0)))))))
+   (body (id (let (u (io.print "arg")) 0)))))))
 
 t51 — strict match scrutinee evaluation (IO in scrutinee)
 
@@ -265,7 +265,7 @@ expect: 1
   (deffn (name main)
    (args) (ret I64) (eff !IO)
    (body
-    (match (call mk)
+    (match (mk)
      (case (tag "Some" (v)) v)
      (case (tag "None") 0)))))))
 
@@ -286,15 +286,15 @@ expect: None
      None
      (if (<= n 1)
       (Some n)
-      (match (call fib (- n 1) (- fuel 1))
+      (match (fib (- n 1) (- fuel 1))
        (case (tag "None") None)
        (case (tag "Some" (a))
-        (match (call fib (- n 2) (- fuel 1))
+        (match (fib (- n 2) (- fuel 1))
          (case (tag "None") None)
          (case (tag "Some" (b)) (Some (+ a b)))))))))))
   (deffn (name main)
    (args) (ret (Option I64)) (eff !Pure)
-   (body (call fib 10 1))))))
+   (body (fib 10 1))))))
 
 t53 — fuel just enough should succeed (boundary)
 
@@ -310,15 +310,15 @@ expect: (Some 2) (fib(3)=2)
    (body
     (if (= fuel 0) None
      (if (<= n 1) (Some n)
-      (match (call fib (- n 1) (- fuel 1))
+      (match (fib (- n 1) (- fuel 1))
        (case (tag "None") None)
        (case (tag "Some" (a))
-        (match (call fib (- n 2) (- fuel 1))
+        (match (fib (- n 2) (- fuel 1))
          (case (tag "None") None)
          (case (tag "Some" (b)) (Some (+ a b)))))))))))
   (deffn (name main)
    (args) (ret (Option I64)) (eff !Pure)
-   (body (call fib 3 20))))))
+   (body (fib 3 20))))))
 
 Parser adversaries (tokenization, parentheses, strings)
 t54 — parentheses in strings are not syntax

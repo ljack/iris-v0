@@ -10,7 +10,7 @@
     (deffn (name main) (args) (ret I64) (eff !IO)
         (doc "Compile a wasm syntax fixture and write output.wat.")
         (body
-            (let (res (call compiler.compile_file "examples/tests/test_wasm_syntax.iris" "wasm"))
+            (let (res (compiler.compile_file "examples/tests/test_wasm_syntax.iris" "wasm"))
                 (match res
                     (case (tag "Ok" (wat))
                         (let (_ (io.write_file "output.wat" wat)) 0)

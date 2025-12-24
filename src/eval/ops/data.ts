@@ -4,6 +4,7 @@ import { valueToKey, keyToValue } from '../utils';
 
 export function evalData(op: IntrinsicOp, args: Value[]): Value | undefined {
     if (op === 'str.concat') return { kind: 'Str', value: ((args[0] as any)?.value || "") + ((args[1] as any)?.value || "") };
+    if (op === 'str.eq') return { kind: 'Bool', value: ((args[0] as any)?.value || "") === ((args[1] as any)?.value || "") };
     if (op === 'str.len') return { kind: 'I64', value: BigInt(((args[0] as any)?.value || "").length) };
     if (op === 'str.get') {
         const s = (args[0] as any).value; const i = Number((args[1] as any).value);
@@ -83,9 +84,10 @@ export function evalData(op: IntrinsicOp, args: Value[]): Value | undefined {
 
     if (op === 'record.get') {
         const r = args[0]; const f = args[1];
-        if (r.kind !== 'Record' || f.kind !== 'Str') throw new Error("record.get expects Record and Str");
+        if (r.kind !== 'Record') throw new Error(`Cannot access field ${f.kind === 'Str' ? f.value : '?'} of non-record ${r.kind}`);
+        if (f.kind !== 'Str') throw new Error("record.get expects Record and Str");
         const val = r.fields[f.value];
-        if (val === undefined) throw new Error(`Field ${f.value} not found`);
+        if (val === undefined) throw new Error(`Unknown field ${f.value} in record`);
         return val;
     }
 
@@ -93,7 +95,7 @@ export function evalData(op: IntrinsicOp, args: Value[]): Value | undefined {
         const t = args[0]; const i = args[1];
         if (t.kind !== 'Tuple' || i.kind !== 'I64') throw new Error("tuple.get expects Tuple and I64");
         const idx = Number(i.value);
-        if (idx < 0 || idx >= t.items.length) throw new Error("Tuple index out of bounds");
+        if (idx < 0 || idx >= t.items.length) throw new Error(`Tuple index out of bounds: ${idx}`);
         return t.items[idx];
     }
 

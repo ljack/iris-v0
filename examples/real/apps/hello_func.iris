@@ -6,14 +6,14 @@
 
     (deffn (name hello) (args) (ret I64) (eff !IO)
       (doc "Print a greeting from a helper function.")
-      (body 
+      (body
         (io.print "Hello from CLI and function!")
       )
     )
     (deffn (name main) (args) (ret I64) (eff !IO)
       (doc "Entry point that calls hello.")
-      (body 
-        (call hello)
+      (body
+        (hello)
       )
     )
   )

@@ -29,7 +29,7 @@ export const t103: TestCase = {
 export const t104: TestCase = {
     name: 'Test 104: !Net allows !IO calls',
     expect: '(Ok 5)',
-    source: '(program (module (name "t104") (version 0)) (defs (deffn (name do_io) (args) (ret (Result I64 Str)) (eff !IO) (body (io.write_file "log.txt" "hello"))) (deffn (name main) (args) (ret (Result I64 Str)) (eff !Net) (body (call do_io)))))'
+    source: '(program (module (name "t104") (version 0)) (defs (deffn (name do_io) (args) (ret (Result I64 Str)) (eff !IO) (body (io.write_file "log.txt" "hello"))) (deffn (name main) (args) (ret (Result I64 Str)) (eff !Net) (body (do_io)))))'
 };
 
 export const t105: TestCase = {

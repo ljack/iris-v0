@@ -11,5 +11,5 @@ export const t49: TestCase = {
     (body x))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call expects_int "string")))))`
+    (body (expects_int "string")))))`
 };

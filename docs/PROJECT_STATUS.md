@@ -71,10 +71,10 @@ Hello, world!
   (module (name "fib") (version 0))
   (defs
     (deffn (name fib) (args (n I64)) (ret I64) (eff !Pure)
-      (body (if (< n 2) n (+ (call fib (- n 1)) (call fib (- n 2))))))
+      (body (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))
     (deffn (name main) (args) (ret I64) (eff !IO)
       (body (let (res (io.print "Calculating fib(10)..."))
-             (let (val (call fib 10))
+             (let (val (fib 10))
                   (let (res2 (io.print val)) val)))))))
 ```
 **Status**: ✅ Fully working
@@ -97,7 +97,7 @@ Calculating fib(10)...
     (deffn (name start_server) (args) (ret I64) (eff !Net) ...)
     (deffn (name loop) (args (server_sock I64)) (ret I64) (eff !Net) ...)
     (deffn (name main) (args) (ret I64) (eff !Net)
-      (body (call start_server)))))
+      (body (start_server)))))
 ```
 **Status**: ✅ Fully working
 ```bash

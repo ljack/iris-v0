@@ -78,7 +78,7 @@ export function evalMath(op: IntrinsicOp, args: Value[]): Value {
     }
 
     if (op === 'rand.u64') {
-        const hi = Math.floor(Math.random() * 0x100000000);
+        const hi = Math.floor(Math.random() * 0x80000000);
         const lo = Math.floor(Math.random() * 0x100000000);
         return { kind: 'I64', value: (BigInt(hi) << 32n) | BigInt(lo) };
     }

@@ -62,6 +62,7 @@
         (tag "Intrinsic" ((Record (op Str) (args (List Expr)))))
         (tag "List" ((Record (items (List Expr)) (typeArg (Option IrisType)))))
         (tag "Tuple" ((Record (items (List Expr)))))
+        (tag "Tagged" ((Record (tag Str) (value Expr))))
         (tag "Lambda" ((Record (args (List Arg)) (ret IrisType) (eff Str) (body Expr))))
         (tag "Record" ((Record (fields (List (Tuple Str Expr))))))
       )

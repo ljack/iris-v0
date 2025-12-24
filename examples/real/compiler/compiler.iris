@@ -21,7 +21,7 @@
                             (case (tag "Some" (file))
                                 (let (target_opt (list.get args 1))
                                     (let (target (match target_opt (case (tag "Some" (t)) t) (case (tag "None") "wasm")))
-                                        (let (res (call clib.compile_file file target))
+                                        (let (res (clib.compile_file file target))
                                             (match res
                                                 (case (tag "Ok" (out)) out)
                                                 (case (tag "Err" (msg)) msg)

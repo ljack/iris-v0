@@ -28,7 +28,7 @@ export const t112: TestCase = {
                  (let (parse_res (http.parse_request data))
                  (match parse_res
                    (case (tag "Ok" (req))
-                      (let (resp (call Http.response_ok "HELLO" true))
+                      (let (resp (Http.response_ok "HELLO" true))
                       (let (w (net.write conn resp))
                       (let (c (net.close conn))
                       (Ok 0)))))

@@ -90,7 +90,7 @@ export const t335_async_cross_module_call: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call a.add 10 20)))))`,
+    (body (a.add 10 20)))))`,
   modules: {
     'module_a': `(program
  (module (name "a") (version 0))
@@ -151,7 +151,7 @@ export const t338_async_map_keys: TestCase = {
     (ret (List (Union (tag "I64" I64) (tag "Str" Str))))
     (eff !Pure)
     (body
-      (let (m (call make_poly_map (tag "I64" 0)))
+      (let (m (make_poly_map (tag "I64" 0)))
         (let (m2 (map.put m (tag "I64" 42) 1))
           (let (m3 (map.put m2 (tag "Str" "key") 2))
             (map.keys m3))))))))`

@@ -36,8 +36,8 @@
             (tuple curr (str.substring input start curr))
             (match (str.get input curr)
                     (case (tag "Some" (c))
-                        (if (call is_digit c)
-                            (call scan_int_loop input len start (+ curr 1))
+                        (if (is_digit c)
+                            (scan_int_loop input len start (+ curr 1))
                             (tuple curr (str.substring input start curr))
                         )
                     )
@@ -48,7 +48,7 @@
     )
 
     (deffn (name scan_int) (args (input Str) (len I64) (start I64)) (ret (Tuple I64 Str)) (eff !Pure)
-      (body (call scan_int_loop input len start (+ start 1)))
+      (body (scan_int_loop input len start (+ start 1)))
     )
 
     ;; Scan a string literal starting at pos (after quote)
@@ -60,7 +60,7 @@
                 (case (tag "Some" (c))
                     (if (= c 34) ;; Quote "
                         (tuple (+ curr 1) (str.substring input (+ start 1) curr))
-                        (call scan_string_loop input len start (+ curr 1))
+                        (scan_string_loop input len start (+ curr 1))
                     )
                 )
                 (case (tag "None") (tuple curr ""))
@@ -70,7 +70,7 @@
     )
 
     (deffn (name scan_string) (args (input Str) (len I64) (start I64)) (ret (Tuple I64 Str)) (eff !Pure)
-      (body (call scan_string_loop input len start (+ start 1)))
+      (body (scan_string_loop input len start (+ start 1)))
     )
 
     ;; Scan identifier or keyword
@@ -80,8 +80,8 @@
             (tuple curr (str.substring input start curr))
             (match (str.get input curr)
                 (case (tag "Some" (c))
-                    (if (|| (call is_alpha c) (|| (call is_digit c) (|| (= c 95) (|| (= c 45) (|| (= c 43) (|| (= c 42) (|| (= c 47) (|| (= c 60) (|| (= c 62) (|| (= c 61) (|| (= c 46) (|| (= c 33) (|| (= c 63) (= c 58)))))))))))))) ;; alpha, digit, _, -, +, *, /, <, >, =, ., !, ?, :
-                        (call scan_ident_loop input len start (+ curr 1))
+                    (if (|| (is_alpha c) (|| (is_digit c) (|| (= c 95) (|| (= c 45) (|| (= c 43) (|| (= c 42) (|| (= c 47) (|| (= c 60) (|| (= c 62) (|| (= c 61) (|| (= c 46) (|| (= c 33) (|| (= c 63) (= c 58)))))))))))))) ;; alpha, digit, _, -, +, *, /, <, >, =, ., !, ?, :
+                        (scan_ident_loop input len start (+ curr 1))
                         (tuple curr (str.substring input start curr))
                     )
                 )
@@ -92,7 +92,7 @@
     )
 
     (deffn (name scan_ident) (args (input Str) (len I64) (start I64)) (ret (Tuple I64 Str)) (eff !Pure)
-      (body (call scan_ident_loop input len start (+ start 1)))
+      (body (scan_ident_loop input len start (+ start 1)))
     )
 
     (deffn (name scan_comment) (args (input Str) (len I64) (pos I64)) (ret I64) (eff !Pure)
@@ -100,7 +100,7 @@
         (if (>= pos len) pos
           (match (str.get input pos)
             (case (tag "Some" (c))
-                (if (= c 10) (+ pos 1) (call scan_comment input len (+ pos 1)))
+                (if (= c 10) (+ pos 1) (scan_comment input len (+ pos 1)))
             )
             (case (tag "None") pos)
           )
@@ -111,43 +111,43 @@
     (deffn (name tokenize_rec) (args (input Str) (len I64) (pos I64) (tokens (List ast.Token))) (ret (List ast.Token)) (eff !Pure)
       (body
         (if (>= pos len)
-            (cons (call mk_token "EOF" "") tokens)
+            (cons (mk_token "EOF" "") tokens)
             (match (str.get input pos)
                 (case (tag "Some" (c))
-                    (if (call is_whitespace c)
-                        (call tokenize_rec input len (+ pos 1) tokens)
+                    (if (is_whitespace c)
+                        (tokenize_rec input len (+ pos 1) tokens)
                         (if (= c 59) ;; ;
-                            (call tokenize_rec input len (call scan_comment input len (+ pos 1)) tokens)
+                            (tokenize_rec input len (scan_comment input len (+ pos 1)) tokens)
                         (if (= c 40) ;; lparen
-                            (call tokenize_rec input len (+ pos 1) (cons (call mk_token "LPAREN" "(") tokens))
+                            (tokenize_rec input len (+ pos 1) (cons (mk_token "LPAREN" "(") tokens))
                             (if (= c 41) ;; rparen
-                                (call tokenize_rec input len (+ pos 1) (cons (call mk_token "RPAREN" ")") tokens))
+                                (tokenize_rec input len (+ pos 1) (cons (mk_token "RPAREN" ")") tokens))
                                 (if (= c 34) ;; "
-                                    (let (res (call scan_string input len pos))
+                                    (let (res (scan_string input len pos))
                                         (let (new_pos (tuple.get res 0))
                                             (let (val (tuple.get res 1))
-                                                (call tokenize_rec input len new_pos (cons (call mk_token "STR" val) tokens))
+                                                (tokenize_rec input len new_pos (cons (mk_token "STR" val) tokens))
                                             )
                                         )
                                     )
-                                    (if (call is_digit c)
-                                        (let (res (call scan_int input len pos))
+                                    (if (is_digit c)
+                                        (let (res (scan_int input len pos))
                                             (let (new_pos (tuple.get res 0))
                                                 (let (val (tuple.get res 1))
-                                                    (call tokenize_rec input len new_pos (cons (call mk_token "INT" val) tokens))
+                                                    (tokenize_rec input len new_pos (cons (mk_token "INT" val) tokens))
                                                 )
                                             )
                                         )
                                         (if (= c 38) ;; &
-                                            (call tokenize_rec input len (+ pos 2) (cons (call mk_token "IDENT" "&&") tokens))
+                                            (tokenize_rec input len (+ pos 2) (cons (mk_token "IDENT" "&&") tokens))
                                         (if (= c 124) ;; |
-                                            (call tokenize_rec input len (+ pos 2) (cons (call mk_token "IDENT" "||") tokens))
+                                            (tokenize_rec input len (+ pos 2) (cons (mk_token "IDENT" "||") tokens))
                                             ;; Identifier / Keyword
-                                            (let (res (call scan_ident input len pos))
+                                            (let (res (scan_ident input len pos))
                                             (let (new_pos (tuple.get res 0))
                                                 (let (val (tuple.get res 1))
                                                     (let (kind (if (|| (= val "let") (|| (= val "fn") (|| (= val "if") (= val "match")))) "KEYWORD" "IDENT"))
-                                                        (call tokenize_rec input len new_pos (cons (call mk_token kind val) tokens))
+                                                        (tokenize_rec input len new_pos (cons (mk_token kind val) tokens))
                                                     )
                                                 )
                                             )
@@ -170,18 +170,18 @@
       (body
         (match rem
             (case (tag "nil") acc)
-            (case (tag "cons" (h t)) (call reverse_loop t (cons h acc)))
+            (case (tag "cons" (h t)) (reverse_loop t (cons h acc)))
         )
       )
     )
 
     (deffn (name reverse) (args (l (List ast.Token))) (ret (List ast.Token)) (eff !Pure)
-      (body (call reverse_loop l (list-of ast.Token)))
+      (body (reverse_loop l (list-of ast.Token)))
     )
 
     (deffn (name tokenize) (args (input Str)) (ret (List ast.Token)) (eff !Pure)
       (doc "Tokenize Iris source into a list of tokens.")
-      (body (call reverse (call tokenize_rec input (str.len input) 0 (list-of ast.Token))))
+      (body (reverse (tokenize_rec input (str.len input) 0 (list-of ast.Token))))
     )
 
     (deffn (name print_token_list) (args (l (List ast.Token))) (ret I64) (eff !IO)
@@ -190,7 +190,7 @@
             (case (tag "nil") 0)
             (case (tag "cons" (h t))
                 (let (_ (io.print (str.concat (str.concat h.kind ": ") h.value)))
-                    (call print_token_list t)
+                    (print_token_list t)
                 )
             )
         )
@@ -201,8 +201,8 @@
       (doc "CLI helper that tokenizes a small sample.")
       (body
         (let (code "(let x 123 \"hello\")")
-            (let (tokens (call tokenize code))
-                (call print_token_list tokens)
+            (let (tokens (tokenize code))
+                (print_token_list tokens)
             )
         )
       )

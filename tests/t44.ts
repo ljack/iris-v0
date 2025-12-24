@@ -11,8 +11,8 @@ export const t44: TestCase = {
     (body 42))
   (deffn (name caller)
     (args) (ret I64) (eff !Any)
-    (body (call pure_fn)))
+    (body (pure_fn)))
   (deffn (name main)
     (args) (ret I64) (eff !Any)
-    (body (call caller)))))`
+    (body (caller)))))`
 };

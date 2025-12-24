@@ -13,5 +13,5 @@ export const t59: TestCase = {
       (args)
       (ret (Record (a (Record (x I64)))))
       (eff !Pure)
-      (body (record (a (call inner)))))))`
+      (body (record (a (inner)))))))`
 };

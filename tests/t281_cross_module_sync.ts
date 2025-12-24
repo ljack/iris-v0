@@ -23,7 +23,7 @@ const moduleB = `(program
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call a.add 10 20)))))`;
+    (body (a.add 10 20)))))`;
 
 export const t281_cross_module_sync: TestCase = {
   name: 'Test 281: cross-module call sync',
@@ -64,7 +64,7 @@ export const t282_cross_module_resolver_fail: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call x.func)))))`;
+    (body (x.func)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -152,7 +152,7 @@ export const t286_sync_parser_trace: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call parse_def_list)))))`
+    (body (parse_def_list)))))`
 };
 
 export const t287_sync_depth_counter: TestCase = {
@@ -168,12 +168,12 @@ export const t287_sync_depth_counter: TestCase = {
     (body
       (if (= n 0)
         0
-        (call deep (- n 1)))))
+        (deep (- n 1)))))
   (deffn (name main)
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call deep 5)))))`
+    (body (deep 5)))))`
 };
 
 export const t288_sync_step_counter: TestCase = {
@@ -220,5 +220,5 @@ export const t290_sync_call_arity_error: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call f 1 2)))))`
+    (body (f 1 2)))))`
 };

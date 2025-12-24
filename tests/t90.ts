@@ -12,7 +12,7 @@ export const t90: TestCase = {
       (args)
       (ret I64)
       (eff !Pure)
-      (body (call Lib.add 1 2)))))
+      (body (Lib.add 1 2)))))
 `,
     // We need to provide the 'lib' module somehow.
     // The current test runner doesn't support auxiliary modules yet.

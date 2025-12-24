@@ -11,8 +11,8 @@ export const t48: TestCase = {
     (body
       (if (<= n 0)
         0
-        (call countdown "oops"))))
+        (countdown "oops"))))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call countdown 5)))))`
+    (body (countdown 5)))))`
 };

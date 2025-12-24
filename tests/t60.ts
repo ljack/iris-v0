@@ -13,5 +13,5 @@ export const t60: TestCase = {
       (args)
       (ret (Record (items (Option (Result Str Str)))))
       (eff !Pure)
-      (body (record (items (call nested_value)))))))`
+      (body (record (items (nested_value)))))))`
 };

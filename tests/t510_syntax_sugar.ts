@@ -63,3 +63,18 @@ export const t513_do: TestCase = {
         2
         (+ 1 3))))))`
 };
+
+export const t515_dot_access: TestCase = {
+  name: 'Test 515: dot access desugars to record.get',
+  expect: '7',
+  source: `(program
+ (module (name "t515") (version 0))
+ (defs
+  (deffn (name main)
+    (args)
+    (ret I64)
+    (eff !Pure)
+    (body
+      (let (env (record (bindings (record (x 7)))))
+        env.bindings.x))))))`
+};

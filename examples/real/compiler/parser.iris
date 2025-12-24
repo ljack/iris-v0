@@ -13,8 +13,8 @@
     (deffn (name parse) (args (tokens (List ast.Token))) (ret ast.Program) (eff !Pure)
       (doc "Parse a token stream into a Program AST.")
       (body 
-        (let (p (call base.parser_new tokens))
-            (let (res (call top.parse_program p))
+        (let (p (base.parser_new tokens))
+            (let (res (top.parse_program p))
                 (tuple.get res 1)
             )
         )
@@ -22,19 +22,19 @@
     )
 
     (deffn (name parser_new) (args (tokens (List ast.Token))) (ret base.Parser) (eff !Pure)
-        (body (call base.parser_new tokens))
+        (body (base.parser_new tokens))
     )
 
     (deffn (name parser_peek) (args (p base.Parser)) (ret ast.Token) (eff !Pure)
-        (body (call base.parser_peek p))
+        (body (base.parser_peek p))
     )
 
     (deffn (name parser_consume) (args (p base.Parser)) (ret base.Parser) (eff !Pure)
-        (body (call base.parser_consume p))
+        (body (base.parser_consume p))
     )
 
     (deffn (name parse_program) (args (p base.Parser)) (ret (Tuple base.Parser ast.Program)) (eff !Pure)
-        (body (call top.parse_program p))
+        (body (top.parse_program p))
     )
   )
 )

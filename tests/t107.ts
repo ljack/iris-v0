@@ -7,7 +7,7 @@ export const t107: TestCase = {
     modules: {
         "lib": '(program (module (name "lib") (version 0)) (defs (deffn (name add) (args (a I64) (b I64)) (ret I64) (eff !Pure) (body (+ a b)))))'
     },
-    source: '(program (module (name "t107") (version 0)) (imports (import "lib" (as "Lib"))) (defs (deffn (name main) (args) (ret I64) (eff !Pure) (body (call Lib.add 1 "2")))))'
+    source: '(program (module (name "t107") (version 0)) (imports (import "lib" (as "Lib"))) (defs (deffn (name main) (args) (ret I64) (eff !Pure) (body (Lib.add 1 "2")))))'
 };
 
 export const t108: TestCase = {
@@ -16,5 +16,5 @@ export const t108: TestCase = {
     modules: {
         "logger": '(program (module (name "logger") (version 0)) (defs (deffn (name log) (args (msg Str)) (ret I64) (eff !IO) (body (io.write_file "log.txt" msg)))))'
     },
-    source: '(program (module (name "t108") (version 0)) (imports (import "logger" (as "Logger"))) (defs (deffn (name main) (args) (ret I64) (eff !Pure) (body (call Logger.log "test")))))'
+    source: '(program (module (name "t108") (version 0)) (imports (import "logger" (as "Logger"))) (defs (deffn (name main) (args) (ret I64) (eff !Pure) (body (Logger.log "test")))))'
 };

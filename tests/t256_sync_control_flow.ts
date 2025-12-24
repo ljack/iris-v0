@@ -47,7 +47,7 @@ export const t258_sync_tco_call: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call helper 42)))))`
+    (body (helper 42)))))`
 };
 
 export const t268_sync_normalize_literal: TestCase = {

@@ -15,5 +15,5 @@ export const t22: TestCase = {
     (args)
     (ret (Result Str Str))
     (eff !Pure)
-    (body (call ioer)))))`
+    (body (ioer)))))`
 };

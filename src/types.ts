@@ -117,7 +117,7 @@ export type IntrinsicOp =
   | 'list.length' | 'list.get' | 'list.concat' | 'list.unique'
   | 'tuple.get' | 'record.get' | 'record.set'
   | 'rand.u64'
-  | 'str.len' | 'str.concat' | 'str.contains' | 'str.ends_with'
+  | 'str.len' | 'str.concat' | 'str.eq' | 'str.contains' | 'str.ends_with'
   | 'str.get' | 'str.substring' | 'str.from_code' | 'str.index_of'
   | 'i64.from_string' | 'i64.to_string';
 

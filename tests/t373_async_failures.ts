@@ -16,8 +16,8 @@ export const t369_async_cross_module_cache: TestCase = {
     (ret I64)
     (eff !Pure)
     (body
-      (let (x (call m.add 10 20))
-        (call m.add x 0))))))`,
+      (let (x (m.add 10 20))
+        (m.add x 0))))))`,
     modules: {
         'mod': `(program
  (module (name "mod") (version 0))

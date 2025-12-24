@@ -15,5 +15,5 @@ export const t06: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call add10 1)))))`
+    (body (add10 1)))))`
 };

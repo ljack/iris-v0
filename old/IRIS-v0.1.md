@@ -28,7 +28,7 @@ IRIS v0.1 is a minimal, deterministic, AI-centric programming language. It relie
 - **Variable**: `x`.
 - **Let**: `(let (x val) body)` - Immutable binding.
 - **If**: `(if cond then else)`.
-- **Call**: `(call fn arg1 ...)` - Static dispatch.
+- **Call**: `(fn arg1 ...)` - Static dispatch.
 - **Record**: `(record (k1 v1) (k2 v2) ...)` - Order independent at construction, sorted at runtime.
 - **Match**:
   ```lisp

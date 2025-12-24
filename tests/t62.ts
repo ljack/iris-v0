@@ -11,5 +11,5 @@ export const t62: TestCase = {
     (body (+ x 1)))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call add_one 5 10)))))`
+    (body (add_one 5 10)))))`
 };

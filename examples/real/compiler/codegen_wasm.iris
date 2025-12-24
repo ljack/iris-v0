@@ -292,6 +292,14 @@
                                     (ws.s "param" (list "i64"))
                                     (ws.s "result" (list "i64"))
                                   )))))
+               (str_eq_type (ws.s "type"
+                              (list "$str_eq_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "result" (list "i64"))
+                                  )))))
                (record_get_type (ws.s "type"
                               (list "$record_get_type"
                                 (ws.s "func"
@@ -316,6 +324,7 @@
                 args_list_type
                 i64_to_string_type
                 str_concat_type
+                str_eq_type
                 record_get_type
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "print") (ws.s "func" (list "$host.print" (ws.s "type" (list "$print_type"))))))
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "parse_i64") (ws.s "func" (list "$host.parse_i64" (ws.s "type" (list "$parse_i64_type"))))))
@@ -323,6 +332,7 @@
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "args_list") (ws.s "func" (list "$host.args_list" (ws.s "type" (list "$args_list_type"))))))
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "i64_to_string") (ws.s "func" (list "$host.i64_to_string" (ws.s "type" (list "$i64_to_string_type"))))))
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "str_concat") (ws.s "func" (list "$host.str_concat" (ws.s "type" (list "$str_concat_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "str_eq") (ws.s "func" (list "$host.str_eq" (ws.s "type" (list "$str_eq_type"))))))
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "record_get") (ws.s "func" (list "$host.record_get" (ws.s "type" (list "$record_get_type"))))))
               ))
             ))
@@ -406,10 +416,13 @@
                                     sig
                                   )))
                                  (fixed_locals (ws.lines (list
-                                  (ws.s "local" (list (ws.local_id "t0") "i64"))
-                                  (ws.s "local" (list (ws.local_id "t1") "i64"))
-                                  (ws.s "local" (list (ws.local_id "t2") "i64"))
-                                  (ws.s "local" (list (ws.local_id "target") "i64"))
+                                 (ws.s "local" (list (ws.local_id "t0") "i64"))
+                                 (ws.s "local" (list (ws.local_id "t1") "i64"))
+                                 (ws.s "local" (list (ws.local_id "t2") "i64"))
+                                 (ws.s "local" (list (ws.local_id "t3") "i64"))
+                                 (ws.s "local" (list (ws.local_id "t4") "i64"))
+                                 (ws.s "local" (list (ws.local_id "t5") "i64"))
+                                 (ws.s "local" (list (ws.local_id "target") "i64"))
                                  )))
                                  (body (if (= locals "")
                                         (ws.lines (list fixed_locals body_code))

@@ -6,7 +6,7 @@
       (ret Str)
       (eff !Pure)
       (doc "Format HTTP headers list as \"Key: Value\" lines.")
-      (body (call headers_to_str_rec headers 0 ""))
+      (body (headers_to_str_rec headers 0 ""))
     )
 
     (deffn (name headers_to_str_rec)
@@ -21,7 +21,7 @@
               (case (tag "Some" (h))
                 (let (line (str.concat (record.get h "key") (str.concat ": " (record.get h "val"))))
                   (let (next (if (= acc "") line (str.concat acc (str.concat "\n" line))))
-                    (call headers_to_str_rec headers (+ idx 1) next)
+                    (headers_to_str_rec headers (+ idx 1) next)
                   )
                 )
               )

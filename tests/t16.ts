@@ -11,5 +11,5 @@ export const t16: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call add10)))))`
+    (body (add10)))))`
 };

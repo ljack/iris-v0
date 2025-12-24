@@ -16,14 +16,14 @@
           (let (char_opt (str.get s i))
             (match char_opt
               (case (tag "Some" (code))
-                (let* ((t0 (call ws.local_id "t0"))
-                       (addr_instr (call wir.i64_add
-                         (call wir.arg_instr (call wir.local_get_instr t0))
-                         (call wir.i64_const_arg (i64.to_string (+ 8 i)))
+                (let* ((t0 (ws.local_id "t0"))
+                       (addr_instr (wir.i64_add
+                         (wir.arg_instr (wir.local_get_instr t0))
+                         (wir.i64_const_arg (i64.to_string (+ 8 i)))
                        ))
-                       (addr_arg (call wir.i32_wrap_i64_arg (call wir.arg_instr addr_instr)))
-                       (store_node (call wir.i64_store8_node addr_arg (call wir.i64_const_arg (i64.to_string code))))
-                       (rest (call gen_string_bytes_nodes s (+ i 1) len)))
+                       (addr_arg (wir.i32_wrap_i64_arg (wir.arg_instr addr_instr)))
+                       (store_node (wir.i64_store8_node addr_arg (wir.i64_const_arg (i64.to_string code))))
+                       (rest (gen_string_bytes_nodes s (+ i 1) len)))
                   (cons store_node rest)
                 ))
               (case (tag "None" ()) (list))
@@ -35,7 +35,7 @@
 
     (deffn (name gen_string_bytes_wat) (args (s Str) (i I64) (len I64)) (ret Str) (eff !Pure)
       (body
-        (call wrt.render_nodes (call gen_string_bytes_nodes s i len))
+        (wrt.render_nodes (gen_string_bytes_nodes s i len))
       )
     )
   )

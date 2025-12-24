@@ -28,7 +28,7 @@ export const t111: TestCase = {
         (let (conn_res (net.accept 1234))
           (match conn_res
             (case (tag "Ok" (conn))
-              (call handle_client conn))
+              (handle_client conn))
             (case (tag "Err" (e))
               (Err e))))))))`
 };

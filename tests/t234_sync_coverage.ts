@@ -20,7 +20,7 @@ export const t234_sync_str_operations: TestCase = {
     (args)
     (ret Str)
     (eff !Pure)
-    (body (call test_str)))))`;
+    (body (test_str)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -54,7 +54,7 @@ export const t235_sync_map_operations: TestCase = {
     (args)
     (ret (Option I64))
     (eff !Pure)
-    (body (call test_map)))))`;
+    (body (test_map)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -85,7 +85,7 @@ export const t236_sync_list_operations: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call test_list)))))`;
+    (body (test_list)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -121,7 +121,7 @@ export const t237_sync_tuple_record: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (+ (call test_tuple) (call test_record))))))`;
+    (body (+ (test_tuple) (test_record))))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -157,7 +157,7 @@ export const t238_sync_bool_operations: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (&& (call test_bool) (call test_not))))))`;
+    (body (&& (test_bool) (test_not))))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -193,7 +193,7 @@ export const t239_sync_comparison: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (&& (call test_ge) (call test_gt))))))`;
+    (body (&& (test_ge) (test_gt))))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -229,7 +229,7 @@ export const t240_sync_i64_conversions: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (= (call test_to_string) "42")))))`;
+    (body (= (test_to_string) "42")))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -260,7 +260,7 @@ export const t241_sync_list_unique: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call test_unique)))))`;
+    (body (test_unique)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();
@@ -296,7 +296,7 @@ export const t242_sync_str_advanced: TestCase = {
     (args)
     (ret Bool)
     (eff !Pure)
-    (body (call test_str_ops)))))`;
+    (body (test_str_ops)))))`;
 
     const parser = new Parser(source);
     const program = parser.parse();

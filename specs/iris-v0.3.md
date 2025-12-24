@@ -79,7 +79,7 @@ You must not short-circuit effect inference just because a branch is unreachable
 
 ⚠️ 3. Parse vs type error distinction
 
-t61 is very specific: (call 42) is a ParseError, not TypeError.
+t61 is very specific: (42) is a ParseError, not TypeError.
 
 ⚠️ 4. Canonical printing
 

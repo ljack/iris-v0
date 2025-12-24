@@ -412,7 +412,18 @@ export async function cli(args: string[]) {
                 return;
             }
 
-            const programArgs = wasmArgs.filter(a => !a.startsWith('--'));
+            const programArgs: string[] = [];
+            for (let i = 0; i < wasmArgs.length; i++) {
+                const arg = wasmArgs[i];
+                if (arg === '--no-run' || arg === '--quiet' || arg === '--print-wat') {
+                    continue;
+                }
+                if (arg === '--wat-out' || arg === '--wasm-out' || arg === '--compiler' || arg === '--wasm-profile') {
+                    i++;
+                    continue;
+                }
+                programArgs.push(arg);
+            }
             const host = new IrisWasmHost({ onPrint: (text) => console.log(text), args: programArgs });
             const importObj = host.getImportObject();
             try {

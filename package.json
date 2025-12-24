@@ -19,6 +19,7 @@
     "coverage": "c8 --reporter=text --reporter=html --reporter=json-summary --include='src/**/*.ts' --exclude='src/tests.ts' --exclude='src/tests_cli.ts' --exclude='src/test-types.ts' ts-node src/tests.ts",
     "update-raw": "ts-node generate_raw_links.ts",
     "build": "tsc",
+    "perf:fib": "node scripts/fib_perf_report.js",
     "lsp": "ts-node src/lsp-server.ts --stdio",
     "prepare": "husky"
   },

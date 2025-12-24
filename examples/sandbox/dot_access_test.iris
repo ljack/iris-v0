@@ -1,0 +1,12 @@
+(program
+  (module (name "dot_access_test") (version 0))
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !Pure)
+      (body
+        (let (r (record (a 1) (b 2)))
+          (if (= r.a 1) r.b 0)
+        )
+      )
+    )
+  )
+)

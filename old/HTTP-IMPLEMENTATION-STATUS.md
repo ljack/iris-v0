@@ -254,7 +254,7 @@ Output: (Ok "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>")
 ```
 Source Code with imports:
   (program (imports (import "http" (as "Http")))
-    (defs (deffn (name main) ... (body (call Http.response_ok ...)))))
+    (defs (deffn (name main) ... (body (Http.response_ok ...)))))
 
 Parser:
   → Detects import statements

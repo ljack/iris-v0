@@ -3,6 +3,7 @@
 (program
   (module (name "compiler_lib") (version 1))
   (imports
+    (import "ast" (as "ast"))
     (import "io" (as "io"))
     (import "str" (as "str"))
     (import "lexer" (as "lexer"))
@@ -12,6 +13,244 @@
     (import "codegen_wasm" (as "codegen_wasm"))
   )
   (defs
+    (deffn (name last_index_of_from) (args (s Str) (start I64)) (ret (Option I64)) (eff !Pure)
+        (body
+            (if (>= start (str.len s))
+                (tag "None")
+                (let (sub (str.substring s start (str.len s)))
+                    (let (idx_opt (str.index_of sub "/"))
+                        (match idx_opt
+                            (case (tag "None") (tag "None"))
+                            (case (tag "Some" (idx))
+                                (let (next_start (+ (+ start idx) 1))
+                                    (match (last_index_of_from s next_start)
+                                        (case (tag "Some" (next_idx)) (tag "Some" next_idx))
+                                        (case (tag "None") (tag "Some" (+ start idx)))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name path_dir) (args (path Str)) (ret Str) (eff !Pure)
+        (body
+            (match (last_index_of_from path 0)
+                (case (tag "Some" (idx)) (str.substring path 0 idx))
+                (case (tag "None") "")
+            )
+        )
+    )
+
+    (deffn (name resolve_import_path) (args (base Str) (raw Str)) (ret Str) (eff !Pure)
+        (body
+            (let (with_ext (if (str.ends_with raw ".iris") raw (str.concat raw ".iris")))
+                (if (= base "")
+                    with_ext
+                    (str.concat (str.concat base "/") with_ext)
+                )
+            )
+        )
+    )
+
+    (deffn (name should_inline) (args (alias Str) (path Str)) (ret Bool) (eff !Pure)
+        (body
+            (if (= alias "pretty")
+                true
+                false
+            )
+        )
+    )
+
+    (deffn (name append_defs) (args (a (List ast.Definition)) (b (List ast.Definition))) (ret (List ast.Definition)) (eff !Pure)
+        (body
+            (match a
+                (case (tag "nil") b)
+                (case (tag "cons" (h t))
+                    (cons h (append_defs t b))
+                )
+            )
+        )
+    )
+
+    (deffn (name collect_def_names) (args (defs (List ast.Definition))) (ret (List Str)) (eff !Pure)
+        (body
+            (match defs
+                (case (tag "nil") (list))
+                (case (tag "cons" (h t))
+                    (match h
+                        (case (tag "DefFn" (f)) (cons f.name (collect_def_names t)))
+                        (case (tag "TypeDef" (_)) (collect_def_names t))
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name list_contains) (args (items (List Str)) (needle Str)) (ret Bool) (eff !Pure)
+        (body
+            (match items
+                (case (tag "nil") false)
+                (case (tag "cons" (h t))
+                    (if (= h needle) true (list_contains t needle))
+                )
+            )
+        )
+    )
+
+    (deffn (name prefix_call_name) (args (alias Str) (name Str) (known (List Str))) (ret Str) (eff !Pure)
+        (body
+            (if (str.contains name ".")
+                name
+                (if (list_contains known name)
+                    (str.concat alias (str.concat "." name))
+                    name
+                )
+            )
+        )
+    )
+
+    (deffn (name rewrite_expr_calls) (args (e ast.Expr) (alias Str) (known (List Str))) (ret ast.Expr) (eff !Pure)
+        (body
+            (match e
+                (case (tag "Literal" (_)) e)
+                (case (tag "Var" (_)) e)
+                (case (tag "Let" (l))
+                    (tag "Let" (record (name l.name) (value (rewrite_expr_calls l.value alias known)) (body (rewrite_expr_calls l.body alias known))))
+                )
+                (case (tag "If" (i))
+                    (tag "If" (record (cond (rewrite_expr_calls i.cond alias known)) (then (rewrite_expr_calls i.then alias known)) (else (rewrite_expr_calls i.else alias known))))
+                )
+                (case (tag "Match" (m))
+                    (tag "Match" (record (target (rewrite_expr_calls m.target alias known)) (cases (rewrite_match_cases m.cases alias known))))
+                )
+                (case (tag "Call" (c))
+                    (tag "Call" (record (name (prefix_call_name alias c.name known)) (args (rewrite_expr_list c.args alias known))))
+                )
+                (case (tag "Intrinsic" (i))
+                    (tag "Intrinsic" (record (op i.op) (args (rewrite_expr_list i.args alias known))))
+                )
+                (case (tag "List" (l))
+                    (tag "List" (record (items (rewrite_expr_list l.items alias known)) (typeArg l.typeArg)))
+                )
+                (case (tag "Tuple" (t))
+                    (tag "Tuple" (record (items (rewrite_expr_list t.items alias known))))
+                )
+                (case (tag "Record" (r))
+                    (tag "Record" (record (fields (rewrite_fields r.fields alias known))))
+                )
+                (case (tag "Lambda" (l))
+                    (tag "Lambda" (record (args l.args) (ret l.ret) (eff l.eff) (body (rewrite_expr_calls l.body alias known))))
+                )
+            )
+        )
+    )
+
+    (deffn (name rewrite_expr_list) (args (items (List ast.Expr)) (alias Str) (known (List Str))) (ret (List ast.Expr)) (eff !Pure)
+        (body
+            (match items
+                (case (tag "nil") (list))
+                (case (tag "cons" (h t))
+                    (cons (rewrite_expr_calls h alias known) (rewrite_expr_list t alias known))
+                )
+            )
+        )
+    )
+
+    (deffn (name rewrite_fields) (args (fields (List (Tuple Str ast.Expr))) (alias Str) (known (List Str))) (ret (List (Tuple Str ast.Expr))) (eff !Pure)
+        (body
+            (match fields
+                (case (tag "nil") (list))
+                (case (tag "cons" (h t))
+                    (cons (tuple (tuple.get h 0) (rewrite_expr_calls (tuple.get h 1) alias known)) (rewrite_fields t alias known))
+                )
+            )
+        )
+    )
+
+    (deffn (name rewrite_match_cases) (args (cases (List ast.MatchCase)) (alias Str) (known (List Str))) (ret (List ast.MatchCase)) (eff !Pure)
+        (body
+            (match cases
+                (case (tag "nil") (list))
+                (case (tag "cons" (h t))
+                    (cons (record (variantTag h.variantTag) (vars h.vars) (body (rewrite_expr_calls h.body alias known))) (rewrite_match_cases t alias known))
+                )
+            )
+        )
+    )
+
+    (deffn (name prefix_defs) (args (alias Str) (defs (List ast.Definition))) (ret (List ast.Definition)) (eff !Pure)
+        (body
+            (let (known (collect_def_names defs))
+                (match defs
+                    (case (tag "nil") (list))
+                    (case (tag "cons" (h t))
+                        (match h
+                            (case (tag "DefFn" (f))
+                                (let (new_name (str.concat alias (str.concat "." f.name)))
+                                    (cons (tag "DefFn" (record (name new_name) (args f.args) (ret f.ret) (eff f.eff) (body (rewrite_expr_calls f.body alias known))))
+                                          (prefix_defs alias t))
+                                )
+                            )
+                            (case (tag "TypeDef" (_)) (prefix_defs alias t))
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name load_program) (args (path Str)) (ret ast.Program) (eff !IO)
+        (body
+            (let (read_res (io.read_file path))
+                (match read_res
+                    (case (tag "Ok" (source))
+                        (let (tokens (lexer.tokenize source))
+                            (parser.parse tokens)
+                        )
+                    )
+                    (case (tag "Err" (e))
+                        (record (progMod (record (name "") (version 0))) (progImports (list)) (progDefs (list)))
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name inline_imports_rec) (args (imports (List ast.Import)) (base_dir Str) (kept (List ast.Import)) (defs (List ast.Definition))) (ret (Tuple (List ast.Import) (List ast.Definition))) (eff !IO)
+        (body
+            (match imports
+                (case (tag "nil") (tuple kept defs))
+                (case (tag "cons" (h t))
+                    (if (should_inline h.alias h.path)
+                        (let (full_path (resolve_import_path base_dir h.path))
+                            (let (prog (load_program full_path))
+                                (let (prefixed (prefix_defs h.alias prog.progDefs))
+                                    (inline_imports_rec t base_dir kept (append_defs defs prefixed))
+                                )
+                            )
+                        )
+                        (inline_imports_rec t base_dir (cons h kept) defs)
+                    )
+                )
+            )
+        )
+    )
+
+    (deffn (name inline_imports) (args (p ast.Program) (base_dir Str)) (ret ast.Program) (eff !IO)
+        (body
+            (let (res (inline_imports_rec p.progImports base_dir (list) p.progDefs))
+                (let (imports (tuple.get res 0))
+                (let (defs (tuple.get res 1))
+                    (record (progMod p.progMod) (progImports imports) (progDefs defs))
+                ))
+            )
+        )
+    )
+
     (deffn (name compile_file) (args (path Str) (target Str)) (ret (Result Str Str)) (eff !IO)
         (doc "Compile a source file to core or wasm output based on target.")
         (body
@@ -23,16 +262,19 @@
                         (let (tokens (lexer.tokenize source))
                             ;; 2. Parse
                             (let (ast (parser.parse tokens))
-                                ;; 3. Type Check
-                                (let (tc_res (typecheck.type_check_program ast))
-                                        (match tc_res
-                                            (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
-                                            (case (tag "Ok" (ignore))
-                                                (if (str.contains target "wasm")
-                                                    (let (profile (if (str.contains target "wasi") "wasi" "host"))
-                                                      (tag "Ok" (call codegen_wasm.codegen_module_profile ast profile))
+                                (let (base_dir (path_dir path))
+                                    (let (ast2 (inline_imports ast base_dir))
+                                        ;; 3. Type Check
+                                        (let (tc_res (typecheck.type_check_program ast2))
+                                            (match tc_res
+                                                (case (tag "Err" (msg)) (tag "Err" (str.concat "Type Check Error: " msg)))
+                                                (case (tag "Ok" (ignore))
+                                                    (if (str.contains target "wasm")
+                                                        (let (profile (if (str.contains target "wasi") "wasi" "host"))
+                                                          (tag "Ok" (codegen_wasm.codegen_module_profile ast2 profile))
+                                                        )
+                                                        (tag "Ok" (codegen.codegen ast2))
                                                     )
-                                                    (tag "Ok" (call codegen.codegen ast))
                                                 )
                                             )
                                         )
@@ -43,6 +285,7 @@
                     )
                 )
             )
+        )
         )
     )
   )

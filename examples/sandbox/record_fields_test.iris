@@ -1,0 +1,12 @@
+(program
+  (module (name "record_fields_test") (version 0))
+  (defs
+    (deffn (name main) (args) (ret I64) (eff !Pure)
+      (body
+        (let (r (record (n 1) (has_n true) (alg "x") (has_alg false)))
+          (if r.has_n 1 0)
+        )
+      )
+    )
+  )
+)

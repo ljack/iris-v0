@@ -481,10 +481,13 @@ function evalIntrinsicSync(
   if (op === "record.get") {
     const r = args[0];
     const f = args[1];
-    if (r.kind !== "Record" || f.kind !== "Str")
-      throw new Error("record.get expects Record and Str");
+    if (r.kind !== "Record")
+      throw new Error(
+        `Cannot access field ${f.kind === "Str" ? f.value : "?"} of non-record ${r.kind}`
+      );
+    if (f.kind !== "Str") throw new Error("record.get expects Record and Str");
     const val = r.fields[f.value];
-    if (val === undefined) throw new Error(`Field ${f.value} not found`);
+    if (val === undefined) throw new Error(`Unknown field ${f.value} in record`);
     return val;
   }
 
@@ -495,7 +498,7 @@ function evalIntrinsicSync(
       throw new Error("tuple.get expects Tuple and I64");
     const idx = Number(i.value);
     if (idx < 0 || idx >= t.items.length)
-      throw new Error("Tuple index out of bounds");
+      throw new Error(`Tuple index out of bounds: ${idx}`);
     return t.items[idx];
   }
 
@@ -503,6 +506,11 @@ function evalIntrinsicSync(
     return {
       kind: "Str",
       value: ((args[0] as any)?.value || "") + ((args[1] as any)?.value || ""),
+    };
+  if (op === "str.eq")
+    return {
+      kind: "Bool",
+      value: ((args[0] as any)?.value || "") === ((args[1] as any)?.value || ""),
     };
   if (op === "str.len")
     return {

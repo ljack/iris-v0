@@ -11,11 +11,11 @@ export const t64: TestCase = {
     (body (+ x 1)))
   (deffn (name g)
     (args (y I64)) (ret I64) (eff !Pure)
-    (body (call f y)))
+    (body (f y)))
   (deffn (name h)
     (args (z I64)) (ret I64) (eff !Pure)
-    (body (call g z)))
+    (body (g z)))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call h "bad")))))`
+    (body (h "bad")))))`
 };

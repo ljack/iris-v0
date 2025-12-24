@@ -9,7 +9,7 @@ const toolProgram = `(program
   (defs
     (deftool (name add) (args (a I64) (b I64)) (ret I64) (eff !IO))
     (deffn (name main) (args) (ret I64) (eff !IO)
-      (body (call add 2 5))
+      (body (add 2 5))
     )
   )
 )`;

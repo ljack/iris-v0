@@ -117,7 +117,7 @@ export const t370_async_call_with_resolver_no_func: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call m.nonexistent)))))`,
+    (body (m.nonexistent)))))`,
     modules: {
         'mod': `(program
  (module (name "mod") (version 0))
@@ -140,7 +140,7 @@ export const t371_async_call_with_resolver_no_import: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call m.func)))))`
+    (body (m.func)))))`
 };
 
 export const t372_async_call_with_resolver_no_program: TestCase = {
@@ -154,5 +154,5 @@ export const t372_async_call_with_resolver_no_program: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call m.func)))))`
+    (body (m.func)))))`
 };

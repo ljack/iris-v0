@@ -70,7 +70,7 @@ export const t384_map_keys_i64_str: TestCase = {
     (ret (List (Union (tag "I64" I64) (tag "Str" Str))))
     (eff !Pure)
     (body
-      (let (m (call make_poly_map (tag "I64" 0)))
+      (let (m (make_poly_map (tag "I64" 0)))
         (let (m2 (map.put m (tag "I64" 42) 1))
           (let (m3 (map.put m2 (tag "Str" "key") 2))
             (map.keys m3))))))))`
@@ -195,7 +195,7 @@ export const t392_async_var_from_env: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call f 42)))))`
+    (body (f 42)))))`
 };
 
 export const t393_async_var_shadowing: TestCase = {

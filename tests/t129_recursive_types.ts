@@ -33,15 +33,15 @@ export const t129 = {
               (case (tag "Leaf" (v)) v)
               (case (tag "Node" (r)) 
                  (+ (record.get r "val") 
-                    (+ (call sum_tree (record.get r "left")) 
-                       (call sum_tree (record.get r "right")))))
+                    (+ (sum_tree (record.get r "left")) 
+                       (sum_tree (record.get r "right")))))
             )
           )
         )
 
         (deffn (name main) (args) (ret I64) (eff !Pure)
           (body
-             (call sum_tree 
+             (sum_tree 
                (tag "Node" ((record (val 10) 
                                    (left (tag "Leaf" (5))) 
                                    (right (tag "Leaf" (3)))))))

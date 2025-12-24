@@ -11,8 +11,8 @@ export const t45: TestCase = {
     (body
       (if (<= n 0)
         0
-        (+ n (call sum_to (- n 1))))))
+        (+ n (sum_to (- n 1))))))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call sum_to 10)))))`
+    (body (sum_to 10)))))`
 };

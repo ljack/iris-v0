@@ -90,7 +90,7 @@ Here’s a **canonical printer + normalization spec** you can paste to Gemini so
 >
 > When running a test program:
 >
-> * Evaluate `(call main)` implicitly (or run `main` with zero args).
+> * Evaluate `(main)` implicitly (or run `main` with zero args).
 > * Print the resulting value using the canonical rules above.
 > * If the program is rejected at parse/typecheck time, print the error string as described above.
 >

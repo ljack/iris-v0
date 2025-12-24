@@ -23,7 +23,7 @@ const moduleB = `(program
     (args)
     (ret I64)
     (eff !Any)
-    (body (call a.add 10 20)))))`;
+    (body (a.add 10 20)))))`;
 
 export const t430_async_import_success: TestCase = {
     name: 'Test 430: cross-module call async',
@@ -63,7 +63,7 @@ export const t431_async_import_fail: TestCase = {
     (args)
     (ret I64)
     (eff !Any)
-    (body (call x.func)))))`;
+    (body (x.func)))))`;
 
         const parser = new Parser(source);
         const program = parser.parse();

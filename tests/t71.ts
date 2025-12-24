@@ -12,5 +12,5 @@ export const t71: TestCase = {
     (body (+ a (+ b (+ c (+ d e))))))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call compute_sum 1 2 3 4 5)))))`
+    (body (compute_sum 1 2 3 4 5)))))`
 };

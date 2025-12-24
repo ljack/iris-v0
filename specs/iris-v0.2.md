@@ -45,7 +45,7 @@ Literals / variables: !Pure
 
 (match scrut cases...): join(eff(scrut), join(all case bodies))
 
-(call f args...): join(eff(args...), eff(f))
+(f args...): join(eff(args...), eff(f))
 
 (io.read_file ...), (io.write_file ...), (io.print ...): !IO (plus joins of their args, if you want to be strict)
 
@@ -96,7 +96,7 @@ expect: 3
  (module (name "t21") (version 0))
  (defs
   (deffn (name p) (args) (ret I64) (eff !Pure) (body (+ 1 2)))
-  (deffn (name main) (args) (ret I64) (eff !Pure) (body (call p)))))
+  (deffn (name main) (args) (ret I64) (eff !Pure) (body (p)))))
 
 t22: Pure calling IO function is rejected
 
@@ -114,7 +114,7 @@ expect: TypeError: EffectMismatch:
     (args)
     (ret (Result Str Str))
     (eff !Pure)
-    (body (call ioer)))))
+    (body (ioer)))))
 
 t23: Declared !IO can call Pure
 
@@ -124,7 +124,7 @@ expect: 3
  (module (name "t23") (version 0))
  (defs
   (deffn (name p) (args) (ret I64) (eff !Pure) (body (+ 1 2)))
-  (deffn (name main) (args) (ret I64) (eff !IO) (body (call p)))))
+  (deffn (name main) (args) (ret I64) (eff !IO) (body (p)))))
 
 t24: Declared !Any can call IO
 
@@ -206,12 +206,12 @@ expect: TypeError: EffectMismatch:
     (args)
     (ret (Result Str Str))
     (eff !Pure)
-    (body (call helper)))
+    (body (helper)))
   (deffn (name main)
     (args)
     (ret (Result Str Str))
     (eff !Pure)
-    (body (call wrapper)))))
+    (body (wrapper)))))
 
 t29: !Infer (if you implement it): pure body infers !Pure
 

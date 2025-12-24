@@ -312,7 +312,7 @@ export const t311_async_call_unknown_function: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call nonexistent)))))`
+    (body (nonexistent)))))`
 };
 
 export const t312_async_call_arity_mismatch: TestCase = {
@@ -330,7 +330,7 @@ export const t312_async_call_arity_mismatch: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call f 1 2)))))`
+    (body (f 1 2)))))`
 };
 
 export const t313_async_constants: TestCase = {

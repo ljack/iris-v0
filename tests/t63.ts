@@ -11,5 +11,5 @@ export const t63: TestCase = {
     (body (+ x (+ y z))))
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
-    (body (call multi_arg 5)))))`
+    (body (multi_arg 5)))))`
 };

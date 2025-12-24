@@ -34,6 +34,7 @@ export class IrisWasmHost {
                 parse_i64: (ptr: bigint) => this.parseI64(ptr),
                 i64_to_string: (value: bigint) => this.i64ToString(value),
                 str_concat: (aPtr: bigint, bPtr: bigint) => this.strConcat(aPtr, bPtr),
+                str_eq: (aPtr: bigint, bPtr: bigint) => this.strEq(aPtr, bPtr),
                 rand_u64: () => this.randU64(),
                 args_list: () => this.argsList(),
                 record_get: (recordPtr: bigint, keyPtr: bigint) => this.recordGet(recordPtr, keyPtr),
@@ -45,8 +46,15 @@ export class IrisWasmHost {
     private readString(ptr: bigint): string {
         if (!this.memory) return '';
         const p = Number(ptr);
+        const bufLen = this.memory.buffer.byteLength;
+        if (p < 0 || p + 8 > bufLen) {
+            throw new Error(`readString: invalid ptr ${p} (mem ${bufLen})`);
+        }
         const view = new DataView(this.memory.buffer);
         const len = Number(view.getBigInt64(p, true));
+        if (len < 0 || p + 8 + len > bufLen) {
+            throw new Error(`readString: invalid len ${len} at ${p} (mem ${bufLen})`);
+        }
         const mem = new Uint8Array(this.memory.buffer);
         const bytes = mem.slice(p + 8, p + 8 + len);
         return new TextDecoder().decode(bytes);
@@ -77,7 +85,12 @@ export class IrisWasmHost {
     }
 
     private parseI64(ptr: bigint): bigint {
-        const text = this.readString(ptr).trim();
+        let text = '';
+        try {
+            text = this.readString(ptr).trim();
+        } catch (err: any) {
+            throw new Error(`parse_i64: ${err?.message ?? err}`);
+        }
         if (text === '') throw new Error('parse_i64: empty string');
         return BigInt(text);
     }
@@ -87,9 +100,35 @@ export class IrisWasmHost {
     }
 
     private strConcat(aPtr: bigint, bPtr: bigint): bigint {
-        const a = this.readString(aPtr);
-        const b = this.readString(bPtr);
+        let a = '';
+        let b = '';
+        try {
+            a = this.readString(aPtr);
+        } catch (err: any) {
+            throw new Error(`str_concat: a ${err?.message ?? err}`);
+        }
+        try {
+            b = this.readString(bPtr);
+        } catch (err: any) {
+            throw new Error(`str_concat: b ${err?.message ?? err}`);
+        }
         return this.writeString(a + b);
+    }
+
+    private strEq(aPtr: bigint, bPtr: bigint): bigint {
+        let a = '';
+        let b = '';
+        try {
+            a = this.readString(aPtr);
+        } catch (err: any) {
+            throw new Error(`str_eq: a ${err?.message ?? err}`);
+        }
+        try {
+            b = this.readString(bPtr);
+        } catch (err: any) {
+            throw new Error(`str_eq: b ${err?.message ?? err}`);
+        }
+        return a === b ? 1n : 0n;
     }
 
     private argsList(): bigint {
@@ -111,13 +150,31 @@ export class IrisWasmHost {
         if (!this.memory) return 0n;
         const base = Number(recordPtr);
         const view = new DataView(this.memory.buffer);
+        const bufLen = this.memory.buffer.byteLength;
+        if (base < 0 || base + 8 > bufLen) {
+            throw new Error(`record_get: invalid record ptr ${base} (mem ${bufLen})`);
+        }
         const len = Number(view.getBigInt64(base, true));
-        const key = this.readString(keyPtr);
+        let key = '';
+        try {
+            key = this.readString(keyPtr);
+        } catch (err: any) {
+            throw new Error(`record_get: key ${err?.message ?? err}`);
+        }
         for (let i = 0; i < len; i++) {
             const keyAddr = base + 8 + i * 16;
             const valAddr = base + 16 + i * 16;
+            if (keyAddr + 8 > bufLen || valAddr + 8 > bufLen) {
+                throw new Error(`record_get: entry out of bounds at ${keyAddr}/${valAddr} (mem ${bufLen}) key=${key} len=${len} base=${base}`);
+            }
             const entryKeyPtr = view.getBigInt64(keyAddr, true);
-            if (this.readString(entryKeyPtr) === key) {
+            let entryKey = '';
+            try {
+                entryKey = this.readString(entryKeyPtr);
+            } catch (err: any) {
+                throw new Error(`record_get: entry ${i} ${err?.message ?? err} key=${key} len=${len} base=${base}`);
+            }
+            if (entryKey === key) {
                 return view.getBigInt64(valAddr, true);
             }
         }

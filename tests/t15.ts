@@ -10,5 +10,5 @@ export const t15: TestCase = {
     (args)
     (ret I64)
     (eff !Pure)
-    (body (call no_such_fn 1)))))`
+    (body (no_such_fn 1)))))`
 };

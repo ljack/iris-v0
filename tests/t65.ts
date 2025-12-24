@@ -15,5 +15,5 @@ export const t65: TestCase = {
   (deffn (name main)
     (args) (ret I64) (eff !Pure)
     (body
-      (call add_five (call double (call add_five 53)))))))`
+      (add_five (double (add_five 53)))))))`
 };

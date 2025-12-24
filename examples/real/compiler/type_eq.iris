@@ -15,8 +15,8 @@
                     (match l2
                         (case (tag "nil") false)
                         (case (tag "cons" (h2 t2))
-                            (if (call type_eq h1 h2)
-                                (call type_list_eq t1 t2)
+                            (if (type_eq h1 h2)
+                                (type_list_eq t1 t2)
                                 false
                             )
                         )
@@ -38,8 +38,8 @@
                             (let (ty1 (tuple.get h1 1))
                             (let (n2 (tuple.get h2 0))
                             (let (ty2 (tuple.get h2 1))
-                                (if (&& (= n1 n2) (call type_eq ty1 ty2))
-                                    (call field_list_eq t1 t2)
+                                (if (&& (= n1 n2) (type_eq ty1 ty2))
+                                    (field_list_eq t1 t2)
                                     false
                                 )
                             ))))
@@ -48,6 +48,10 @@
                 )
              )
         )
+    )
+
+    (deffn (name variant_list_eq) (args (v1 (List (Tuple Str ast.IrisType))) (v2 (List (Tuple Str ast.IrisType)))) (ret Bool) (eff !Pure)
+        (body (field_list_eq v1 v2))
     )
 
     (deffn (name type_eq) (args (t1 ast.IrisType) (t2 ast.IrisType)) (ret Bool) (eff !Pure)
@@ -59,31 +63,31 @@
                 (case (tag "Unit" (_)) (match t2 (case (tag "Unit" (_)) true) (case (tag "_") false)))
                 (case (tag "Option" (o1)) 
                     (match t2 
-                        (case (tag "Option" (o2)) (call type_eq o1.inner o2.inner))
+                        (case (tag "Option" (o2)) (type_eq o1.inner o2.inner))
                         (case (tag "_") false)
                     )
                 )
                 (case (tag "Result" (r1))
                     (match t2
-                        (case (tag "Result" (r2)) (&& (call type_eq r1.ok r2.ok) (call type_eq r1.err r2.err)))
+                        (case (tag "Result" (r2)) (&& (type_eq r1.ok r2.ok) (type_eq r1.err r2.err)))
                         (case (tag "_") false)
                     )
                 )
                 (case (tag "List" (l1))
                     (match t2
-                        (case (tag "List" (l2)) (call type_eq l1.inner l2.inner))
+                        (case (tag "List" (l2)) (type_eq l1.inner l2.inner))
                         (case (tag "_") false)
                     )
                 )
                 (case (tag "Tuple" (tp1))
                     (match t2
-                        (case (tag "Tuple" (tp2)) (call type_list_eq tp1.items tp2.items))
+                        (case (tag "Tuple" (tp2)) (type_list_eq tp1.items tp2.items))
                         (case (tag "_") false)
                     )
                 )
                 (case (tag "Record" (rec1))
                     (match t2
-                        (case (tag "Record" (rec2)) (call field_list_eq rec1.fields rec2.fields))
+                        (case (tag "Record" (rec2)) (field_list_eq rec1.fields rec2.fields))
                         (case (tag "_") false)
                     )
                 )
@@ -91,7 +95,13 @@
                 (case (tag "Named" (n1)) (match t2 (case (tag "Named" (n2)) (= n1.name n2.name)) (case (tag "_") false)))
                 (case (tag "Map" (m1))
                     (match t2
-                        (case (tag "Map" (m2)) (&& (call type_eq m1.key m2.key) (call type_eq m1.value m2.value)))
+                        (case (tag "Map" (m2)) (&& (type_eq m1.key m2.key) (type_eq m1.value m2.value)))
+                        (case (tag "_") false)
+                    )
+                )
+                (case (tag "Union" (u1))
+                    (match t2
+                        (case (tag "Union" (u2)) (variant_list_eq u1.variants u2.variants))
                         (case (tag "_") false)
                     )
                 )
