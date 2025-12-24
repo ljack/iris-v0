@@ -120,7 +120,6 @@ connection.onCompletion((_textDocumentPosition) => {
     { label: "do", kind: CompletionItemKind.Keyword },
     { label: "cond", kind: CompletionItemKind.Keyword },
     { label: "if", kind: CompletionItemKind.Keyword },
-    { label: "call", kind: CompletionItemKind.Keyword },
     { label: "match", kind: CompletionItemKind.Keyword },
     { label: "case", kind: CompletionItemKind.Keyword },
     { label: "tag", kind: CompletionItemKind.Keyword },
@@ -159,6 +158,19 @@ connection.onHover((params) => {
   const name = symbolAtPosition(document, params.position);
   if (!name) {
     return null;
+  }
+
+  const dotBuiltin = dotAccessBuiltin(name);
+  if (dotBuiltin) {
+    const builtin = getBuiltinDoc(dotBuiltin);
+    if (builtin) {
+      return {
+        contents: {
+          kind: "markdown",
+          value: builtin.markdown,
+        },
+      };
+    }
   }
 
   const builtin = getBuiltinDoc(name);
@@ -1142,6 +1154,21 @@ function symbolAtPosition(
   }
   if (start === end) return null;
   return lineText.slice(start, end);
+}
+
+function dotAccessBuiltin(name: string): string | null {
+  if (!name.includes(".")) {
+    return null;
+  }
+  const parts = name.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+  const last = parts[parts.length - 1];
+  if (/^\d+$/.test(last)) {
+    return "tuple.get";
+  }
+  return "record.get";
 }
 
 function findBuiltinDocLocation(name: string): Location | null {
