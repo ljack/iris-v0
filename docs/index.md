@@ -73,14 +73,14 @@ Create `fib.iris`:
       (body 
         (if (< n 2)
             n
-            (+ (call fib (- n 1)) (call fib (- n 2))))
+            (+ (fib (- n 1)) (fib (- n 2))))
       )
     )
     
     (deffn (name main) (args) (ret I64) (eff !IO)
       (body 
         (let (res (io.print "Calculating fib(10)..."))
-             (let (val (call fib 10))
+             (let (val (fib 10))
                   (let (res2 (io.print val))
                        val)))
       )
@@ -92,6 +92,20 @@ Create `fib.iris`:
 **Run it:**
 ```bash
 iris run fib.iris
+```
+
+### Dot Access Sugar
+
+Iris supports dot access for record fields and tuple indexes. This is shorthand for `record.get` and `tuple.get`.
+
+```lisp
+;; These are equivalent:
+(record.get user "name")
+user.name
+
+;; Tuple access by index:
+(tuple.get pair 1)
+pair.1
 ```
 
 ### HTTP Server (Minimal)
@@ -124,10 +138,10 @@ Create `server.iris`:
       (body
          (match (net.accept server_sock)
             (case (tag "Ok" (client_sock))
-               (let (_ (call handle_client client_sock))
-                   (call loop server_sock))
+               (let (_ (handle_client client_sock))
+                   (loop server_sock))
             )
-            (case (tag "Err" (e)) (call loop server_sock))
+            (case (tag "Err" (e)) (loop server_sock))
          )
       )
     )
@@ -137,7 +151,7 @@ Create `server.iris`:
           (match (net.listen 8080)
              (case (tag "Ok" (server_sock))
                 (let (_ (io.print "Listening on http://localhost:8080"))
-                    (call loop server_sock)
+                    (loop server_sock)
                 )
              )
              (case (tag "Err" (e)) (io.print "Failed to listen"))
@@ -167,7 +181,7 @@ IRIS can call host-provided tools (handy for LLM agents and integrations). In th
     (deftool (name add) (args (a I64) (b I64)) (ret I64) (eff !IO)
       (doc "Adds two numbers"))
     (deffn (name main) (args) (ret I64) (eff !IO)
-      (body (call add 2 5))
+      (body (add 2 5))
     )
   )
 )
