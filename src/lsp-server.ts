@@ -225,6 +225,13 @@ connection.onDefinition((params) => {
   if (!name) {
     return null;
   }
+  const dotBuiltin = dotAccessBuiltin(name);
+  if (dotBuiltin) {
+    const docsLocation = findBuiltinDocLocation(dotBuiltin);
+    if (docsLocation) {
+      return [docsLocation];
+    }
+  }
   const program = programsByUri.get(params.textDocument.uri);
 
   if (program && !name.includes(".")) {
@@ -313,6 +320,13 @@ connection.onDeclaration((params) => {
   if (!name) {
     return null;
   }
+  const dotBuiltin = dotAccessBuiltin(name);
+  if (dotBuiltin) {
+    const docsLocation = findBuiltinDocLocation(dotBuiltin);
+    if (docsLocation) {
+      return [docsLocation];
+    }
+  }
   const program = programsByUri.get(params.textDocument.uri);
   const locations = resolveDefinitionLocations(
     name,
@@ -330,6 +344,13 @@ connection.onTypeDefinition((params) => {
   const name = symbolAtPosition(doc, params.position);
   if (!name) {
     return null;
+  }
+  const dotBuiltin = dotAccessBuiltin(name);
+  if (dotBuiltin) {
+    const docsLocation = findBuiltinDocLocation(dotBuiltin);
+    if (docsLocation) {
+      return [docsLocation];
+    }
   }
   const program = programsByUri.get(params.textDocument.uri);
   const typeDefs = resolveTypeDefinitionLocations(
@@ -351,6 +372,13 @@ connection.onImplementation((params) => {
   const name = symbolAtPosition(doc, params.position);
   if (!name) {
     return null;
+  }
+  const dotBuiltin = dotAccessBuiltin(name);
+  if (dotBuiltin) {
+    const docsLocation = findBuiltinDocLocation(dotBuiltin);
+    if (docsLocation) {
+      return [docsLocation];
+    }
   }
   const program = programsByUri.get(params.textDocument.uri);
   return resolveDefinitionLocations(name, params.textDocument.uri, program) ?? null;
