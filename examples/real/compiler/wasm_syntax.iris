@@ -17,7 +17,7 @@
 
     (deffn (name is_safe_id_char) (args (c I64)) (ret Bool) (eff !Pure)
       (body
-        (if (call is_alphanumeric c) true
+        (if (is_alphanumeric c) true
         (if (= c 95) true ;; _
         (if (= c 46) true ;; .
         (if (= c 45) true ;; -
@@ -31,8 +31,8 @@
           ""
           (match (str.get s i)
             (case (tag "Some" (c))
-              (let (tail (call sanitize_identifier_impl s (+ i 1) len))
-              (let (ch (if (call is_safe_id_char c) (str.from_code c) "_"))
+              (let (tail (sanitize_identifier_impl s (+ i 1) len))
+              (let (ch (if (is_safe_id_char c) (str.from_code c) "_"))
                 (str.concat ch tail)
               ))
             )
@@ -44,13 +44,13 @@
 
     (deffn (name sanitize_identifier) (args (s Str)) (ret Str) (eff !Pure)
       (body
-        (call sanitize_identifier_impl s 0 (str.len s))
+        (sanitize_identifier_impl s 0 (str.len s))
       )
     )
 
     (deffn (name local_id) (args (name Str)) (ret Str) (eff !Pure)
       (body
-        (str.concat "$" (call sanitize_identifier name))
+        (str.concat "$" (sanitize_identifier name))
       )
     )
 
@@ -60,7 +60,7 @@
           ""
           (match (str.get s i)
             (case (tag "Some" (c))
-              (let (tail (call escape_string_impl s (+ i 1) len))
+              (let (tail (escape_string_impl s (+ i 1) len))
               (let (ch 
                 (if (= c 34) "\\\""      ;; "
                 (if (= c 92) "\\\\"      ;; \
@@ -79,25 +79,25 @@
 
     (deffn (name escape_string) (args (s Str)) (ret Str) (eff !Pure)
       (body
-        (call escape_string_impl s 0 (str.len s))
+        (escape_string_impl s 0 (str.len s))
       )
     )
 
     (deffn (name quote_string) (args (s Str)) (ret Str) (eff !Pure)
       (body
-        (str.concat "\"" (str.concat (call escape_string s) "\""))
+        (str.concat "\"" (str.concat (escape_string s) "\""))
       )
     )
 
     (deffn (name block_comment) (args (s Str)) (ret Str) (eff !Pure)
       (body
-        (str.concat "(; " (str.concat (call escape_string s) " ;)"))
+        (str.concat "(; " (str.concat (escape_string s) " ;)"))
       )
     )
 
     (deffn (name indent2) (args (s Str)) (ret Str) (eff !Pure)
       (body
-        (call join_with (list "  " s) "")
+        (join_with (list "  " s) "")
       )
     )
 
@@ -109,7 +109,7 @@
             (match t
               (case (tag "nil" ()) h)
               (case (tag "cons" (_ _))
-                (str.concat h (str.concat sep (call join_with t sep)))
+                (str.concat h (str.concat sep (join_with t sep)))
               )
             )
           )
@@ -118,12 +118,12 @@
     )
 
     (deffn (name lines) (args (parts (List Str))) (ret Str) (eff !Pure)
-      (body (call join_with parts "\n"))
+      (body (join_with parts "\n"))
     )
 
     (deffn (name s) (args (head Str) (args (List Str))) (ret Str) (eff !Pure)
       (body
-        (let (tail (call join_with args " "))
+        (let (tail (join_with args " "))
           (if (= tail "")
             (str.concat "(" (str.concat head ")"))
             (str.concat "(" (str.concat head (str.concat " " (str.concat tail ")"))))
@@ -132,9 +132,20 @@
       )
     )
 
+    (deffn (name head_inline) (args (head Str) (args (List Str))) (ret Str) (eff !Pure)
+      (body
+        (let (tail (join_with args " "))
+          (if (= tail "")
+            head
+            (str.concat head (str.concat " " tail))
+          )
+        )
+      )
+    )
+
     (deffn (name head) (args (head Str) (args (List Str))) (ret Str) (eff !Pure)
       (body
-        (let (tail (call join_with args " "))
+        (let (tail (join_with args " "))
           (if (= tail "")
             (str.concat "(" head)
             (str.concat "(" (str.concat head (str.concat " " tail)))

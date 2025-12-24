@@ -287,7 +287,7 @@
       (body
         (let* ((param (ws.s "param" (list (ws.local_id "ptr") "i64")))
                (result (ws.s "result" (list "i64")))
-               (head (ws.join_with (list "func" (ws.local_id "host.print" ) param result) " "))
+               (head (ws.head_inline "func" (list (ws.local_id "host.print") param result)))
                (locals (ws.lines (list
                  (ws.s "local" (list (ws.local_id "len") "i64"))
                  (ws.s "local" (list (ws.local_id "buf") "i64"))
@@ -346,12 +346,11 @@
                                  (sig (if (= params "")
                                           result_sig
                                           (ws.join_with (list params result_sig) " ")))
-                                 (head (ws.join_with (list
-                                    "func"
+                                 (head (ws.head_inline "func" (list
                                     (ws.local_id f.name)
                                     (ws.s "export" (list (ws.quote_string f.name)))
                                     sig
-                                  ) " "))
+                                  )))
                                  (fixed_locals (ws.lines (list
                                   (ws.s "local" (list (ws.local_id "t0") "i64"))
                                   (ws.s "local" (list (ws.local_id "t1") "i64"))
@@ -396,20 +395,18 @@
                   )))
                   (ws.indent2 (ws.s "local.get" (list (ws.local_id "ptr"))))
                 )))
-               (alloc_head (ws.join_with (list
-                             "func"
+               (alloc_head (ws.head_inline "func" (list
                              (ws.local_id "alloc")
                              (ws.s "export" (list (ws.quote_string "alloc")))
                              (ws.s "param" (list (ws.local_id "size") "i64"))
                              (ws.s "result" (list "i64"))
-                           ) " "))
+                           )))
                (alloc (ws.block alloc_head alloc_body))
                (wasi_print (if (= profile "wasi") (gen_wasi_print) ""))
-               (start_head (ws.join_with (list
-                             "func"
+               (start_head (ws.head_inline "func" (list
                              (ws.local_id "_start")
                              (ws.s "export" (list (ws.quote_string "_start")))
-                           ) " "))
+                           )))
                (wasi_start (if (= profile "wasi")
                               (ws.block start_head
                                 (ws.lines (list
@@ -421,7 +418,7 @@
           (let (body (if (= profile "wasi")
                         (ws.lines (list imports alloc wasi_print defs wasi_start))
                         (ws.lines (list imports alloc defs))))
-            (let (module_head (ws.join_with (list "module") " "))
+            (let (module_head (ws.head_inline "module" (list)))
               (ws.lines (list (ws.block module_head body) ""))
             )
           )
