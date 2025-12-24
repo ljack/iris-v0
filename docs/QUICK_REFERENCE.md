@@ -18,6 +18,13 @@
 ✅ iris run examples/real/apps/http_server.iris      # Output: "Listening on http://localhost:8080"
 ```
 
+### WASM (WASI) Quick Run
+```bash
+✅ iris run-wasm examples/real/apps/hello_full.iris --wasm-profile wasi --no-run --wasm-out dist/wasm/hello_full.wasm
+✅ wasmtime run dist/wasm/hello_full.wasm
+✅ wasmer run dist/wasm/hello_full.wasm
+```
+
 ### Network Features (All 5 Implemented)
 ```
 ✅ net.listen(port: I64) -> Result<I64, Str>
