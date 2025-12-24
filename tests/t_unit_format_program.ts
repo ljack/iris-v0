@@ -1,5 +1,5 @@
 import { Parser } from '../src/sexp';
-import { formatProgram, viewProgram } from '../src/format';
+import { formatProgram, hideParens, viewProgram } from '../src/format';
 import { TestCase } from '../src/test-types';
 
 export const t_unit_format_program: TestCase = {
@@ -64,6 +64,15 @@ export const t_unit_format_program: TestCase = {
     const view = viewProgram(program);
     if (!view.includes('program') || !view.includes('defn main')) {
       throw new Error('viewProgram should include program and defn lines');
+    }
+
+    const hidden = hideParens('(program (defs (deffn (name main) (args) (ret I64) (eff !IO) (body (io.print "(ok)")))))');
+    const withoutStrings = hidden.replace(/"([^"\\]|\\.)*"/g, '""');
+    if (withoutStrings.includes('(') || withoutStrings.includes(')')) {
+      throw new Error('hideParens should remove parens outside strings');
+    }
+    if (!hidden.includes('"(ok)"')) {
+      throw new Error('hideParens should keep parens inside strings');
     }
   },
 };

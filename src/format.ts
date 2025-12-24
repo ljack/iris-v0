@@ -68,6 +68,42 @@ export function viewProgram(program: Program): string {
   return lines.join('\n');
 }
 
+export function hideParens(source: string): string {
+  let inString = false;
+  let escape = false;
+  const out: string[] = [];
+
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (inString) {
+      out.push(ch);
+      if (escape) {
+        escape = false;
+      } else if (ch === '\\') {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      out.push(ch);
+      continue;
+    }
+
+    if (ch === '(' || ch === ')') {
+      out.push(' ');
+      continue;
+    }
+
+    out.push(ch);
+  }
+
+  return out.join('');
+}
+
 function formatDefinition(def: Definition, level: number, options: FormatOptions): string[] {
   const lines: string[] = [];
   if (def.kind === 'DefConst') {

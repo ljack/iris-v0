@@ -68,8 +68,15 @@ async function test() {
     const viewHello = await runCli(`view hello.iris`);
     assert(
         'CLI View Hello',
-        viewHello.stdout.includes('program') && viewHello.stdout.includes('defn main'),
+        viewHello.stdout.includes('program') && !viewHello.stdout.includes('(') && !viewHello.stdout.includes(')'),
         `Got: ${viewHello.stdout}`,
+    );
+
+    const viewOutline = await runCli(`view hello.iris --outline`);
+    assert(
+        'CLI View Hello Outline',
+        viewOutline.stdout.includes('defn main'),
+        `Got: ${viewOutline.stdout}`,
     );
 
     // 5. Run Missing File

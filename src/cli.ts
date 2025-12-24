@@ -6,7 +6,7 @@ import { run, check } from './main';
 import { INetwork } from './eval';
 import { IrisWasmHost } from './runtime/wasm_host';
 import { Parser } from './sexp';
-import { formatProgram, viewProgram } from './format';
+import { formatProgram, hideParens, viewProgram } from './format';
 
 function warnIfStaleBuild(distFile: string, srcFile: string, label: string) {
     try {
@@ -49,6 +49,7 @@ Options:
   --wasm-profile <host|wasi>  For run-wasm: select ABI profile (default: host)
   --write       For format: overwrite the input file
   --preserve-sugar  For format: keep let*, cond, record.update when possible
+  --outline     For view: show structured outline instead of source view
 `);
 }
 
@@ -268,6 +269,11 @@ export async function cli(args: string[]) {
         const modules = loadAllModulesRecursively(absolutePath);
 
         if (command === 'format' || command === 'view') {
+            if (command === 'view' && !cleanArgs.includes('--outline')) {
+                console.log(hideParens(source));
+                return;
+            }
+
             const parser = new Parser(source, debug);
             const program = parser.parse();
             if (command === 'view') {
