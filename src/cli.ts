@@ -4,6 +4,22 @@ import * as path from 'path';
 import * as net from 'net';
 import { run, check } from './main';
 import { INetwork } from './eval';
+import { IrisWasmHost } from './runtime/wasm_host';
+
+function warnIfStaleBuild(distFile: string, srcFile: string, label: string) {
+    try {
+        if (!fs.existsSync(distFile) || !fs.existsSync(srcFile)) return;
+        const distStat = fs.statSync(distFile);
+        const srcStat = fs.statSync(srcFile);
+        if (srcStat.mtimeMs > distStat.mtimeMs) {
+            console.error(
+                `Warning: ${label} is newer than the compiled output. Run "npm run build" to sync dist/ before running.`,
+            );
+        }
+    } catch {
+        // Non-fatal; continue without warning.
+    }
+}
 
 function printHelp() {
     console.log(`
@@ -330,6 +346,17 @@ export async function cli(args: string[]) {
                 console.error(`Error: Compiler not found at ${compilerPath}`);
                 process.exit(1);
             }
+
+            warnIfStaleBuild(
+                path.resolve(__dirname, './runtime/wasm_host.js'),
+                path.resolve(__dirname, '../../src/runtime/wasm_host.ts'),
+                'src/runtime/wasm_host.ts',
+            );
+            warnIfStaleBuild(
+                path.resolve(__dirname, './cli.js'),
+                path.resolve(__dirname, '../../src/cli.ts'),
+                'src/cli.ts',
+            );
             const compilerSource = fs.readFileSync(compilerPath, 'utf-8');
             const compilerModules = loadAllModulesRecursively(compilerPath);
 
@@ -385,39 +412,15 @@ export async function cli(args: string[]) {
                 return;
             }
 
-            let memory: WebAssembly.Memory | null = null;
-            const importObj = {
-                host: {
-                    print: (ptr: bigint) => {
-                        if (!memory) return 0n;
-                        const base = Number(ptr);
-                        if (base < 0 || base + 8 > memory.buffer.byteLength) {
-                            console.log(ptr.toString());
-                            return 0n;
-                        }
-                        const view = new DataView(memory.buffer);
-                        const len = Number(view.getBigInt64(base, true));
-                        if (len < 0 || base + 8 + len > memory.buffer.byteLength) {
-                            console.log(ptr.toString());
-                            return 0n;
-                        }
-                        const bytes = new Uint8Array(memory.buffer, base + 8, len);
-                        const text = new TextDecoder('utf-8').decode(bytes);
-                        console.log(text);
-                        return 0n;
-                    },
-                    rand_u64: () => {
-                        const hi = Math.floor(Math.random() * 0x100000000);
-                        const lo = Math.floor(Math.random() * 0x100000000);
-                        return (BigInt(hi) << 32n) | BigInt(lo);
-                    },
-                },
-            };
+            const programArgs = wasmArgs.filter(a => !a.startsWith('--'));
+            const host = new IrisWasmHost({ onPrint: (text) => console.log(text), args: programArgs });
+            const importObj = host.getImportObject();
             try {
                 const instantiated = await WebAssembly.instantiate(wasmBytes, importObj);
                 const instResult = instantiated as unknown as WebAssembly.WebAssemblyInstantiatedSource;
                 const instance = instResult.instance ?? (instantiated as WebAssembly.Instance);
-                memory = (instance.exports.memory as WebAssembly.Memory) ?? null;
+                const memory = (instance.exports.memory as WebAssembly.Memory) ?? null;
+                if (memory) host.attachMemory(memory);
                 const main = instance.exports.main as (() => bigint) | undefined;
                 if (!main) {
                     console.error('Error: wasm module does not export main.');

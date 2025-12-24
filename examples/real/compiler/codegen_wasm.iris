@@ -258,10 +258,46 @@
                                     (ws.s "param" (list "i64"))
                                     (ws.s "result" (list "i64"))
                                   )))))
+               (parse_i64_type (ws.s "type"
+                              (list "$parse_i64_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "result" (list "i64"))
+                                  )))))
                (rand_type (ws.s "type"
                               (list "$rand_type"
                                 (ws.s "func"
                                   (list
+                                    (ws.s "result" (list "i64"))
+                                  )))))
+               (args_list_type (ws.s "type"
+                              (list "$args_list_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "result" (list "i64"))
+                                  )))))
+               (i64_to_string_type (ws.s "type"
+                              (list "$i64_to_string_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "result" (list "i64"))
+                                  )))))
+               (str_concat_type (ws.s "type"
+                              (list "$str_concat_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "result" (list "i64"))
+                                  )))))
+               (record_get_type (ws.s "type"
+                              (list "$record_get_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "param" (list "i64"))
                                     (ws.s "result" (list "i64"))
                                   )))))
                (memory (ws.s "memory" (list "$memory" "1")))
@@ -275,9 +311,19 @@
               ))
               (ws.lines (list
                 print_type
+                parse_i64_type
                 rand_type
+                args_list_type
+                i64_to_string_type
+                str_concat_type
+                record_get_type
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "print") (ws.s "func" (list "$host.print" (ws.s "type" (list "$print_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "parse_i64") (ws.s "func" (list "$host.parse_i64" (ws.s "type" (list "$parse_i64_type"))))))
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "rand_u64") (ws.s "func" (list "$host.rand_u64" (ws.s "type" (list "$rand_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "args_list") (ws.s "func" (list "$host.args_list" (ws.s "type" (list "$args_list_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "i64_to_string") (ws.s "func" (list "$host.i64_to_string" (ws.s "type" (list "$i64_to_string_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "str_concat") (ws.s "func" (list "$host.str_concat" (ws.s "type" (list "$str_concat_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "record_get") (ws.s "func" (list "$host.record_get" (ws.s "type" (list "$record_get_type"))))))
               ))
             ))
             (let (suffix (ws.lines (list memory mem_export)))

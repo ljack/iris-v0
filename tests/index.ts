@@ -93,6 +93,7 @@ export { t507_examples_typecheck } from './t507_examples_typecheck';
 export { t510_let_star, t511_record_update, t512_cond, t513_do, t515_dot_access } from './t510_syntax_sugar';
 export { t514_parser_metadata, t514_parser_unknown_section_trace } from './t514_parser_metadata';
 export { t520_capability_profiles } from './t520_capability_profiles';
+export { t521_wasm_host_imports } from './t521_wasm_host_imports';
 export { t80 } from './t80';
 export { t81 } from './t81';
 export { t82 } from './t82';
