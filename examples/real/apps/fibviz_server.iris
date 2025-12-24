@@ -55,7 +55,8 @@
           (case (tag "Ok" (client_sock))
             (let (_ (handle_client client_sock))
               (loop server_sock)))
-          (case (tag "Err" (_)) (loop server_sock)))))
+          (case (tag "Err" (_)) (loop server_sock))))
+    )
 
     (deffn (name main) (args) (ret I64) (eff !Net)
       (body

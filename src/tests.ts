@@ -17,6 +17,7 @@ import { t_unit_lsp_workspace } from '../tests/t_unit_lsp_workspace';
 import { t_unit_lsp_imports } from '../tests/t_unit_lsp_imports';
 import { t_unit_lsp_docs } from '../tests/t_unit_lsp_docs';
 import { t_unit_process_manager } from '../tests/t_unit_process_manager';
+import { t_unit_format_program } from '../tests/t_unit_format_program';
 
 const tests: TestCase[] = [
   t_unit_fmt,
@@ -26,6 +27,7 @@ const tests: TestCase[] = [
   t_unit_lsp_imports,
   t_unit_lsp_docs,
   t_unit_process_manager,
+  t_unit_format_program,
   ...(grep
     ? allTests.filter(t => t.name.toLowerCase().includes(grep!.toLowerCase()))
     : allTests)

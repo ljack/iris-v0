@@ -56,6 +56,22 @@ async function test() {
     const checkHello = await runCli(`check hello.iris`);
     assert('CLI Check Hello', checkHello.stdout.includes('No type errors'), `Got: ${checkHello.stdout}`);
 
+    // 4b. Format Hello World
+    const formatHello = await runCli(`format hello.iris`);
+    assert(
+        'CLI Format Hello',
+        formatHello.stdout.startsWith('(program') && formatHello.stdout.includes('(defs'),
+        `Got: ${formatHello.stdout}`,
+    );
+
+    // 4c. View Hello World
+    const viewHello = await runCli(`view hello.iris`);
+    assert(
+        'CLI View Hello',
+        viewHello.stdout.includes('program') && viewHello.stdout.includes('defn main'),
+        `Got: ${viewHello.stdout}`,
+    );
+
     // 5. Run Missing File
     const missing = await runCli('run ghost.iris');
     assert('CLI Missing File', missing.code !== 0 && missing.stderr.includes('File not found'), `Should fail. Stderr: ${missing.stderr}`);

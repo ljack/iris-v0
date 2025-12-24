@@ -5,6 +5,8 @@ import * as net from 'net';
 import { run, check } from './main';
 import { INetwork } from './eval';
 import { IrisWasmHost } from './runtime/wasm_host';
+import { Parser } from './sexp';
+import { formatProgram, viewProgram } from './format';
 
 function warnIfStaleBuild(distFile: string, srcFile: string, label: string) {
     try {
@@ -28,6 +30,8 @@ Usage: iris [command] [options]
 Commands:
   run <file>    Run an IRIS program
   check <file>  Type-check an IRIS program
+  format <file> Format an IRIS program
+  view <file>   Humanize an IRIS program (hide parentheses)
   run-wasm <file>  Compile IRIS to wasm and run it
   version       Show version
   help          Show this help message
@@ -43,6 +47,7 @@ Options:
   --wasm-out <file>  For run-wasm: write wasm binary to file
   --compiler <file>  For run-wasm: path to compiler.iris
   --wasm-profile <host|wasi>  For run-wasm: select ABI profile (default: host)
+  --write       For format: overwrite the input file
 `);
 }
 
@@ -246,7 +251,7 @@ export async function cli(args: string[]) {
         return;
     }
 
-    if (command === 'run' || command === 'check' || command === 'run-wasm') {
+    if (command === 'run' || command === 'check' || command === 'run-wasm' || command === 'format' || command === 'view') {
         if (!file) {
             console.error('Error: No file specified.');
             process.exit(1);
@@ -260,6 +265,22 @@ export async function cli(args: string[]) {
 
         const source = fs.readFileSync(absolutePath, 'utf-8');
         const modules = loadAllModulesRecursively(absolutePath);
+
+        if (command === 'format' || command === 'view') {
+            const parser = new Parser(source, debug);
+            const program = parser.parse();
+            if (command === 'view') {
+                console.log(viewProgram(program));
+                return;
+            }
+            const formatted = formatProgram(program);
+            if (cleanArgs.includes('--write')) {
+                fs.writeFileSync(absolutePath, formatted, 'utf-8');
+            } else {
+                console.log(formatted);
+            }
+            return;
+        }
 
         if (command === 'check') {
             const result = check(source, modules);
