@@ -156,7 +156,7 @@ iris-v0/
 │   ├── tests/                   # LSP/compiler fixtures
 │   └── sandbox/                 # Scratchpad files
 ├── tests/
-│   ├── t01.ts through t82.ts   # 82 tests
+│   ├── t01.ts through t82.ts   # Core test suite
 │   ├── t90.ts              # Module test
 │   ├── t100+ through t113.ts   # Advanced tests
 │   └── test_server.ts      # Integration test
@@ -176,7 +176,7 @@ iris-v0/
 npm run build              # Compile TypeScript
 
 # Testing
-npm run test               # Run 96 tests
+npm run test               # Run the full test suite
 npm run test-cli           # CLI tests only
 
 # Using IRIS

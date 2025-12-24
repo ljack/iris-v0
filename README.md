@@ -1,6 +1,6 @@
 # IRIS v0 - AI-Centric Deterministic Programming Language
 
-[![Tests Passing](https://img.shields.io/badge/tests-82%2F82%20passing-brightgreen)](./tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)](./tests/)
 [![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green)](#license)
 
@@ -144,11 +144,11 @@ iris-v0/
 │   ├── tests.ts           # Test runner harness
 │   └── test-types.ts      # Test type definitions
 │
-├── tests/                 # 82 comprehensive tests
+├── tests/                 # Comprehensive test suite
 │   ├── t01-t10.ts        # Tier 1: Core features
 │   ├── t11-t20.ts        # Tier 2: Advanced features
 │   ├── t21-t30.ts        # Tier 3a: Effect lattice
-│   └── t31-t82.ts        # Tier 3b: Adversarial/edge cases
+│   └── t31+.ts           # Tier 3b: Adversarial/edge cases
 │
 ├── specs/                # Specification documents
 │   ├── iris-v0.1.md      # Core language specification
@@ -222,7 +222,7 @@ Output
 
 ## Testing
 
-All 82 tests pass with 100% success rate:
+All tests pass in CI:
 
 ```bash
 npm test
@@ -230,13 +230,12 @@ npm test
 
 ### Test Tiers
 
-| Tier | Range | Count | Focus |
-|------|-------|-------|-------|
-| Tier 1 | T01-T10 | 10 | Core features (literals, arithmetic, control flow) |
-| Tier 2 | T11-T20 | 10 | Advanced features (records, Results, fuel limits) |
-| Tier 3a | T21-T30 | 10 | Effect lattice and inference |
-| Tier 3b | T31-T82 | 52 | Adversarial and edge cases |
-| **Total** | | **82** | **Comprehensive coverage** |
+| Tier | Range | Focus |
+|------|-------|-------|
+| Tier 1 | T01-T10 | Core features (literals, arithmetic, control flow) |
+| Tier 2 | T11-T20 | Advanced features (records, Results, fuel limits) |
+| Tier 3a | T21-T30 | Effect lattice and inference |
+| Tier 3b | T31+ | Adversarial and edge cases |
 
 ## Language Specification
 
@@ -521,9 +520,9 @@ See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for full contributor list.
 ## Changelog
 
 ### v0.3 (Current)
-- 82 comprehensive tests (all passing)
+- Comprehensive test suite (all passing)
 - Complete effect lattice system
-- Adversarial test suite (T31-T82)
+- Adversarial test suite (T31+)
 - Module system planning (Goal 4)
 
 ### v0.2
