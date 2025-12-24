@@ -71,6 +71,9 @@ export const t151_wasm_snippet_gen_defs = {
       '(local $t0 i64)',
       '(local $t1 i64)',
       '(local $t2 i64)',
+      '(local $t3 i64)',
+      '(local $t4 i64)',
+      '(local $t5 i64)',
       '(local $target i64)',
       '(i64.const 1)',
       ')'

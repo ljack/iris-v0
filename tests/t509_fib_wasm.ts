@@ -72,6 +72,7 @@ export const t509_fib_wasm: TestCase = {
         print: (_ptr: bigint) => 0n,
         i64_to_string: (_value: bigint) => 0n,
         str_concat: (_aPtr: bigint, _bPtr: bigint) => 0n,
+        str_eq: (_aPtr: bigint, _bPtr: bigint) => 0n,
         rand_u64: () => 0n,
         args_list: () => 0n,
         parse_i64: (_ptr: bigint) => 0n,
