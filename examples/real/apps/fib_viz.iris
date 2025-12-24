@@ -1,0 +1,172 @@
+;; Web app driver: Fibonacci visualizer emits EVT/METRIC lines for the browser UI.
+;; Uses sys.args: [n, alg1, alg2, ...]. Defaults to n=12 and iterative/fast-doubling/recursive.
+(program
+  (module (name "fib_viz") (version 0))
+  (defs
+    (deffn (name kv_i64) (args (key Str) (val I64)) (ret Str) (eff !Pure)
+      (body (str.concat key (str.concat "=" (i64.to_string val))))
+    )
+
+    (deffn (name kv_str) (args (key Str) (val Str)) (ret Str) (eff !Pure)
+      (body (str.concat key (str.concat "=" val)))
+    )
+
+    (deffn (name emit_evt)
+      (args (alg Str) (step I64) (n I64) (a I64) (b I64) (val I64))
+      (ret I64) (eff !IO)
+      (body
+        (io.print
+          (str.concat "EVT "
+            (str.concat (kv_str "alg" alg)
+              (str.concat " "
+                (str.concat (kv_i64 "step" step)
+                  (str.concat " "
+                    (str.concat (kv_i64 "n" n)
+                      (str.concat " "
+                        (str.concat (kv_i64 "a" a)
+                          (str.concat " "
+                            (str.concat (kv_i64 "b" b)
+                              (str.concat " " (kv_i64 "val" val)))))))))))))
+      )
+    )
+
+    (deffn (name emit_metric)
+      (args (alg Str) (steps I64) (result I64))
+      (ret I64) (eff !IO)
+      (body
+        (io.print
+          (str.concat "METRIC "
+            (str.concat (kv_str "alg" alg)
+              (str.concat " "
+                (str.concat (kv_i64 "steps" steps)
+                  (str.concat " " (kv_i64 "result" result)))))))
+      )
+    )
+
+    (deffn (name fib_iterative_trace) (args (n I64) (alg Str)) (ret (Record (value I64) (steps I64))) (eff !IO)
+      (body
+        (if (< n 2)
+          (record (value n) (steps 0))
+          (let (a 0)
+            (let (b 1)
+              (let (i 1)
+                (let (steps 0)
+                  (loop_iter alg n a b i steps))))))
+      )
+    )
+
+    (deffn (name loop_iter)
+      (args (alg Str) (n I64) (a I64) (b I64) (i I64) (steps I64))
+      (ret (Record (value I64) (steps I64))) (eff !IO)
+      (body
+        (if (>= i n)
+          (record (value b) (steps steps))
+          (let (_ (emit_evt alg steps n a b b))
+            (let (next (+ a b))
+              (loop_iter alg n b next (+ i 1) (+ steps 1))))))
+    )
+
+    (deffn (name fib_recursive_trace)
+      (args (n I64) (alg Str) (depth I64) (steps I64))
+      (ret (Record (value I64) (steps I64))) (eff !IO)
+      (body
+        (let (_ (emit_evt alg steps n depth 0 n))
+          (if (< n 2)
+            (record (value n) (steps (+ steps 1)))
+            (let (left (fib_recursive_trace (- n 1) alg (+ depth 1) (+ steps 1)))
+              (let (lv (record.get left "value"))
+                (let (s1 (record.get left "steps"))
+                  (let (right (fib_recursive_trace (- n 2) alg (+ depth 1) s1))
+                    (let (rv (record.get right "value"))
+                      (let (s2 (record.get right "steps"))
+                        (record (value (+ lv rv)) (steps s2)))))))))))
+    )
+
+    (deffn (name fib_fast_doubling_pair) (args (n I64) (steps I64))
+      (ret (Record (a I64) (b I64) (steps I64))) (eff !Pure)
+      (body
+        (if (= n 0)
+          (record (a 0) (b 1) (steps (+ steps 1)))
+          (let (half (fib_fast_doubling_pair (/ n 2) (+ steps 1)))
+            (let (a (record.get half "a"))
+              (let (b (record.get half "b"))
+                (let (s1 (record.get half "steps"))
+                  (let (two_b (- (* 2 b) a))
+                    (let (c (* a two_b))
+                      (let (d (+ (* a a) (* b b)))
+                        (if (= (% n 2) 0)
+                          (record (a c) (b d) (steps s1))
+                          (record (a d) (b (+ c d)) (steps s1))))))))))))
+    )
+
+    (deffn (name fib_fast_doubling) (args (n I64)) (ret (Record (value I64) (steps I64))) (eff !Pure)
+      (body
+        (let (res (fib_fast_doubling_pair n 0))
+          (record (value (record.get res "a")) (steps (record.get res "steps"))))
+      )
+    )
+
+    (deffn (name run_alg) (args (alg Str) (n I64)) (ret I64) (eff !IO)
+      (body
+        (cond
+          (case (str.eq alg "iterative")
+            (let (res (fib_iterative_trace n alg))
+              (let (_ (emit_metric alg (record.get res "steps") (record.get res "value")))
+                (record.get res "value"))))
+          (case (str.eq alg "recursive")
+            (if (> n 20)
+              (let (_ (io.print "METRIC alg=recursive steps=0 result=0"))
+                0)
+              (let (res (fib_recursive_trace n alg 0 0))
+                (let (_ (emit_metric alg (record.get res "steps") (record.get res "value")))
+                  (record.get res "value")))))
+          (case (str.eq alg "fast-doubling")
+            (let (res (fib_fast_doubling n))
+              (let (_ (emit_metric alg (record.get res "steps") (record.get res "value")))
+                (record.get res "value"))))
+          (else
+            (let (res (fib_iterative_trace n "iterative"))
+              (let (_ (emit_metric "iterative" (record.get res "steps") (record.get res "value")))
+                (record.get res "value"))))))
+    )
+
+    (deffn (name collect_algs)
+      (args (args (List Str)) (idx I64))
+      (ret (List Str)) (eff !Pure)
+      (body
+        (if (>= idx (list.length args))
+          (list-of Str)
+          (match (list.get args idx)
+            (case (tag "None") (list-of Str))
+            (case (tag "Some" (a))
+              (cons a (collect_algs args (+ idx 1))))
+          ))
+      )
+    )
+
+    (deffn (name main) (args) (ret I64) (eff !IO)
+      (body
+        (let (args (sys.args))
+          (let (n_opt (list.get args 0))
+            (let (n (match n_opt
+              (case (tag "Some" (s)) (i64.from_string s))
+              (case (tag "None") 12)))
+              (let (algs (collect_algs args 1))
+                (let (final_algs (if (> (list.length algs) 0)
+                  algs
+                  (list "iterative" "fast-doubling" "recursive")))
+                  (run_all final_algs n)))))))
+    )
+
+    (deffn (name run_all) (args (algs (List Str)) (n I64)) (ret I64) (eff !IO)
+      (body
+        (match algs
+          (case (tag "nil") 0)
+          (case (tag "cons" (h t))
+            (let (_ (io.print (str.concat "RUN alg=" (str.concat h (str.concat " n=" (i64.to_string n))))))
+              (let (_ (run_alg h n))
+                (run_all t n)))))
+      )
+    )
+  )
+)
