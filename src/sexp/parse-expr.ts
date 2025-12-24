@@ -19,6 +19,9 @@ export function parseExpr(ctx: ParserContext): Expr {
         if (token.value === 'None') { ctx.consume(); return { kind: 'Literal', value: { kind: 'Option', value: null } }; }
         if (token.value === 'nil') { ctx.consume(); return { kind: 'Literal', value: { kind: 'List', items: [] } }; }
         ctx.consume();
+        if (token.value.includes('.')) {
+            return buildDotAccess(token.value);
+        }
         return { kind: 'Var', name: token.value, span: tokenSpan(token) };
     }
 
@@ -213,18 +216,12 @@ export function parseExpr(ctx: ParserContext): Expr {
             return { kind: 'Match', target, cases };
         }
         if (op === 'call') {
-            const fnToken = ctx.expectSymbolToken();
-            const fn = fnToken.value;
-            const args: Expr[] = [];
-            while (!ctx.check('RParen')) {
-                args.push(parseExpr(ctx));
-            }
-            ctx.expect('RParen');
-            return { kind: 'Call', fn, fnSpan: tokenSpan(fnToken), args };
+            const at = opSpan ? `${opSpan.line}:${opSpan.col}` : 'unknown';
+            throw new Error(`Legacy call syntax '(call ...)' is not supported; use '(fn ...)' at ${at}`);
         }
 
         // Constructors / Intrinsics
-        if (['+', '-', '*', '/', '%', '<=', '<', '=', '>=', '>', '&&', '||', '!', 'Some', 'Ok', 'Err', 'cons', 'tuple.get', 'record.get', 'io.print', 'io.read_file', 'io.write_file', 'i64.from_string', 'i64.to_string'].includes(op)) {
+        if (['+', '-', '*', '/', '%', '<=', '<', '=', '>=', '>', '&&', '||', '!', 'Some', 'Ok', 'Err', 'cons', 'tuple.get', 'record.get', 'io.print', 'io.read_file', 'io.write_file', 'i64.from_string', 'i64.to_string', 'rand.u64'].includes(op)) {
             const args: Expr[] = [];
             while (!ctx.check('RParen')) {
                 args.push(parseExpr(ctx));
@@ -275,6 +272,16 @@ export function parseExpr(ctx: ParserContext): Expr {
 
         // Check for (sys.* ...)
         if (op.startsWith('sys.')) {
+            const args: Expr[] = [];
+            while (!ctx.check('RParen')) {
+                args.push(parseExpr(ctx));
+            }
+            ctx.expect('RParen');
+            return { kind: 'Intrinsic', op: op as IntrinsicOp, args };
+        }
+
+        // Check for (rand.* ...)
+        if (op.startsWith('rand.')) {
             const args: Expr[] = [];
             while (!ctx.check('RParen')) {
                 args.push(parseExpr(ctx));
@@ -385,4 +392,22 @@ export function parseExpr(ctx: ParserContext): Expr {
     }
 
     throw new Error(`Unexpected token for expression: ${token.kind} at ${token.line}:${token.col}`);
+}
+
+function buildDotAccess(name: string): Expr {
+    const parts = name.split('.').filter(p => p.length > 0);
+    if (parts.length === 0) return { kind: 'Var', name };
+
+    let expr: Expr = { kind: 'Var', name: parts[0] };
+    for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+        if (/^\d+$/.test(part)) {
+            const idxExpr: Expr = { kind: 'Literal', value: { kind: 'I64', value: BigInt(part) } };
+            expr = { kind: 'Intrinsic', op: 'tuple.get', args: [expr, idxExpr] };
+        } else {
+            const keyExpr: Expr = { kind: 'Literal', value: { kind: 'Str', value: part } };
+            expr = { kind: 'Intrinsic', op: 'record.get', args: [expr, keyExpr] };
+        }
+    }
+    return expr;
 }

@@ -390,13 +390,26 @@ export async function cli(args: string[]) {
                 host: {
                     print: (ptr: bigint) => {
                         if (!memory) return 0n;
-                        const view = new DataView(memory.buffer);
                         const base = Number(ptr);
+                        if (base < 0 || base + 8 > memory.buffer.byteLength) {
+                            console.log(ptr.toString());
+                            return 0n;
+                        }
+                        const view = new DataView(memory.buffer);
                         const len = Number(view.getBigInt64(base, true));
+                        if (len < 0 || base + 8 + len > memory.buffer.byteLength) {
+                            console.log(ptr.toString());
+                            return 0n;
+                        }
                         const bytes = new Uint8Array(memory.buffer, base + 8, len);
                         const text = new TextDecoder('utf-8').decode(bytes);
                         console.log(text);
                         return 0n;
+                    },
+                    rand_u64: () => {
+                        const hi = Math.floor(Math.random() * 0x100000000);
+                        const lo = Math.floor(Math.random() * 0x100000000);
+                        return (BigInt(hi) << 32n) | BigInt(lo);
                     },
                 },
             };

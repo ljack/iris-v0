@@ -8,17 +8,27 @@
       (body
         (if (< n 2)
             n
-            (+ (call fib (- n 1)) (call fib (- n 2))))
+            (+ (fib (- n 1)) (fib (- n 2))))
       )
     )
 
     (deffn (name main) (args) (ret I64) (eff !IO)
-      (doc "Print fib(10) and return the result.")
+      (doc "Print fib(n). Uses CLI arg if provided; otherwise picks a random 1-100.")
       (body
-        (let (res (io.print "Calculating fib(10)..."))
-             (let (val (call fib 10))
-                  (let (res2 (io.print val))
-                       val)))
+        (let* ((args (sys.args))
+               (arg_opt (list.get args 0))
+               (n (match arg_opt
+                    (case (tag "Some" (raw)) (i64.from_string raw))
+                    (case (tag "None") (+ 1 (% (rand.u64) 100)))
+                  )))
+          (let (_ (io.print "Calculating fib..."))
+            (let (val (fib n))
+              (let (_ (io.print val))
+                val
+              )
+            )
+          )
+        )
       )
     )
   )

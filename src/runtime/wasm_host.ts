@@ -25,6 +25,7 @@ export class IrisWasmHost {
         return {
             host: {
                 print: (ptr: bigint) => this.print(ptr),
+                rand_u64: () => this.randU64(),
                 tool_call_json: (namePtr: bigint, argsPtr: bigint) => this.toolCallJson(namePtr, argsPtr)
             }
         };
@@ -41,10 +42,29 @@ export class IrisWasmHost {
     }
 
     private print(ptr: bigint): bigint {
+        if (!this.memory) return 0n;
+        const base = Number(ptr);
+        if (base < 0 || base + 8 > this.memory.buffer.byteLength) {
+            this.onPrint(ptr.toString());
+            return 0n;
+        }
+        const view = new DataView(this.memory.buffer);
+        const len = Number(view.getBigInt64(base, true));
+        if (len < 0 || base + 8 + len > this.memory.buffer.byteLength) {
+            this.onPrint(ptr.toString());
+            return 0n;
+        }
         const text = this.readString(ptr);
         this.onPrint(text);
         return 0n;
     }
+
+    private randU64(): bigint {
+        const hi = Math.floor(Math.random() * 0x100000000);
+        const lo = Math.floor(Math.random() * 0x100000000);
+        return (BigInt(hi) << 32n) | BigInt(lo);
+    }
+
 
     private toolCallJson(namePtr: bigint, argsPtr: bigint): bigint {
         const name = this.readString(namePtr);

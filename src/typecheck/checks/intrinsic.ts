@@ -114,6 +114,12 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
         }
     }
 
+    if (expr.op === 'rand.u64') {
+        if (argTypes.length !== 0) throw new Error("rand.u64 expects 0 arguments");
+        joinedEff = joinEffects(joinedEff, '!IO');
+        return { type: { type: 'I64' }, eff: joinedEff };
+    }
+
     if (expr.op.startsWith('net.')) {
         joinedEff = joinEffects(joinedEff, '!Net');
         if (expr.op === 'net.listen') return { type: { type: 'Result', ok: { type: 'I64' }, err: { type: 'Str' } }, eff: joinedEff };
@@ -238,12 +244,13 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
 
     if (expr.op === 'tuple.get') {
         if (argTypes.length !== 2) throw new Error("tuple.get expects 2 args (tuple, index)");
-        const [t, idx] = argTypes;
+        const [tRaw, idx] = argTypes;
+        const t = resolve(ctx, tRaw);
         if (t.type !== 'Tuple') throw new Error("tuple.get expects Tuple");
         if (idx.type !== 'I64') throw new Error("tuple.get expects I64 index");
         if (expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'I64') {
             const i = Number(expr.args[1].value.value);
-            if (i < 0 || i >= t.items.length) throw new Error("tuple.get index out of bounds");
+            if (i < 0 || i >= t.items.length) throw new Error(`Tuple index out of bounds: ${i}`);
             return { type: t.items[i], eff: joinedEff };
         }
         throw new Error("tuple.get requires literal index for type safety");
@@ -251,14 +258,15 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
 
     if (expr.op === 'record.set') {
         if (argTypes.length !== 3) throw new Error("record.set expects 3 args (record, key, value)");
-        const [rec, k, v] = argTypes;
+        const [recRaw, k, v] = argTypes;
+        const rec = resolve(ctx, recRaw);
         if (rec.type !== 'Record') throw new Error("record.set expects Record");
         if (k.type !== 'Str') throw new Error("record.set expects Str key");
 
         if (expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'Str') {
             const keyVal = expr.args[1].value.value;
             const fieldType = rec.fields[keyVal];
-            if (!fieldType) throw new Error(`Record has no field '${keyVal}'`);
+            if (!fieldType) throw new Error(`Unknown field ${keyVal} in record`);
             expectType(ctx, fieldType, v, `record.set value mismatch for '${keyVal}'`);
             return { type: rec, eff: joinedEff };
         }
@@ -267,14 +275,23 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
 
     if (expr.op === 'record.get') {
         if (argTypes.length !== 2) throw new Error("record.get expects 2 args");
-        const [rec, k] = argTypes;
-        if (rec.type !== 'Record') throw new Error("record.get expects Record");
+        const [recRaw, k] = argTypes;
+        const rec = resolve(ctx, recRaw);
+        if (rec.type !== 'Record') {
+            const fieldName = expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'Str'
+                ? expr.args[1].value.value
+                : 'field';
+            if (expr.args[0].kind === 'Var') {
+                throw new Error(`Cannot access field ${fieldName} of non-record ${expr.args[0].name}`);
+            }
+            throw new Error(`Cannot access field ${fieldName} of non-record`);
+        }
         if (k.type !== 'Str') throw new Error("record.get expects Str key");
 
         if (expr.args[1].kind === 'Literal' && expr.args[1].value.kind === 'Str') {
             const keyVal = expr.args[1].value.value;
             const fieldType = rec.fields[keyVal];
-            if (!fieldType) throw new Error(`Record has no field '${keyVal}'`);
+            if (!fieldType) throw new Error(`Unknown field ${keyVal} in record`);
             return { type: fieldType, eff: joinedEff };
         }
         throw new Error("record.get requires literal string key");

@@ -258,6 +258,12 @@
                                     (ws.s "param" (list "i64"))
                                     (ws.s "result" (list "i64"))
                                   )))))
+               (rand_type (ws.s "type"
+                              (list "$rand_type"
+                                (ws.s "func"
+                                  (list
+                                    (ws.s "result" (list "i64"))
+                                  )))))
                (memory (ws.s "memory" (list "$memory" "1")))
                (mem_export (ws.s "export" (list (ws.quote_string "memory") (ws.s "memory" (list "$memory"))))))
           (let (prefix
@@ -269,7 +275,9 @@
               ))
               (ws.lines (list
                 print_type
+                rand_type
                 (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "print") (ws.s "func" (list "$host.print" (ws.s "type" (list "$print_type"))))))
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "rand_u64") (ws.s "func" (list "$host.rand_u64" (ws.s "type" (list "$rand_type"))))))
               ))
             ))
             (let (suffix (ws.lines (list memory mem_export)))

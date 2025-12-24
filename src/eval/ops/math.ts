@@ -77,5 +77,11 @@ export function evalMath(op: IntrinsicOp, args: Value[]): Value {
         return { kind: 'Str', value: val.value.toString() };
     }
 
+    if (op === 'rand.u64') {
+        const hi = Math.floor(Math.random() * 0x100000000);
+        const lo = Math.floor(Math.random() * 0x100000000);
+        return { kind: 'I64', value: (BigInt(hi) << 32n) | BigInt(lo) };
+    }
+
     throw new Error(`Unknown math op: ${op}`);
 }
