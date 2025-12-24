@@ -59,6 +59,14 @@ npm install
 npm test
 ```
 
+### CLI Arguments
+
+Pass extra arguments after the file path. They are available via `sys.args` as a list of strings.
+
+```bash
+iris run examples/real/apps/fib.iris 10
+```
+
 ## Iris Guardrails
 
 Install the pre-commit hook to catch missing parentheses in staged `.iris` files:

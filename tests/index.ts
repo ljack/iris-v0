@@ -87,8 +87,10 @@ export {
 } from './t500_iris_curl';
 export { t505_iris_parse_smoke } from './t505_iris_parse_smoke';
 export { t506_wasm_smoke } from './t506_wasm_smoke';
+export { t508_fib_runner } from './t508_fib_runner';
+export { t509_fib_wasm } from './t509_fib_wasm';
 export { t507_examples_typecheck } from './t507_examples_typecheck';
-export { t510_let_star, t511_record_update, t512_cond, t513_do } from './t510_syntax_sugar';
+export { t510_let_star, t511_record_update, t512_cond, t513_do, t515_dot_access } from './t510_syntax_sugar';
 export { t514_parser_metadata, t514_parser_unknown_section_trace } from './t514_parser_metadata';
 export { t520_capability_profiles } from './t520_capability_profiles';
 export { t80 } from './t80';
@@ -371,8 +373,10 @@ import {
 } from './t500_iris_curl';
 import { t505_iris_parse_smoke } from './t505_iris_parse_smoke';
 import { t506_wasm_smoke } from './t506_wasm_smoke';
+import { t508_fib_runner } from './t508_fib_runner';
+import { t509_fib_wasm } from './t509_fib_wasm';
 import { t507_examples_typecheck } from './t507_examples_typecheck';
-import { t510_let_star, t511_record_update, t512_cond, t513_do } from './t510_syntax_sugar';
+import { t510_let_star, t511_record_update, t512_cond, t513_do, t515_dot_access } from './t510_syntax_sugar';
 import { t514_parser_metadata, t514_parser_unknown_section_trace } from './t514_parser_metadata';
 import { t520_capability_profiles } from './t520_capability_profiles';
 
@@ -405,7 +409,8 @@ export const TESTS = [
   t247_sys_self, t248_sys_send_recv, t249_http_post, t250_io_file_exists, t251_io_write_file,
   t500_curl_get, t501_curl_head, t502_curl_output, t503_curl_live_get, t504_curl_live_post,
   t505_iris_parse_smoke, t506_wasm_smoke, t507_examples_typecheck,
-  t510_let_star, t511_record_update, t512_cond, t513_do, t514_parser_metadata, t514_parser_unknown_section_trace,
+  t508_fib_runner, t509_fib_wasm,
+  t510_let_star, t511_record_update, t512_cond, t513_do, t515_dot_access, t514_parser_metadata, t514_parser_unknown_section_trace,
   t520_capability_profiles,
   // Advanced sync tests
   t252_sync_match_tagged, t253_sync_match_list, t254_sync_match_result, t255_sync_match_option,

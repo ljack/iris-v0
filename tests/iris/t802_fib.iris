@@ -1,0 +1,26 @@
+(program
+  (module (name "t802_fib") (version 0))
+  (imports (import "test/assert" (as "assert")))
+  (defs
+    (deffn (name fib) (args (n I64)) (ret I64) (eff !Pure)
+      (body
+        (if (< n 2)
+            n
+            (+ (fib (- n 1)) (fib (- n 2))))
+      )
+    )
+
+    (deffn (name main) (args) (ret (List assert.AssertResult)) (eff !Pure)
+      (body
+        (list
+          (assert.assert-eq "fib 0" (assert.i64 (fib 0)) (assert.i64 0))
+          (assert.assert-eq "fib 1" (assert.i64 (fib 1)) (assert.i64 1))
+          (assert.assert-eq "fib 2" (assert.i64 (fib 2)) (assert.i64 1))
+          (assert.assert-eq "fib 3" (assert.i64 (fib 3)) (assert.i64 2))
+          (assert.assert-eq "fib 5" (assert.i64 (fib 5)) (assert.i64 5))
+          (assert.assert-eq "fib 10" (assert.i64 (fib 10)) (assert.i64 55))
+        )
+      )
+    )
+  )
+)

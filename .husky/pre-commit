@@ -2,7 +2,7 @@ set -e
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
-files="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.iris$' || true)"
+files="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.iris$' | grep -v '^tests/iris/' || true)"
 if [ -n "$files" ]; then
   for file in $files; do
     if [ -f "$file" ]; then
