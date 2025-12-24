@@ -99,6 +99,7 @@ Some, None, Ok, Err, List
 - ✅ Module system with imports
 - ✅ Effect tracking (!Pure, !IO, !Net, !Any)
 - ✅ Records with field access
+- ✅ Dot access sugar (`foo.bar`, `foo.0`)
 - ✅ Function definitions
 - ✅ Tool definitions (deftool)
 - ✅ Let-bindings
@@ -234,7 +235,7 @@ npm run test-cli           # CLI tests only
       (ret I64)
       (eff !IO)
       (body
-        (let (msg (call greet "IRIS"))
+        (let (msg (greet "IRIS"))
              (let (_ (io.print msg))
                   0))))))
 ```

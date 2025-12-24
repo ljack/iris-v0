@@ -10,7 +10,7 @@
     (import "utils.iris" (as "U")))
   (defs
     ...
-    (body (call U.add 1 2))))
+    (body (U.add 1 2))))
 ```
 
 ### AST Changes
@@ -31,3 +31,25 @@
 
 ## 2. Generics (Tentative)
 *   `(struct (Box T) ...)` - Postponed until Modules are working.
+
+## 3. Dot Access (Syntax Sugar)
+
+Dot access is a parser-level convenience that desugars to intrinsics.
+
+### Syntax
+```lisp
+foo.bar        ;; field access
+foo.0          ;; tuple index access
+foo.bar.baz    ;; chained access
+```
+
+### Desugaring
+```lisp
+foo.bar        => (record.get foo "bar")
+foo.0          => (tuple.get foo 0)
+foo.bar.baz    => (record.get (record.get foo "bar") "baz")
+```
+
+### Constraints
+- Field names and tuple indexes are literals in the surface syntax.
+- Chained access always desugars left-to-right.

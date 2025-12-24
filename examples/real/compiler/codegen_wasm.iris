@@ -10,23 +10,182 @@
     (import "wasm_syntax" (as "ws"))
   )
   (defs
+    (deffn (name list_contains) (args (items (List Str)) (needle Str)) (ret Bool) (eff !Pure)
+      (body
+        (match items
+          (case (tag "nil") false)
+          (case (tag "cons" (h t))
+            (if (= h needle) true (list_contains t needle))
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_def_names) (args (defs (List ast.Definition))) (ret (List Str)) (eff !Pure)
+      (body
+        (match defs
+          (case (tag "nil") (list))
+          (case (tag "cons" (h t))
+            (match h
+              (case (tag "DefFn" (f)) (cons f.name (collect_def_names t)))
+              (case (tag "TypeDef" (_)) (collect_def_names t))
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name update_arity) (args (pairs (List (Tuple Str I64))) (name Str) (arity I64)) (ret (List (Tuple Str I64))) (eff !Pure)
+      (body
+        (match pairs
+          (case (tag "nil") (cons (tuple name arity) (list)))
+          (case (tag "cons" (h t))
+            (if (= (tuple.get h 0) name)
+              (cons (tuple name (if (> arity (tuple.get h 1)) arity (tuple.get h 1))) t)
+              (cons h (update_arity t name arity))
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_call_arities_expr) (args (e ast.Expr) (defs (List Str)) (acc (List (Tuple Str I64)))) (ret (List (Tuple Str I64))) (eff !Pure)
+      (body
+        (match e
+          (case (tag "Let" (l))
+            (collect_call_arities_expr l.body defs (collect_call_arities_expr l.value defs acc))
+          )
+          (case (tag "If" (i))
+            (collect_call_arities_expr i.else defs (collect_call_arities_expr i.then defs (collect_call_arities_expr i.cond defs acc)))
+          )
+          (case (tag "Match" (m))
+            (collect_call_arities_cases m.cases defs (collect_call_arities_expr m.target defs acc))
+          )
+          (case (tag "Intrinsic" (i)) (collect_call_arities_list i.args defs acc))
+          (case (tag "Call" (c))
+            (let (acc2 (collect_call_arities_list c.args defs acc))
+              (if (str.contains c.name ".")
+                (if (list_contains defs c.name)
+                  acc2
+                  (update_arity acc2 c.name (list.length c.args))
+                )
+                acc2
+              )
+            )
+          )
+          (case (tag "List" (l)) (collect_call_arities_list l.items defs acc))
+          (case (tag "Tuple" (t)) (collect_call_arities_list t.items defs acc))
+          (case (tag "Record" (r)) (collect_call_arities_fields r.fields defs acc))
+          (case (tag "Lambda" (l)) (collect_call_arities_expr l.body defs acc))
+          (case (tag "_" ()) acc)
+        )
+      )
+    )
+
+    (deffn (name collect_call_arities_list) (args (items (List ast.Expr)) (defs (List Str)) (acc (List (Tuple Str I64)))) (ret (List (Tuple Str I64))) (eff !Pure)
+      (body
+        (match items
+          (case (tag "nil") acc)
+          (case (tag "cons" (h t))
+            (collect_call_arities_list t defs (collect_call_arities_expr h defs acc))
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_call_arities_cases) (args (cases (List ast.MatchCase)) (defs (List Str)) (acc (List (Tuple Str I64)))) (ret (List (Tuple Str I64))) (eff !Pure)
+      (body
+        (match cases
+          (case (tag "nil") acc)
+          (case (tag "cons" (h t))
+            (collect_call_arities_cases t defs (collect_call_arities_expr h.body defs acc))
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_call_arities_fields) (args (fields (List (Tuple Str ast.Expr))) (defs (List Str)) (acc (List (Tuple Str I64)))) (ret (List (Tuple Str I64))) (eff !Pure)
+      (body
+        (match fields
+          (case (tag "nil") acc)
+          (case (tag "cons" (h t))
+            (collect_call_arities_fields t defs (collect_call_arities_expr (tuple.get h 1) defs acc))
+          )
+        )
+      )
+    )
+
+    (deffn (name collect_call_arities_defs) (args (defs (List ast.Definition)) (def_names (List Str)) (acc (List (Tuple Str I64)))) (ret (List (Tuple Str I64))) (eff !Pure)
+      (body
+        (match defs
+          (case (tag "nil") acc)
+          (case (tag "cons" (h t))
+            (match h
+              (case (tag "DefFn" (f))
+                (collect_call_arities_defs t def_names (collect_call_arities_expr f.body def_names acc))
+              )
+              (case (tag "TypeDef" (_)) (collect_call_arities_defs t def_names acc))
+            )
+          )
+        )
+      )
+    )
+
+    (deffn (name repeat_i64) (args (n I64)) (ret (List Str)) (eff !Pure)
+      (body
+        (if (<= n 0)
+          (list)
+          (cons "i64" (repeat_i64 (- n 1)))
+        )
+      )
+    )
+
+    (deffn (name split_alias) (args (name Str)) (ret (Tuple Str Str)) (eff !Pure)
+      (body
+        (match (str.index_of name ".")
+          (case (tag "Some" (idx))
+            (tuple (str.substring name 0 idx) (str.substring name (+ idx 1) (str.len name)))
+          )
+          (case (tag "None") (tuple name ""))
+        )
+      )
+    )
+
+    (deffn (name gen_external_imports) (args (pairs (List (Tuple Str I64)))) (ret Str) (eff !Pure)
+      (body
+        (match pairs
+          (case (tag "nil") "")
+          (case (tag "cons" (h t))
+            (let* ((name (tuple.get h 0))
+                   (arity (tuple.get h 1))
+                   (parts (split_alias name))
+                   (mod (tuple.get parts 0))
+                   (fn (tuple.get parts 1))
+                   (params (repeat_i64 arity))
+                   (line (ws.s "import" (list (ws.quote_string mod) (ws.quote_string fn) (ws.s "func" (list (ws.local_id name) (ws.s "param" params) (ws.s "result" (list "i64"))))))))
+              (ws.lines (list line (gen_external_imports t)))
+            )
+          )
+        )
+      )
+    )
     (deffn (name collect_locals) (args (e ast.Expr)) (ret (List Str)) (eff !Pure)
       (body
         (match e
           (case (tag "Let" (l))
-            (list.concat (cons l.name (call collect_locals l.body)) (call collect_locals l.value))
+            (list.concat (cons l.name (collect_locals l.body)) (collect_locals l.value))
           )
           (case (tag "If" (i))
-            (list.concat (call collect_locals i.then) (list.concat (call collect_locals i.else) (call collect_locals i.cond)))
+            (list.concat (collect_locals i.then) (list.concat (collect_locals i.else) (collect_locals i.cond)))
           )
           (case (tag "Match" (m))
-            (list.concat (call collect_locals m.target) (call collect_cases_locals m.cases))
+            (list.concat (collect_locals m.target) (collect_cases_locals m.cases))
           )
-          (case (tag "Intrinsic" (i)) (call collect_expr_list_locals i.args))
-          (case (tag "Call" (c)) (call collect_expr_list_locals c.args))
-          (case (tag "List" (l)) (call collect_expr_list_locals l.items))
-          (case (tag "Tuple" (t)) (call collect_expr_list_locals t.items))
-          (case (tag "Record" (r)) (call collect_record_fields_locals r.fields))
+          (case (tag "Intrinsic" (i)) (collect_expr_list_locals i.args))
+          (case (tag "Call" (c)) (collect_expr_list_locals c.args))
+          (case (tag "List" (l)) (collect_expr_list_locals l.items))
+          (case (tag "Tuple" (t)) (collect_expr_list_locals t.items))
+          (case (tag "Record" (r)) (collect_record_fields_locals r.fields))
           (case (tag "_" ()) (list))
         )
       ))
@@ -36,7 +195,7 @@
         (match l
           (case (tag "nil" ()) (list))
           (case (tag "cons" (h t))
-            (list.concat (call collect_locals h) (call collect_expr_list_locals t))
+            (list.concat (collect_locals h) (collect_expr_list_locals t))
           )
         )
       )
@@ -47,7 +206,7 @@
         (match l
           (case (tag "nil" ()) (list))
           (case (tag "cons" (h t))
-            (list.concat h.vars (list.concat (call collect_locals h.body) (call collect_cases_locals t)))
+            (list.concat h.vars (list.concat (collect_locals h.body) (collect_cases_locals t)))
           )
         )
       )
@@ -58,7 +217,7 @@
         (match l
           (case (tag "nil" ()) (list))
           (case (tag "cons" (h t))
-            (list.concat (call collect_locals (tuple.get h 1)) (call collect_record_fields_locals t))
+            (list.concat (collect_locals (tuple.get h 1)) (collect_record_fields_locals t))
           )
         )
       )
@@ -69,9 +228,9 @@
         (match names
           (case (tag "nil" ()) "")
           (case (tag "cons" (h t))
-            (let* ((decl (call ws.s "local" (list (call ws.local_id h) "i64")))
-                   (rest (call gen_local_decls t)))
-              (call ws.lines (list decl rest))
+            (let* ((decl (ws.s "local" (list (ws.local_id h) "i64")))
+                   (rest (gen_local_decls t)))
+              (ws.lines (list decl rest))
             ))
         )
       )
@@ -82,39 +241,43 @@
             (match args_list
                 (case (tag "nil" ()) "")
                 (case (tag "cons" (h t))
-                  (let* ((param (call ws.s "param" (list (call ws.local_id h.name) "i64")))
-                         (rest (call gen_params t)))
-                    (call ws.lines (list param rest))
+                  (let* ((param (ws.s "param" (list (ws.local_id h.name) "i64")))
+                         (rest (gen_params t)))
+                    (ws.lines (list param rest))
                   ))
             )
         )
     )
 
-    (deffn (name gen_imports) (args (profile Str)) (ret Str) (eff !Pure)
+    (deffn (name gen_imports) (args (profile Str) (extra Str)) (ret Str) (eff !Pure)
       (body
-        (let* ((print_type (call ws.s "type"
+        (let* ((print_type (ws.s "type"
                               (list "$print_type"
-                                (call ws.s "func"
+                                (ws.s "func"
                                   (list
-                                    (call ws.s "param" (list "i64"))
-                                    (call ws.s "result" (list "i64"))
+                                    (ws.s "param" (list "i64"))
+                                    (ws.s "result" (list "i64"))
                                   )))))
-               (memory (call ws.s "memory" (list "$memory" "1")))
-               (mem_export (call ws.s "export" (list (call ws.quote_string "memory") (call ws.s "memory" (list "$memory"))))))
-          (if (= profile "wasi")
-            (call ws.lines (list
-              print_type
-              (call ws.s "type" (list "$fd_write_type" (call ws.s "func" (list (call ws.s "param" (list "i32")) (call ws.s "param" (list "i32")) (call ws.s "param" (list "i32")) (call ws.s "param" (list "i32")) (call ws.s "result" (list "i32"))))))
-              (call ws.s "import" (list (call ws.quote_string "wasi_snapshot_preview1") (call ws.quote_string "fd_write") (call ws.s "func" (list "$fd_write" (call ws.s "type" (list "$fd_write_type"))))))
-              memory
-              mem_export
+               (memory (ws.s "memory" (list "$memory" "1")))
+               (mem_export (ws.s "export" (list (ws.quote_string "memory") (ws.s "memory" (list "$memory"))))))
+          (let (prefix
+            (if (= profile "wasi")
+              (ws.lines (list
+                print_type
+                (ws.s "type" (list "$fd_write_type" (ws.s "func" (list (ws.s "param" (list "i32")) (ws.s "param" (list "i32")) (ws.s "param" (list "i32")) (ws.s "param" (list "i32")) (ws.s "result" (list "i32"))))))
+                (ws.s "import" (list (ws.quote_string "wasi_snapshot_preview1") (ws.quote_string "fd_write") (ws.s "func" (list "$fd_write" (ws.s "type" (list "$fd_write_type"))))))
+              ))
+              (ws.lines (list
+                print_type
+                (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "print") (ws.s "func" (list "$host.print" (ws.s "type" (list "$print_type"))))))
+              ))
             ))
-            (call ws.lines (list
-              print_type
-              (call ws.s "import" (list (call ws.quote_string "host") (call ws.quote_string "print") (call ws.s "func" (list "$host.print" (call ws.s "type" (list "$print_type"))))))
-              memory
-              mem_export
-            ))
+            (let (suffix (ws.lines (list memory mem_export)))
+              (if (= extra "")
+                (ws.lines (list prefix suffix))
+                (ws.lines (list prefix extra suffix))
+              )
+            )
           )
         )
       )
@@ -122,48 +285,48 @@
 
     (deffn (name gen_wasi_print) (args) (ret Str) (eff !Pure)
       (body
-        (let* ((param (call ws.s "param" (list (call ws.local_id "ptr") "i64")))
-               (result (call ws.s "result" (list "i64")))
-               (head (call ws.join_with (list "func" (call ws.local_id "host.print" ) param result) " "))
-               (locals (call ws.lines (list
-                 (call ws.s "local" (list (call ws.local_id "len") "i64"))
-                 (call ws.s "local" (list (call ws.local_id "buf") "i64"))
-                 (call ws.s "local" (list (call ws.local_id "iov") "i64"))
-                 (call ws.s "local" (list (call ws.local_id "nwritten") "i64"))
+        (let* ((param (ws.s "param" (list (ws.local_id "ptr") "i64")))
+               (result (ws.s "result" (list "i64")))
+               (head (ws.join_with (list "func" (ws.local_id "host.print" ) param result) " "))
+               (locals (ws.lines (list
+                 (ws.s "local" (list (ws.local_id "len") "i64"))
+                 (ws.s "local" (list (ws.local_id "buf") "i64"))
+                 (ws.s "local" (list (ws.local_id "iov") "i64"))
+                 (ws.s "local" (list (ws.local_id "nwritten") "i64"))
                )))
-               (get_ptr (call ws.s "local.get" (list (call ws.local_id "ptr"))))
-               (load_len (call ws.s "local.set" (list (call ws.local_id "len") (call ws.s "i64.load" (list (call ws.s "i32.wrap_i64" (list get_ptr)))))))
-               (buf_ptr (call ws.s "local.set" (list (call ws.local_id "buf") (call ws.s "i64.add" (list get_ptr (call ws.s "i64.const" (list "8")))))))
-               (iov_alloc (call ws.s "local.set" (list (call ws.local_id "iov") (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "8")))))))
-               (iov_store_ptr (call ws.s "i32.store" (list
-                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "iov")))))
-                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "buf")))))
+               (get_ptr (ws.s "local.get" (list (ws.local_id "ptr"))))
+               (load_len (ws.s "local.set" (list (ws.local_id "len") (ws.s "i64.load" (list (ws.s "i32.wrap_i64" (list get_ptr)))))))
+               (buf_ptr (ws.s "local.set" (list (ws.local_id "buf") (ws.s "i64.add" (list get_ptr (ws.s "i64.const" (list "8")))))))
+               (iov_alloc (ws.s "local.set" (list (ws.local_id "iov") (ws.s "call" (list "$alloc" (ws.s "i64.const" (list "8")))))))
+               (iov_store_ptr (ws.s "i32.store" (list
+                 (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "iov")))))
+                 (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "buf")))))
                )))
-               (iov_store_len (call ws.s "i32.store" (list
-                 (call ws.s "i32.wrap_i64" (list (call ws.s "i64.add" (list (call ws.s "local.get" (list (call ws.local_id "iov"))) (call ws.s "i64.const" (list "4"))))))
-                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "len")))))
+               (iov_store_len (ws.s "i32.store" (list
+                 (ws.s "i32.wrap_i64" (list (ws.s "i64.add" (list (ws.s "local.get" (list (ws.local_id "iov"))) (ws.s "i64.const" (list "4"))))))
+                 (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "len")))))
                )))
-               (nwritten_alloc (call ws.s "local.set" (list (call ws.local_id "nwritten") (call ws.s "call" (list "$alloc" (call ws.s "i64.const" (list "4")))))))
-               (fd_write (call ws.s "call" (list
+               (nwritten_alloc (ws.s "local.set" (list (ws.local_id "nwritten") (ws.s "call" (list "$alloc" (ws.s "i64.const" (list "4")))))))
+               (fd_write (ws.s "call" (list
                  "$fd_write"
-                 (call ws.s "i32.const" (list "1"))
-                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "iov")))))
-                 (call ws.s "i32.const" (list "1"))
-                 (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "nwritten")))))
+                 (ws.s "i32.const" (list "1"))
+                 (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "iov")))))
+                 (ws.s "i32.const" (list "1"))
+                 (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "nwritten")))))
                )))
-               (body (call ws.lines (list
-                 (call ws.indent2 locals)
-                 (call ws.indent2 load_len)
-                 (call ws.indent2 buf_ptr)
-                 (call ws.indent2 iov_alloc)
-                 (call ws.indent2 iov_store_ptr)
-                 (call ws.indent2 iov_store_len)
-                 (call ws.indent2 nwritten_alloc)
-                 (call ws.indent2 fd_write)
-                 (call ws.indent2 (call ws.s "drop" (list)))
-                 (call ws.indent2 (call ws.s "i64.const" (list "0")))
+               (body (ws.lines (list
+                 (ws.indent2 locals)
+                 (ws.indent2 load_len)
+                 (ws.indent2 buf_ptr)
+                 (ws.indent2 iov_alloc)
+                 (ws.indent2 iov_store_ptr)
+                 (ws.indent2 iov_store_len)
+                 (ws.indent2 nwritten_alloc)
+                 (ws.indent2 fd_write)
+                 (ws.indent2 (ws.s "drop" (list)))
+                 (ws.indent2 (ws.s "i64.const" (list "0")))
                ))))
-          (call ws.block head body)
+          (ws.block head body)
         )
       )
     )
@@ -175,35 +338,35 @@
                 (case (tag "cons" (h t))
                     (match h
                         (case (tag "DefFn" (f))
-                          (let (vars (call collect_locals f.body))
-                          (let (locals (call gen_local_decls (list.unique vars)))
-                          (let (body_code (call cwe.codegen_expr f.body))
-                          (let (params (call gen_params f.args))
-                          (let* ((result_sig (call ws.s "result" (list "i64")))
+                          (let (vars (collect_locals f.body))
+                          (let (locals (gen_local_decls (list.unique vars)))
+                          (let (body_code (cwe.codegen_expr f.body))
+                          (let (params (gen_params f.args))
+                          (let* ((result_sig (ws.s "result" (list "i64")))
                                  (sig (if (= params "")
                                           result_sig
-                                          (call ws.join_with (list params result_sig) " ")))
-                                 (head (call ws.join_with (list
+                                          (ws.join_with (list params result_sig) " ")))
+                                 (head (ws.join_with (list
                                     "func"
-                                    (call ws.local_id f.name)
-                                    (call ws.s "export" (list (call ws.quote_string f.name)))
+                                    (ws.local_id f.name)
+                                    (ws.s "export" (list (ws.quote_string f.name)))
                                     sig
                                   ) " "))
-                                 (fixed_locals (call ws.lines (list
-                                  (call ws.s "local" (list (call ws.local_id "t0") "i64"))
-                                  (call ws.s "local" (list (call ws.local_id "t1") "i64"))
-                                  (call ws.s "local" (list (call ws.local_id "t2") "i64"))
-                                  (call ws.s "local" (list (call ws.local_id "target") "i64"))
+                                 (fixed_locals (ws.lines (list
+                                  (ws.s "local" (list (ws.local_id "t0") "i64"))
+                                  (ws.s "local" (list (ws.local_id "t1") "i64"))
+                                  (ws.s "local" (list (ws.local_id "t2") "i64"))
+                                  (ws.s "local" (list (ws.local_id "target") "i64"))
                                  )))
                                  (body (if (= locals "")
-                                        (call ws.lines (list fixed_locals body_code))
-                                        (call ws.lines (list fixed_locals locals body_code))))
-                                 (func_block (call ws.block head body)))
-                            (let (rest (call gen_defs t))
-                              (if (= rest "") func_block (call ws.lines (list func_block rest)))
+                                        (ws.lines (list fixed_locals body_code))
+                                        (ws.lines (list fixed_locals locals body_code))))
+                                 (func_block (ws.block head body)))
+                            (let (rest (gen_defs t))
+                              (if (= rest "") func_block (ws.lines (list func_block rest)))
                             ))
                           )))))
-                        (case (tag "_" ()) (call gen_defs t))
+                        (case (tag "_" ()) (gen_defs t))
                     )
                 )
             )
@@ -213,44 +376,59 @@
     (deffn (name codegen_module_profile) (args (p ast.Program) (profile Str)) (ret Str) (eff !Pure)
       (doc "Generate WebAssembly text (WAT) for a program with a selected ABI profile.")
       (body
-        (let (imports (call gen_imports profile))
-        (let* ((alloc_body (call ws.lines (list
-                  (call ws.indent2 (call ws.s "local" (list (call ws.local_id "ptr") "i64")))
-                  (call ws.indent2 (call ws.s "local.set" (list (call ws.local_id "ptr") (call ws.s "i64.extend_i32_u" (list (call ws.s "i32.load" (list (call ws.s "i32.const" (list "0")))))))))
-                  (call ws.indent2 (call ws.s "if" (list
-                    (call ws.s "i64.eqz" (list (call ws.s "local.get" (list (call ws.local_id "ptr")))))
-                    (call ws.s "then" (list (call ws.s "local.set" (list (call ws.local_id "ptr") (call ws.s "i64.const" (list "4"))))))
+        (let (def_names (collect_def_names p.progDefs))
+        (let (call_pairs (collect_call_arities_defs p.progDefs def_names (list)))
+        (let (extra_imports (gen_external_imports call_pairs))
+        (let (imports (gen_imports profile extra_imports))
+        (let* ((alloc_body (ws.lines (list
+                  (ws.indent2 (ws.s "local" (list (ws.local_id "ptr") "i64")))
+                  (ws.indent2 (ws.s "local.set" (list (ws.local_id "ptr") (ws.s "i64.extend_i32_u" (list (ws.s "i32.load" (list (ws.s "i32.const" (list "0")))))))))
+                  (ws.indent2 (ws.s "if" (list
+                    (ws.s "i64.eqz" (list (ws.s "local.get" (list (ws.local_id "ptr")))))
+                    (ws.s "then" (list (ws.s "local.set" (list (ws.local_id "ptr") (ws.s "i64.const" (list "4"))))))
                   )))
-                  (call ws.indent2 (call ws.s "i32.store" (list
-                    (call ws.s "i32.const" (list "0"))
-                    (call ws.s "i32.add" (list
-                      (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "ptr")))))
-                      (call ws.s "i32.wrap_i64" (list (call ws.s "local.get" (list (call ws.local_id "size")))))
+                  (ws.indent2 (ws.s "i32.store" (list
+                    (ws.s "i32.const" (list "0"))
+                    (ws.s "i32.add" (list
+                      (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "ptr")))))
+                      (ws.s "i32.wrap_i64" (list (ws.s "local.get" (list (ws.local_id "size")))))
                     ))
                   )))
-                  (call ws.indent2 (call ws.s "local.get" (list (call ws.local_id "ptr"))))
+                  (ws.indent2 (ws.s "local.get" (list (ws.local_id "ptr"))))
                 )))
-               (alloc (call ws.block "func $alloc (export \"alloc\") (param $size i64) (result i64)" alloc_body))
-               (wasi_print (if (= profile "wasi") (call gen_wasi_print) ""))
+               (alloc_head (ws.join_with (list
+                             "func"
+                             (ws.local_id "alloc")
+                             (ws.s "export" (list (ws.quote_string "alloc")))
+                             (ws.s "param" (list (ws.local_id "size") "i64"))
+                             (ws.s "result" (list "i64"))
+                           ) " "))
+               (alloc (ws.block alloc_head alloc_body))
+               (wasi_print (if (= profile "wasi") (gen_wasi_print) ""))
+               (start_head (ws.join_with (list
+                             "func"
+                             (ws.local_id "_start")
+                             (ws.s "export" (list (ws.quote_string "_start")))
+                           ) " "))
                (wasi_start (if (= profile "wasi")
-                              (call ws.block "func $_start (export \"_start\")"
-                                (call ws.lines (list
-                                  (call ws.indent2 (call ws.s "call" (list "$main")))
-                                  (call ws.indent2 (call ws.s "drop" (list)))
+                              (ws.block start_head
+                                (ws.lines (list
+                                  (ws.indent2 (ws.s "call" (list "$main")))
+                                  (ws.indent2 (ws.s "drop" (list)))
                                 )))
                               "")))
-        (let (defs (call gen_defs p.progDefs))
+        (let (defs (gen_defs p.progDefs))
           (let (body (if (= profile "wasi")
-                        (call ws.lines (list imports alloc wasi_print defs wasi_start))
-                        (call ws.lines (list imports alloc defs))))
-            (call ws.lines (list (call ws.block "module" body) ""))
+                        (ws.lines (list imports alloc wasi_print defs wasi_start))
+                        (ws.lines (list imports alloc defs))))
+            (ws.lines (list (ws.block "module" body) ""))
           )
-        ))))
+        )))))))
       )
 
     (deffn (name codegen_module) (args (p ast.Program)) (ret Str) (eff !Pure)
       (doc "Generate WebAssembly text (WAT) for a program.")
-      (body (call codegen_module_profile p "host"))
+      (body (codegen_module_profile p "host"))
     )
   )
 )
