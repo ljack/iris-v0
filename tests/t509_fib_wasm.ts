@@ -83,12 +83,12 @@ export const t509_fib_wasm: TestCase = {
     const instantiated = await WebAssembly.instantiate(wasmBytes, importObj);
     const instResult = instantiated as unknown as WebAssembly.WebAssemblyInstantiatedSource;
     const instance = instResult.instance ?? (instantiated as WebAssembly.Instance);
-    const fib = instance.exports.fib as ((n: bigint) => bigint) | undefined;
-    if (!fib) {
-      throw new Error('Expected wasm module to export fib.');
+    const fibIter = instance.exports.fib_iterative as ((n: bigint) => bigint) | undefined;
+    if (!fibIter) {
+      throw new Error('Expected wasm module to export fib_iterative.');
     }
 
-    const result = fib(10n);
+    const result = fibIter(10n);
     if (result !== 55n) {
       throw new Error(`Expected fib(10) to return 55n, got ${result}`);
     }
