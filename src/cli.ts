@@ -38,6 +38,7 @@ Options:
   --no-run      For run-wasm: compile only, do not execute
   --quiet       For run-wasm: suppress 'main returned' output
   --print-wat   For run-wasm: print WAT to stdout
+  --format-wat  For run-wasm: format WAT before printing/writing
   --wat-out <file>   For run-wasm: write WAT to file
   --wasm-out <file>  For run-wasm: write wasm binary to file
   --compiler <file>  For run-wasm: path to compiler.iris
@@ -305,6 +306,7 @@ export async function cli(args: string[]) {
             let noRun = false;
             let quiet = false;
             let printWat = false;
+            let formatWat = false;
             let watOut: string | null = null;
             let wasmOut: string | null = null;
             let compilerOverride: string | null = null;
@@ -318,6 +320,8 @@ export async function cli(args: string[]) {
                     quiet = true;
                 } else if (arg === '--print-wat') {
                     printWat = true;
+                } else if (arg === '--format-wat') {
+                    formatWat = true;
                 } else if (arg === '--wat-out') {
                     watOut = wasmArgs[i + 1] ?? null;
                     i++;
@@ -373,9 +377,13 @@ export async function cli(args: string[]) {
             }
 
             let wasmBytes: Uint8Array;
+            let formattedWat: string | null = null;
             try {
                 const wabt = await require('wabt')();
                 const module = wabt.parseWat('module.wat', wat);
+                if (formatWat) {
+                    formattedWat = module.toText({ foldExprs: false, inlineExport: false });
+                }
                 const { buffer } = module.toBinary({ write_debug_names: true });
                 wasmBytes = new Uint8Array(buffer);
             } catch (err: any) {
@@ -384,11 +392,15 @@ export async function cli(args: string[]) {
             }
 
             if (printWat) {
-                console.log(wat);
+                console.log(formatWat && formattedWat ? formattedWat : wat);
             }
             if (watOut) {
                 try {
-                    fs.writeFileSync(path.resolve(watOut), wat, 'utf-8');
+                    fs.writeFileSync(
+                        path.resolve(watOut),
+                        formatWat && formattedWat ? formattedWat : wat,
+                        'utf-8',
+                    );
                 } catch (err: any) {
                     console.error(`Error: Failed to write WAT: ${err?.message ?? err}`);
                     process.exit(1);
@@ -415,7 +427,7 @@ export async function cli(args: string[]) {
             const programArgs: string[] = [];
             for (let i = 0; i < wasmArgs.length; i++) {
                 const arg = wasmArgs[i];
-                if (arg === '--no-run' || arg === '--quiet' || arg === '--print-wat') {
+                if (arg === '--no-run' || arg === '--quiet' || arg === '--print-wat' || arg === '--format-wat') {
                     continue;
                 }
                 if (arg === '--wat-out' || arg === '--wasm-out' || arg === '--compiler' || arg === '--wasm-profile') {
