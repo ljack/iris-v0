@@ -50,6 +50,7 @@ Options:
   --write       For format: overwrite the input file
   --preserve-sugar  For format: keep let*, cond, record.update when possible
   --outline     For view: show structured outline instead of source view
+  --format      For view: format the source before hiding parentheses
 `);
 }
 
@@ -269,7 +270,15 @@ export async function cli(args: string[]) {
         const modules = loadAllModulesRecursively(absolutePath);
 
         if (command === 'format' || command === 'view') {
+            const preserveSugar = cleanArgs.includes('--preserve-sugar');
             if (command === 'view' && !cleanArgs.includes('--outline')) {
+                if (cleanArgs.includes('--format')) {
+                    const parser = new Parser(source, debug);
+                    const program = parser.parse();
+                    const formatted = formatProgram(program, { preserveSugar });
+                    console.log(hideParens(formatted));
+                    return;
+                }
                 console.log(hideParens(source));
                 return;
             }
@@ -280,7 +289,6 @@ export async function cli(args: string[]) {
                 console.log(viewProgram(program));
                 return;
             }
-            const preserveSugar = cleanArgs.includes('--preserve-sugar');
             const formatted = formatProgram(program, { preserveSugar });
             if (cleanArgs.includes('--write')) {
                 fs.writeFileSync(absolutePath, formatted, 'utf-8');

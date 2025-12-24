@@ -72,6 +72,13 @@ async function test() {
         `Got: ${viewHello.stdout}`,
     );
 
+    const viewFormatted = await runCli(`view hello.iris --format`);
+    assert(
+        'CLI View Hello Formatted',
+        viewFormatted.stdout.includes('program') && !viewFormatted.stdout.includes('(') && !viewFormatted.stdout.includes(')'),
+        `Got: ${viewFormatted.stdout}`,
+    );
+
     const viewOutline = await runCli(`view hello.iris --outline`);
     assert(
         'CLI View Hello Outline',
