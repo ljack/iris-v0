@@ -107,5 +107,34 @@ export const t_unit_lsp_diagnostics: TestCase = {
         `Expected span at 3:5, got ${spanError.range.start.line + 1}:${spanError.range.start.character + 1}`,
       );
     }
+
+    const parseSource = [
+      '(program',
+      '  (defs',
+      '    (deffn (name foo) (args) (ret I64) (eff !Pure) (body 1))',
+      '  )',
+      '  )',
+    ].join('\n');
+    const parseDoc = TextDocument.create(
+      'file:///parse.iris',
+      'iris',
+      1,
+      parseSource,
+    );
+    const parseDiagnostics = buildDiagnosticsForError(
+      "ParseError: Unknown program section: deffn at line 5. Note: Previous section 'defs' closed at 4:3",
+      parseDoc,
+    );
+    const extraParen = parseDiagnostics.find(
+      (diag) => diag.code === 'IRIS_PARSE_EXTRA_RPAREN',
+    );
+    if (!extraParen) {
+      throw new Error('Expected extra paren diagnostic for closed defs section');
+    }
+    if (extraParen.range.start.line !== 3 || extraParen.range.start.character !== 2) {
+      throw new Error(
+        `Expected extra paren at 4:3, got ${extraParen.range.start.line + 1}:${extraParen.range.start.character + 1}`,
+      );
+    }
   },
 };

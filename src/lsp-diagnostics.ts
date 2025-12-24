@@ -79,6 +79,26 @@ function buildRelatedDiagnostics(
   const related: DiagnosticRelatedInformation[] = [];
   const diagnostics: Diagnostic[] = [];
 
+  const extraClose = parseExtraClosingParen(errorMsg);
+  if (extraClose) {
+    const range = rangeFromLineCol(
+      textDocument,
+      extraClose.line,
+      extraClose.character,
+    );
+    related.push({
+      location: Location.create(textDocument.uri, range),
+      message: `Section '${extraClose.section}' closed here`,
+    });
+    diagnostics.push({
+      severity: DiagnosticSeverity.Warning,
+      range,
+      message: `Extra ')' closes '${extraClose.section}' before ${extraClose.nextSection}`,
+      source: "iris",
+      code: "IRIS_PARSE_EXTRA_RPAREN",
+    });
+  }
+
   if (!program) {
     return { related, diagnostics };
   }
@@ -141,6 +161,31 @@ function buildRelatedDiagnostics(
   }
 
   return { related, diagnostics };
+}
+
+function parseExtraClosingParen(
+  errorMsg: string,
+): { line: number; character: number; section: string; nextSection: string } | null {
+  if (!errorMsg.includes("Unknown program section")) {
+    return null;
+  }
+  const prevMatch = errorMsg.match(
+    /Previous section '([^']+)' closed at (\d+):(\d+)/,
+  );
+  const nextMatch = errorMsg.match(
+    /Unknown program section: ([A-Za-z0-9_!?\\.-]+) at line (\d+)/,
+  );
+  if (!prevMatch || !nextMatch) {
+    return null;
+  }
+  const prevSection = prevMatch[1];
+  const nextSection = nextMatch[1];
+  if (prevSection !== "defs" || !nextSection.startsWith("def")) {
+    return null;
+  }
+  const line = Math.max(0, parseInt(prevMatch[2], 10) - 1);
+  const character = Math.max(0, parseInt(prevMatch[3], 10) - 1);
+  return { line, character, section: prevSection, nextSection };
 }
 
 function extractExprSpan(expr: Expr): SourceSpan | undefined {

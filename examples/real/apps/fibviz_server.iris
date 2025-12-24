@@ -1,0 +1,70 @@
+;; Web server for the Fibonacci visualizer assets in web/fibviz/.
+;; Serve index.html, app.js, style.css, fib_viz.wasm on http://localhost:8080
+(program
+  (module (name "fibviz_server") (version 0))
+  (defs
+    (deffn (name content_type) (args (path Str)) (ret Str) (eff !Pure)
+      (body
+        (cond
+          (case (str.ends_with path ".html") "text/html")
+          (case (str.ends_with path ".js") "text/javascript")
+          (case (str.ends_with path ".css") "text/css")
+          (case (str.ends_with path ".wasm") "application/wasm")
+          (else "text/plain")))
+    )
+
+    (deffn (name normalize_path) (args (path Str)) (ret Str) (eff !Pure)
+      (body
+        (if (= path "/") "/index.html" path))
+    )
+
+    (deffn (name serve_file) (args (path Str)) (ret Str) (eff !IO)
+      (body
+        (if (str.contains path "..")
+          "HTTP/1.1 403 Forbidden\r\n\r\nForbidden"
+          (let (p (normalize_path path))
+            (let (full_path (str.concat "web/fibviz" p))
+              (if (io.file_exists full_path)
+                (match (io.read_file full_path)
+                  (case (tag "Ok" (content))
+                    (str.concat "HTTP/1.1 200 OK\r\nContent-Type: "
+                      (str.concat (content_type p) (str.concat "\r\n\r\n" content))))
+                  (case (tag "Err" (_)) "HTTP/1.1 500 Internal Server Error\r\n\r\nRead error"))
+                "HTTP/1.1 404 Not Found\r\n\r\nFile not found")))
+    )))
+
+    (deffn (name handle_client) (args (sock I64)) (ret I64) (eff !Net)
+      (body
+        (match (net.read sock)
+          (case (tag "Ok" (raw_req))
+            (match (http.parse_request raw_req)
+              (case (tag "Ok" (req))
+                (let (response (serve_file (record.get req "path")))
+                  (let (_ (net.write sock response))
+                    (match (net.close sock)
+                      (case (tag "Ok" (_)) 0)
+                      (case (tag "Err" (_)) 1)))))
+              (case (tag "Err" (_)) (let (_ (net.close sock)) 1))))
+          (case (tag "Err" (_)) (let (_ (net.close sock)) 1))))
+    )
+
+
+    (deffn (name loop) (args (server_sock I64)) (ret I64) (eff !Net)
+      (body
+        (match (net.accept server_sock)
+          (case (tag "Ok" (client_sock))
+            (let (_ (handle_client client_sock))
+              (loop server_sock)))
+          (case (tag "Err" (_)) (loop server_sock)))))
+
+    (deffn (name main) (args) (ret I64) (eff !Net)
+      (body
+        (match (net.listen 8080)
+          (case (tag "Ok" (server_sock))
+            (let (_ (io.print "Serving fibviz on http://localhost:8080"))
+              (loop server_sock)))
+          (case (tag "Err" (_))
+            (let (_ (io.print "Failed to listen on 8080")) 1))))
+    )
+  )
+)
