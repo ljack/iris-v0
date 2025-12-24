@@ -32,6 +32,35 @@ export const t_unit_format_program: TestCase = {
       throw new Error('formatProgram should be idempotent');
     }
 
+    const sugarSource = [
+      '(program',
+      '  (module (name "sugar") (version 0))',
+      '  (defs',
+      '    (deffn (name main) (args) (ret I64) (eff !Pure)',
+      '      (body',
+      '        (let* ((x 1) (y 2))',
+      '          (cond',
+      '            (case true (record.update (record) (a x)))',
+      '            (else y)',
+      '          )',
+      '        )',
+      '      )',
+      '    )',
+      '  )',
+      ')',
+    ].join('\n');
+    const sugarProgram = new Parser(sugarSource).parse();
+    const preserved = formatProgram(sugarProgram, { preserveSugar: true });
+    if (!preserved.includes('(let*')) {
+      throw new Error('Expected preserve-sugar to emit let*');
+    }
+    if (!preserved.includes('(cond')) {
+      throw new Error('Expected preserve-sugar to emit cond');
+    }
+    if (!preserved.includes('(record.update')) {
+      throw new Error('Expected preserve-sugar to emit record.update');
+    }
+
     const view = viewProgram(program);
     if (!view.includes('program') || !view.includes('defn main')) {
       throw new Error('viewProgram should include program and defn lines');

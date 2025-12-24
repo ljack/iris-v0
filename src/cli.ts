@@ -48,6 +48,7 @@ Options:
   --compiler <file>  For run-wasm: path to compiler.iris
   --wasm-profile <host|wasi>  For run-wasm: select ABI profile (default: host)
   --write       For format: overwrite the input file
+  --preserve-sugar  For format: keep let*, cond, record.update when possible
 `);
 }
 
@@ -273,7 +274,8 @@ export async function cli(args: string[]) {
                 console.log(viewProgram(program));
                 return;
             }
-            const formatted = formatProgram(program);
+            const preserveSugar = cleanArgs.includes('--preserve-sugar');
+            const formatted = formatProgram(program, { preserveSugar });
             if (cleanArgs.includes('--write')) {
                 fs.writeFileSync(absolutePath, formatted, 'utf-8');
             } else {

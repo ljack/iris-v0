@@ -2,6 +2,11 @@ import { Capability, Definition, Expr, IrisEffect, IrisType, MatchCase, Program,
 import { printValue } from './sexp/printer';
 
 const INDENT = 2;
+const SYMBOL_NAME = /^[A-Za-z_!?\\.-][A-Za-z0-9_!?\\.-]*$/;
+
+export type FormatOptions = {
+  preserveSugar?: boolean;
+};
 
 function indent(level: number): string {
   return ' '.repeat(level * INDENT);
@@ -15,7 +20,7 @@ function escapeStr(s: string): string {
     .replace(/\r/g, '\\r');
 }
 
-export function formatProgram(program: Program): string {
+export function formatProgram(program: Program, options: FormatOptions = {}): string {
   const lines: string[] = [];
   lines.push('(program');
   lines.push(`${indent(1)}(module`);
@@ -35,7 +40,7 @@ export function formatProgram(program: Program): string {
 
   lines.push(`${indent(1)}(defs`);
   for (const def of program.defs) {
-    lines.push(...formatDefinition(def, 2));
+    lines.push(...formatDefinition(def, 2, options));
   }
   lines.push(`${indent(1)})`);
   lines.push(')');
@@ -63,7 +68,7 @@ export function viewProgram(program: Program): string {
   return lines.join('\n');
 }
 
-function formatDefinition(def: Definition, level: number): string[] {
+function formatDefinition(def: Definition, level: number, options: FormatOptions): string[] {
   const lines: string[] = [];
   if (def.kind === 'DefConst') {
     lines.push(`${indent(level)}(defconst`);
@@ -72,7 +77,7 @@ function formatDefinition(def: Definition, level: number): string[] {
     if (def.doc) {
       lines.push(`${indent(level + 1)}(doc "${escapeStr(def.doc)}")`);
     }
-    lines.push(`${indent(level + 1)}(value ${formatExprInline(def.value)})`);
+    lines.push(`${indent(level + 1)}(value ${formatExprInline(def.value, options)})`);
     lines.push(`${indent(level)})`);
     return lines;
   }
@@ -93,7 +98,7 @@ function formatDefinition(def: Definition, level: number): string[] {
   pushMeta(lines, def, level + 1);
   if (def.kind === 'DefFn') {
     lines.push(`${indent(level + 1)}(body`);
-    lines.push(...formatExpr(def.body, level + 2));
+    lines.push(...formatExpr(def.body, level + 2, options));
     lines.push(`${indent(level + 1)})`);
   }
   lines.push(`${indent(level)})`);
@@ -224,63 +229,97 @@ function viewType(t: IrisType): string {
   }
 }
 
-function formatExprInline(expr: Expr): string {
+function formatExprInline(expr: Expr, options: FormatOptions): string {
+  if (options.preserveSugar) {
+    const update = collectRecordUpdate(expr);
+    if (update) {
+      return formatRecordUpdateInline(update.target, update.updates, options);
+    }
+  }
   switch (expr.kind) {
     case 'Literal':
       return formatLiteral(expr.value);
     case 'Var':
       return expr.name;
     case 'Call':
-      return `(${expr.fn}${expr.args.length ? ' ' + expr.args.map(formatExprInline).join(' ') : ''})`;
+      return `(${expr.fn}${expr.args.length ? ' ' + expr.args.map(arg => formatExprInline(arg, options)).join(' ') : ''})`;
     case 'Intrinsic':
-      return `(${expr.op}${expr.args.length ? ' ' + expr.args.map(formatExprInline).join(' ') : ''})`;
+      return `(${expr.op}${expr.args.length ? ' ' + expr.args.map(arg => formatExprInline(arg, options)).join(' ') : ''})`;
     case 'List': {
       const head = expr.typeArg ? `list-of ${formatType(expr.typeArg)}` : 'list';
-      return `(${head}${expr.items.length ? ' ' + expr.items.map(formatExprInline).join(' ') : ''})`;
+      return `(${head}${expr.items.length ? ' ' + expr.items.map(arg => formatExprInline(arg, options)).join(' ') : ''})`;
     }
     case 'Tuple':
-      return `(tuple${expr.items.length ? ' ' + expr.items.map(formatExprInline).join(' ') : ''})`;
+      return `(tuple${expr.items.length ? ' ' + expr.items.map(arg => formatExprInline(arg, options)).join(' ') : ''})`;
     case 'Record':
       return formatRecordInline(expr.fields);
     case 'Tagged':
       return formatTaggedInline(expr);
     case 'Let':
-      return `(let (${expr.name} ${formatExprInline(expr.value)}) ${formatExprInline(expr.body)})`;
+      return `(let (${expr.name} ${formatExprInline(expr.value, options)}) ${formatExprInline(expr.body, options)})`;
     case 'If':
-      return `(if ${formatExprInline(expr.cond)} ${formatExprInline(expr.then)} ${formatExprInline(expr.else)})`;
+      return `(if ${formatExprInline(expr.cond, options)} ${formatExprInline(expr.then, options)} ${formatExprInline(expr.else, options)})`;
     case 'Match':
-      return `(match ${formatExprInline(expr.target)} ${expr.cases.map(formatMatchCaseInline).join(' ')})`;
+      return `(match ${formatExprInline(expr.target, options)} ${expr.cases.map(kase => formatMatchCaseInline(kase, options)).join(' ')})`;
     case 'Do':
-      return `(do ${expr.exprs.map(formatExprInline).join(' ')})`;
+      return `(do ${expr.exprs.map(item => formatExprInline(item, options)).join(' ')})`;
     case 'Lambda':
-      return formatLambdaInline(expr);
+      return formatLambdaInline(expr, options);
     case 'Fold':
-      return `(fold ${formatExprInline(expr.list)} ${formatExprInline(expr.init)} ${formatExprInline(expr.fn)})`;
+      return `(fold ${formatExprInline(expr.list, options)} ${formatExprInline(expr.init, options)} ${formatExprInline(expr.fn, options)})`;
   }
 }
 
-function formatExpr(expr: Expr, level: number): string[] {
+function formatExpr(expr: Expr, level: number, options: FormatOptions): string[] {
+  if (options.preserveSugar) {
+    const letStar = collectLetStar(expr);
+    if (letStar) {
+      const lines: string[] = [];
+      lines.push(`${indent(level)}(let* (${letStar.bindings.map(binding => `(${binding.name} ${formatExprInline(binding.value, options)})`).join(' ')})`);
+      lines.push(...formatExpr(letStar.body, level + 1, options));
+      lines.push(`${indent(level)})`);
+      return lines;
+    }
+    const condChain = collectCond(expr);
+    if (condChain) {
+      const lines: string[] = [];
+      lines.push(`${indent(level)}(cond`);
+      for (const entry of condChain.cases) {
+        lines.push(`${indent(level + 1)}(case ${formatExprInline(entry.cond, options)} ${formatExprInline(entry.body, options)})`);
+      }
+      lines.push(`${indent(level + 1)}(else ${formatExprInline(condChain.elseExpr, options)})`);
+      lines.push(`${indent(level)})`);
+      return lines;
+    }
+    const recordUpdate = collectRecordUpdate(expr);
+    if (recordUpdate) {
+      return [
+        `${indent(level)}${formatRecordUpdateInline(recordUpdate.target, recordUpdate.updates, options)}`,
+      ];
+    }
+  }
+
   switch (expr.kind) {
     case 'Let': {
       const lines: string[] = [];
-      lines.push(`${indent(level)}(let (${expr.name} ${formatExprInline(expr.value)})`);
-      lines.push(...formatExpr(expr.body, level + 1));
+      lines.push(`${indent(level)}(let (${expr.name} ${formatExprInline(expr.value, options)})`);
+      lines.push(...formatExpr(expr.body, level + 1, options));
       lines.push(`${indent(level)})`);
       return lines;
     }
     case 'If': {
       const lines: string[] = [];
-      lines.push(`${indent(level)}(if ${formatExprInline(expr.cond)}`);
-      lines.push(...formatExpr(expr.then, level + 1));
-      lines.push(...formatExpr(expr.else, level + 1));
+      lines.push(`${indent(level)}(if ${formatExprInline(expr.cond, options)}`);
+      lines.push(...formatExpr(expr.then, level + 1, options));
+      lines.push(...formatExpr(expr.else, level + 1, options));
       lines.push(`${indent(level)})`);
       return lines;
     }
     case 'Match': {
       const lines: string[] = [];
-      lines.push(`${indent(level)}(match ${formatExprInline(expr.target)}`);
+      lines.push(`${indent(level)}(match ${formatExprInline(expr.target, options)}`);
       for (const kase of expr.cases) {
-        lines.push(...formatMatchCase(kase, level + 1));
+        lines.push(...formatMatchCase(kase, level + 1, options));
       }
       lines.push(`${indent(level)})`);
       return lines;
@@ -289,7 +328,7 @@ function formatExpr(expr: Expr, level: number): string[] {
       const lines: string[] = [];
       lines.push(`${indent(level)}(do`);
       for (const entry of expr.exprs) {
-        lines.push(...formatExpr(entry, level + 1));
+        lines.push(...formatExpr(entry, level + 1, options));
       }
       lines.push(`${indent(level)})`);
       return lines;
@@ -301,27 +340,27 @@ function formatExpr(expr: Expr, level: number): string[] {
       lines.push(`${indent(level + 1)}(ret ${formatType(expr.ret)})`);
       lines.push(`${indent(level + 1)}(eff ${expr.eff})`);
       lines.push(`${indent(level + 1)}(body`);
-      lines.push(...formatExpr(expr.body, level + 2));
+      lines.push(...formatExpr(expr.body, level + 2, options));
       lines.push(`${indent(level + 1)})`);
       lines.push(`${indent(level)})`);
       return lines;
     }
     default:
-      return [`${indent(level)}${formatExprInline(expr)}`];
+      return [`${indent(level)}${formatExprInline(expr, options)}`];
   }
 }
 
-function formatMatchCaseInline(kase: MatchCase): string {
+function formatMatchCaseInline(kase: MatchCase, options: FormatOptions): string {
   const vars = viewVars(kase.vars);
   const varsSection = vars.length > 0 ? ` (${vars.join(' ')})` : '';
-  return `(case (tag "${escapeStr(kase.tag)}"${varsSection}) ${formatExprInline(kase.body)})`;
+  return `(case (tag "${escapeStr(kase.tag)}"${varsSection}) ${formatExprInline(kase.body, options)})`;
 }
 
-function formatMatchCase(kase: MatchCase, level: number): string[] {
+function formatMatchCase(kase: MatchCase, level: number, options: FormatOptions): string[] {
   const vars = viewVars(kase.vars);
   const varsSection = vars.length > 0 ? ` (${vars.join(' ')})` : '';
   const header = `${indent(level)}(case (tag "${escapeStr(kase.tag)}"${varsSection})`;
-  const bodyLines = formatExpr(kase.body, level + 1);
+  const bodyLines = formatExpr(kase.body, level + 1, options);
   if (bodyLines.length === 1) {
     return [`${header} ${bodyLines[0].trim()})`];
   }
@@ -334,10 +373,10 @@ function formatRecordInline(fields: Expr[]): string {
     if (field.kind === 'Tuple' && field.items.length === 2) {
       const keyExpr = field.items[0];
       if (keyExpr.kind === 'Literal' && keyExpr.value.kind === 'Str') {
-        return `(${keyExpr.value.value} ${formatExprInline(field.items[1])})`;
+        return `(${keyExpr.value.value} ${formatExprInline(field.items[1], { preserveSugar: false })})`;
       }
     }
-    return formatExprInline(field);
+    return formatExprInline(field, { preserveSugar: false });
   });
   return `(record ${parts.join(' ')})`;
 }
@@ -346,12 +385,70 @@ function formatTaggedInline(expr: Expr & { kind: 'Tagged' }): string {
   if (expr.value.kind === 'Tuple' && expr.value.items.length === 0) {
     return `(tag "${escapeStr(expr.tag)}")`;
   }
-  return `(tag "${escapeStr(expr.tag)}" ${formatExprInline(expr.value)})`;
+  return `(tag "${escapeStr(expr.tag)}" ${formatExprInline(expr.value, { preserveSugar: false })})`;
 }
 
-function formatLambdaInline(expr: Expr & { kind: 'Lambda' }): string {
+function formatLambdaInline(expr: Expr & { kind: 'Lambda' }, options: FormatOptions): string {
   const args = expr.args.map(arg => `(${arg.name} ${formatType(arg.type)})`).join(' ');
-  return `(lambda (args${args ? ' ' + args : ''}) (ret ${formatType(expr.ret)}) (eff ${expr.eff}) (body ${formatExprInline(expr.body)}))`;
+  return `(lambda (args${args ? ' ' + args : ''}) (ret ${formatType(expr.ret)}) (eff ${expr.eff}) (body ${formatExprInline(expr.body, options)}))`;
+}
+
+function collectLetStar(expr: Expr): { bindings: { name: string; value: Expr }[]; body: Expr } | null {
+  if (expr.kind !== 'Let') return null;
+  const bindings: { name: string; value: Expr }[] = [];
+  let current: Expr = expr;
+  while (current.kind === 'Let') {
+    bindings.push({ name: current.name, value: current.value });
+    current = current.body;
+  }
+  if (bindings.length < 2) return null;
+  return { bindings, body: current };
+}
+
+function collectCond(expr: Expr): { cases: { cond: Expr; body: Expr }[]; elseExpr: Expr } | null {
+  if (expr.kind !== 'If') return null;
+  const cases: { cond: Expr; body: Expr }[] = [];
+  let current: Expr = expr;
+  while (current.kind === 'If') {
+    cases.push({ cond: current.cond, body: current.then });
+    current = current.else;
+  }
+  if (cases.length === 0) return null;
+  return { cases, elseExpr: current };
+}
+
+function collectRecordUpdate(expr: Expr): { target: Expr; updates: { key: string; value: Expr }[] } | null {
+  if (expr.kind !== 'Intrinsic' || expr.op !== 'record.set') return null;
+  const updates: { key: string; value: Expr }[] = [];
+  let current: Expr = expr;
+  let target: Expr | null = null;
+  while (current.kind === 'Intrinsic' && current.op === 'record.set') {
+    const targetExpr: Expr = current.args[0];
+    const keyExpr: Expr | undefined = current.args[1];
+    const valueExpr: Expr | undefined = current.args[2];
+    if (!keyExpr || keyExpr.kind !== 'Literal' || keyExpr.value.kind !== 'Str') {
+      return null;
+    }
+    const key = keyExpr.value.value;
+    if (!SYMBOL_NAME.test(key)) {
+      return null;
+    }
+    updates.push({ key, value: valueExpr });
+    target = targetExpr;
+    current = targetExpr;
+  }
+  updates.reverse();
+  if (!target) return null;
+  return { target, updates };
+}
+
+function formatRecordUpdateInline(
+  target: Expr,
+  updates: { key: string; value: Expr }[],
+  options: FormatOptions,
+): string {
+  const parts = updates.map(update => `(${update.key} ${formatExprInline(update.value, options)})`);
+  return `(record.update ${formatExprInline(target, options)}${parts.length ? ' ' + parts.join(' ') : ''})`;
 }
 
 function formatLiteral(value: Value): string {
