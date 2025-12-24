@@ -508,13 +508,18 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
   const runTarget = filePath.startsWith(root) ? path.relative(root, filePath) : filePath;
   const output = await runIrisProgram(binPath, root, runTarget);
   const logPath = await writeRunLog(root, filePath, output);
+  const stdoutText = output.stdout.trim();
+  const stderrText = output.stderr.trim();
+  const stdoutSummary = stdoutText.length > 0 ? stdoutText : "(no stdout)";
   if (output.stderr) {
-    connection.window.showErrorMessage(
-      `Iris run failed:\n${output.stderr.trim()}`.slice(0, 4000),
-    );
+    const message = [`Iris run failed:`, stderrText, stdoutSummary ? `\nStdout:\n${stdoutSummary}` : ""]
+      .join("\n")
+      .trim()
+      .slice(0, 4000);
+    connection.window.showErrorMessage(message);
   } else {
     connection.window.showInformationMessage(
-      `Iris run complete:\n${output.stdout.trim()}`.slice(0, 4000),
+      `Iris run complete:\n${stdoutSummary}`.slice(0, 4000),
     );
   }
   connection.console.log(
@@ -525,8 +530,11 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
       uri: pathToFileURL(logPath).toString(),
       takeFocus: true,
     });
-  } else if (logPath) {
-    connection.window.showInformationMessage(`Iris run log saved to ${logPath}`);
+  }
+  if (logPath) {
+    connection.window.showInformationMessage(
+      `Iris run log saved to ${logPath}`.slice(0, 4000),
+    );
   }
   return output.stdout;
 });
