@@ -402,6 +402,9 @@ async function runViz() {
   const nVal = Math.min(35, Math.max(1, Number(els.nInput.value || 12)));
   const algs = Array.from(document.querySelectorAll('.algos input:checked')).map((el) => el.value);
   const args = [String(nVal), ...algs];
+  if (els.xMode && algs.length === 1 && algs[0] === 'fast-doubling') {
+    els.xMode.value = 'depth';
+  }
 
   const host = new WasmHost(args, (line) => {
     state.logLines.push(line);

@@ -61,12 +61,17 @@ test('fibviz renders and produces metrics', async ({ page }) => {
     await expect(page.locator('h1')).toContainText('Fibonacci Algorithms');
     await expect(page.locator('#runBtn')).toBeVisible();
 
+    await page.check('.algos input[value=\"fast-doubling\"]');
+    await page.uncheck('.algos input[value=\"iterative\"]');
+    await page.uncheck('.algos input[value=\"recursive\"]');
     await page.click('#runBtn');
 
     await page.waitForFunction(() => document.querySelectorAll('#metrics .metric').length > 0, null, {
       timeout: 20_000,
     });
     await expect(page.locator('#log')).toContainText('METRIC', { timeout: 20_000 });
+    await expect(page.locator('.chart-meta').first()).toContainText('x: depth');
+    await page.selectOption('#xMode', 'step');
     await expect(page.locator('.chart-meta').first()).toContainText('x: step');
     await page.selectOption('#xMode', 'depth');
     await expect(page.locator('.chart-meta').first()).toContainText('x: depth');
