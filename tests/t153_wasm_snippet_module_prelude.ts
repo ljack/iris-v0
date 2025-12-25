@@ -74,7 +74,7 @@ export const t153_wasm_snippet_module_prelude = {
       '(import "host" "str_concat" (func $host.str_concat (type $str_concat_type)))',
       '(import "host" "str_eq" (func $host.str_eq (type $str_eq_type)))',
       '(import "host" "record_get" (func $host.record_get (type $record_get_type)))',
-      '(memory $memory 1)',
+      '(memory $memory 4)',
       '(export "memory" (memory $memory))',
       '(func $alloc (export "alloc") (param $size i64) (result i64)',
       '  (local $ptr i64)',
