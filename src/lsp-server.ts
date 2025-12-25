@@ -58,6 +58,8 @@ const importProgramsByUri = new Map<
 >();
 const qualifiedDefinitionsByUri = new Map<string, Map<string, Location[]>>();
 const RUN_COMMAND = "iris.run";
+const PARENS_COMMAND = "iris.parens";
+const PARENS_MODES = ["normal", "dim", "hide"] as const;
 
 connection.onInitialize((params: InitializeParams) => {
   workspaceRoots = getWorkspaceRoots(params);
@@ -485,14 +487,9 @@ connection.onCodeAction((params): CodeAction[] => {
     return [];
   }
   const program = programsByUri.get(params.textDocument.uri) ?? parseProgram(doc.getText());
-  if (!program) {
-    return [];
-  }
-  if (findMainDefinitions(program).length === 0) {
-    return [];
-  }
-  return [
-    {
+  const actions: CodeAction[] = [];
+  if (program && findMainDefinitions(program).length > 0) {
+    actions.push({
       title: "Run Iris main",
       kind: CodeActionKind.Source,
       command: {
@@ -500,11 +497,34 @@ connection.onCodeAction((params): CodeAction[] => {
         command: RUN_COMMAND,
         arguments: [params.textDocument.uri],
       },
-    },
-  ];
+    });
+  }
+
+  for (const mode of PARENS_MODES) {
+    actions.push({
+      title: `Iris: Paren Mode (${mode})`,
+      kind: CodeActionKind.Source,
+      command: {
+        title: `Iris: Paren Mode (${mode})`,
+        command: PARENS_COMMAND,
+        arguments: [mode],
+      },
+    });
+  }
+
+  return actions;
 });
 
 connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
+  if (params.command === PARENS_COMMAND) {
+    const mode = typeof params.arguments?.[0] === "string" ? params.arguments?.[0] : "normal";
+    const target = mode === "dim" ? "Iris (Dim Parens)" : mode === "hide" ? "Iris (Hide Parens)" : "Iris";
+    connection.window.showInformationMessage(
+      `Iris paren mode: ${mode}\nSwitch the current buffer language to "${target}" via the language selector.`,
+    );
+    return null;
+  }
+
   if (params.command !== RUN_COMMAND) {
     return null;
   }
