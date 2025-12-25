@@ -53,6 +53,57 @@
       </section>
 
       <section class="panel">
+        <div class="panel-header">
+          <h2>Event Table</h2>
+          <span id="eventCount" class="panel-meta"></span>
+        </div>
+        <div class="table-controls">
+          <div class="filter-group">
+            <span class="filter-label">Algorithms</span>
+            <div id="eventAlgoFilters" class="filter-chips"></div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Step</span>
+            <div class="range-inputs">
+              <input id="eventStepMin" type="number" placeholder="min" />
+              <span>–</span>
+              <input id="eventStepMax" type="number" placeholder="max" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Depth</span>
+            <div class="range-inputs">
+              <input id="eventDepthMin" type="number" placeholder="min" />
+              <span>–</span>
+              <input id="eventDepthMax" type="number" placeholder="max" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Search note</span>
+            <input id="eventSearch" type="text" placeholder="contains…" />
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Rows</span>
+            <input id="eventMaxRows" type="number" min="50" max="5000" value="400" />
+          </div>
+        </div>
+        <div class="event-table-wrap">
+          <table class="event-table">
+            <thead>
+              <tr>
+                <th>step</th>
+                <th>depth</th>
+                <th>value</th>
+                <th>algo</th>
+                <th>note</th>
+              </tr>
+            </thead>
+            <tbody id="eventTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>Event Log</h2>
         <pre id="log" class="log"></pre>
       </section>
@@ -62,19 +113,31 @@
         <div class="build-diagram">
           <div class="build-step">
             <h3>1) Iris Source</h3>
-            <p>fib_viz.iris emits EVT/METRIC lines while running Fibonacci algorithms.</p>
+            <p>
+              <a href="https://github.com/ljack/iris-v0/blob/master/examples/real/apps/fib_viz.iris">fib_viz.iris</a>
+              emits EVT/METRIC lines while running Fibonacci algorithms.
+            </p>
           </div>
           <div class="build-step">
             <h3>2) Compiler → Wasm</h3>
-            <p>The Iris compiler generates WebAssembly + a small host ABI.</p>
+            <p>
+              The Iris compiler generates WebAssembly + a small host ABI
+              (<a href="https://github.com/ljack/iris-v0/blob/master/bin/iris">bin/iris</a>).
+            </p>
           </div>
           <div class="build-step">
             <h3>3) Browser Host</h3>
-            <p>app.js provides the host functions (print, strings, args) for the Wasm module.</p>
+            <p>
+              <a href="https://github.com/ljack/iris-v0/blob/master/web/fibviz/app.js">app.js</a>
+              provides the host functions (print, strings, args) for the Wasm module.
+            </p>
           </div>
           <div class="build-step">
             <h3>4) Visualization</h3>
-            <p>EVT/METRIC lines are parsed into charts and metrics on the page.</p>
+            <p>
+              EVT/METRIC lines are parsed into charts and metrics in
+              <a href="https://github.com/ljack/iris-v0/blob/master/web/fibviz/index.html">index.html</a>.
+            </p>
           </div>
         </div>
       </section>

@@ -3,7 +3,8 @@ const state = {
   metrics: new Map(),
   logLines: [],
   startTimes: new Map(),
-  runStart: 0
+  runStart: 0,
+  eventSeq: 0
 };
 
 const els = {
@@ -12,7 +13,16 @@ const els = {
   metrics: document.getElementById('metrics'),
   charts: document.getElementById('charts'),
   log: document.getElementById('log'),
-  xMode: document.getElementById('xMode')
+  xMode: document.getElementById('xMode'),
+  eventAlgoFilters: document.getElementById('eventAlgoFilters'),
+  eventStepMin: document.getElementById('eventStepMin'),
+  eventStepMax: document.getElementById('eventStepMax'),
+  eventDepthMin: document.getElementById('eventDepthMin'),
+  eventDepthMax: document.getElementById('eventDepthMax'),
+  eventSearch: document.getElementById('eventSearch'),
+  eventMaxRows: document.getElementById('eventMaxRows'),
+  eventTableBody: document.getElementById('eventTableBody'),
+  eventCount: document.getElementById('eventCount')
 };
 
 let wasmBytes = null;
@@ -23,9 +33,12 @@ function resetState() {
   state.logLines = [];
   state.startTimes.clear();
   state.runStart = 0;
+  state.eventSeq = 0;
   els.metrics.innerHTML = '';
   els.charts.innerHTML = '';
   els.log.textContent = '';
+  if (els.eventTableBody) els.eventTableBody.innerHTML = '';
+  if (els.eventCount) els.eventCount.textContent = '';
 }
 
 function parseLine(line) {
@@ -34,12 +47,14 @@ function parseLine(line) {
     const alg = payload.alg || 'unknown';
     if (!state.events.has(alg)) state.events.set(alg, []);
     state.events.get(alg).push({
+      seq: state.eventSeq++,
       step: Number(payload.step || 0),
       depth: Number(payload.depth || 0),
       n: Number(payload.n || 0),
       a: Number(payload.a || 0),
       b: Number(payload.b || 0),
-      val: Number(payload.val || 0)
+      val: Number(payload.val || 0),
+      note: payload.note || ''
     });
   } else if (line.startsWith('METRIC ')) {
     const payload = parseKV(line.slice(7));
@@ -71,6 +86,100 @@ function parseKV(text) {
     out[k] = v ?? '';
   }
   return out;
+}
+
+function buildEventAlgoFilters() {
+  if (!els.eventAlgoFilters) return;
+  const existing = new Set(
+    Array.from(els.eventAlgoFilters.querySelectorAll('input')).map((el) => el.value)
+  );
+  const selected = new Set(
+    Array.from(els.eventAlgoFilters.querySelectorAll('input:checked')).map((el) => el.value)
+  );
+  let changed = false;
+  for (const alg of state.events.keys()) {
+    if (!existing.has(alg)) changed = true;
+  }
+  if (!changed) return;
+  const preserve = selected.size ? selected : null;
+  els.eventAlgoFilters.innerHTML = '';
+  for (const alg of state.events.keys()) {
+    const label = document.createElement('label');
+    label.className = 'chip';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = alg;
+    input.checked = preserve ? preserve.has(alg) : true;
+    input.addEventListener('change', renderEventTable);
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(alg));
+    els.eventAlgoFilters.appendChild(label);
+  }
+}
+
+function eventNote(alg, evt) {
+  if (evt.note) return evt.note;
+  const parts = [];
+  if (evt.n) parts.push(`n=${evt.n}`);
+  if (alg === 'fast-doubling' && (evt.a || evt.b)) {
+    parts.push(`a=${evt.a} b=${evt.b}`);
+  }
+  return parts.join(' ');
+}
+
+function renderEventTable() {
+  if (!els.eventTableBody) return;
+  buildEventAlgoFilters();
+  const selectedAlgos = els.eventAlgoFilters
+    ? new Set(
+        Array.from(els.eventAlgoFilters.querySelectorAll('input:checked')).map((el) => el.value)
+      )
+    : null;
+  const stepMin = Number(els.eventStepMin?.value || '');
+  const stepMax = Number(els.eventStepMax?.value || '');
+  const depthMin = Number(els.eventDepthMin?.value || '');
+  const depthMax = Number(els.eventDepthMax?.value || '');
+  const search = (els.eventSearch?.value || '').toLowerCase();
+  const maxRows = Math.max(50, Number(els.eventMaxRows?.value || 400));
+
+  const rows = [];
+  for (const [alg, events] of state.events.entries()) {
+    if (selectedAlgos && selectedAlgos.size && !selectedAlgos.has(alg)) continue;
+    for (const evt of events) {
+      const note = eventNote(alg, evt);
+      if (Number.isFinite(stepMin) && String(els.eventStepMin?.value) !== '' && evt.step < stepMin) continue;
+      if (Number.isFinite(stepMax) && String(els.eventStepMax?.value) !== '' && evt.step > stepMax) continue;
+      if (Number.isFinite(depthMin) && String(els.eventDepthMin?.value) !== '' && evt.depth < depthMin) continue;
+      if (Number.isFinite(depthMax) && String(els.eventDepthMax?.value) !== '' && evt.depth > depthMax) continue;
+      if (search && !note.toLowerCase().includes(search)) continue;
+      rows.push({
+        seq: evt.seq,
+        step: evt.step,
+        depth: evt.depth,
+        value: evt.val,
+        alg,
+        note
+      });
+    }
+  }
+
+  rows.sort((a, b) => a.seq - b.seq);
+  const shown = rows.slice(0, maxRows);
+  els.eventTableBody.innerHTML = '';
+  for (const row of shown) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.step}</td>
+      <td>${row.depth}</td>
+      <td>${row.value}</td>
+      <td>${row.alg}</td>
+      <td>${row.note || ''}</td>
+    `;
+    els.eventTableBody.appendChild(tr);
+  }
+  if (els.eventCount) {
+    els.eventCount.textContent = `${shown.length} / ${rows.length} events`;
+  }
 }
 
 function renderMetrics() {
@@ -426,6 +535,7 @@ async function runViz() {
 
   renderMetrics();
   renderCharts();
+  renderEventTable();
 }
 
 els.runBtn.addEventListener('click', () => {
@@ -439,3 +549,17 @@ if (els.xMode) {
     renderCharts();
   });
 }
+
+[
+  els.eventStepMin,
+  els.eventStepMax,
+  els.eventDepthMin,
+  els.eventDepthMax,
+  els.eventSearch,
+  els.eventMaxRows
+].forEach((el) => {
+  if (!el) return;
+  el.addEventListener('input', () => {
+    renderEventTable();
+  });
+});
