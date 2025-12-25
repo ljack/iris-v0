@@ -18,6 +18,7 @@ import {
   CodeActionKind,
   CodeLens,
   ExecuteCommandParams,
+  TextEdit,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -26,6 +27,7 @@ import path from "path";
 import fs from "fs";
 import { spawn } from "child_process";
 import { buildDiagnosticsForError } from "./lsp-diagnostics";
+import { formatProgram } from "./format";
 import {
   collectIrisFiles,
   uriToPath,
@@ -74,6 +76,7 @@ connection.onInitialize((params: InitializeParams) => {
         resolveProvider: true,
         triggerCharacters: [".", "("],
       },
+      documentFormattingProvider: true,
       hoverProvider: true,
       definitionProvider: true,
       declarationProvider: true,
@@ -147,6 +150,28 @@ connection.onCompletion((_textDocumentPosition) => {
 
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
   return item;
+});
+
+connection.onDocumentFormatting((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) {
+    return [];
+  }
+  try {
+    const parser = new Parser(doc.getText(), false);
+    const program = parser.parse();
+    const formatted = formatProgram(program, { preserveSugar: true });
+    const fullRange = Range.create(
+      doc.positionAt(0),
+      doc.positionAt(doc.getText().length),
+    );
+    return [TextEdit.replace(fullRange, formatted)];
+  } catch (err) {
+    connection.console.error(
+      `Formatting failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return [];
+  }
 });
 
 // Provide hover information
