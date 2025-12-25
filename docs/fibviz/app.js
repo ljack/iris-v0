@@ -1,7 +1,9 @@
 const state = {
   events: new Map(),
   metrics: new Map(),
-  logLines: []
+  logLines: [],
+  startTimes: new Map(),
+  runStart: 0
 };
 
 const els = {
@@ -18,6 +20,8 @@ function resetState() {
   state.events.clear();
   state.metrics.clear();
   state.logLines = [];
+  state.startTimes.clear();
+  state.runStart = 0;
   els.metrics.innerHTML = '';
   els.charts.innerHTML = '';
   els.log.textContent = '';
@@ -40,8 +44,19 @@ function parseLine(line) {
     const alg = payload.alg || 'unknown';
     state.metrics.set(alg, {
       steps: Number(payload.steps || 0),
-      result: Number(payload.result || 0)
+      result: Number(payload.result || 0),
+      durationMs: (() => {
+        const start = state.startTimes.get(alg) ?? state.runStart;
+        if (!start) return 0;
+        return performance.now() - start;
+      })()
     });
+  } else if (line.startsWith('RUN ')) {
+    const payload = parseKV(line.slice(4));
+    const alg = payload.alg || 'unknown';
+    if (!state.startTimes.has(alg)) {
+      state.startTimes.set(alg, performance.now());
+    }
   }
 }
 
@@ -61,7 +76,8 @@ function renderMetrics() {
   for (const [alg, metric] of state.metrics.entries()) {
     const div = document.createElement('div');
     div.className = 'metric';
-    div.innerHTML = `<strong>${alg}</strong><span>steps: ${metric.steps} | result: ${metric.result}</span>`;
+    const duration = metric.durationMs ? `${metric.durationMs.toFixed(1)} ms` : '—';
+    div.innerHTML = `<strong>${alg}</strong><span>steps: ${metric.steps} | result: ${metric.result} | time: ${duration}</span>`;
     els.metrics.appendChild(div);
   }
 }
@@ -342,6 +358,7 @@ function decodeBase64(input) {
 
 async function runViz() {
   resetState();
+  state.runStart = performance.now();
   const nVal = Math.min(35, Math.max(1, Number(els.nInput.value || 12)));
   const algs = Array.from(document.querySelectorAll('.algos input:checked')).map((el) => el.value);
   const args = [String(nVal), ...algs];
