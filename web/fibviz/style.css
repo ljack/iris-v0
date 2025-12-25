@@ -183,6 +183,30 @@ canvas {
   font-size: 0.85rem;
 }
 
+.build-diagram {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.build-step {
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.build-step h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.build-step p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 footer {
   padding: 1.5rem clamp(1.5rem, 4vw, 4rem);
   color: var(--muted);

@@ -56,6 +56,28 @@
         <h2>Event Log</h2>
         <pre id="log" class="log"></pre>
       </section>
+
+      <section class="panel">
+        <h2>How This App Is Built</h2>
+        <div class="build-diagram">
+          <div class="build-step">
+            <h3>1) Iris Source</h3>
+            <p>fib_viz.iris emits EVT/METRIC lines while running Fibonacci algorithms.</p>
+          </div>
+          <div class="build-step">
+            <h3>2) Compiler → Wasm</h3>
+            <p>The Iris compiler generates WebAssembly + a small host ABI.</p>
+          </div>
+          <div class="build-step">
+            <h3>3) Browser Host</h3>
+            <p>app.js provides the host functions (print, strings, args) for the Wasm module.</p>
+          </div>
+          <div class="build-step">
+            <h3>4) Visualization</h3>
+            <p>EVT/METRIC lines are parsed into charts and metrics on the page.</p>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer>
