@@ -3,6 +3,7 @@
 Welcome to the documentation for **IRIS**, a minimal, deterministic, AI-centric programming language.
 
 ## 🌟 [Try the Online Playground](playground.html) 🌟
+## 📈 [Explore the Fibonacci Visualizer](fibviz/index.html) 📈
 
 ## 🚀 Getting Started
 

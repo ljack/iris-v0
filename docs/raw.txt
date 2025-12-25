@@ -12,3 +12,7 @@ https://raw.githubusercontent.com/ljack/iris-v0/master/docs/iris-v0-specificatio
 https://raw.githubusercontent.com/ljack/iris-v0/master/docs/iris.js
 https://raw.githubusercontent.com/ljack/iris-v0/master/docs/iris.js.map
 https://raw.githubusercontent.com/ljack/iris-v0/master/docs/playground.html
+https://raw.githubusercontent.com/ljack/iris-v0/master/docs/fibviz/index.html
+https://raw.githubusercontent.com/ljack/iris-v0/master/docs/fibviz/app.js
+https://raw.githubusercontent.com/ljack/iris-v0/master/docs/fibviz/style.css
+https://raw.githubusercontent.com/ljack/iris-v0/master/docs/fibviz/fib_viz.wasm.b64

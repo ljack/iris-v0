@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iris Fibonacci Visualizer</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">IRIS • WASM • VISUAL</p>
+        <h1>Fibonacci Algorithms, Animated</h1>
+        <p class="subhead">
+          Run multiple algorithms, compare step counts, and watch their evolution
+          as Iris emits tracing events from WebAssembly.
+        </p>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label for="nInput">N (1–35)</label>
+          <input id="nInput" type="number" min="1" max="35" value="12" />
+        </div>
+        <div class="field">
+          <label>Algorithms</label>
+          <div class="algos">
+            <label><input type="checkbox" value="iterative" checked /> iterative</label>
+            <label><input type="checkbox" value="fast-doubling" checked /> fast-doubling</label>
+            <label><input type="checkbox" value="recursive" checked /> recursive</label>
+          </div>
+        </div>
+        <button id="runBtn">Run Visualization</button>
+        <p class="hint">Recursive is capped at n ≤ 20 in Iris for safety.</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Metrics</h2>
+        <div id="metrics" class="metrics"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Step Evolution</h2>
+        <div id="charts" class="charts"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Event Log</h2>
+        <pre id="log" class="log"></pre>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Build the wasm with:
+        <code>bin/iris run-wasm examples/real/apps/fib_viz.iris --no-run --wasm-out web/fibviz/fib_viz.wasm</code>
+        <span>(also writes fib_viz.wasm.b64)</span>
+      </p>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
