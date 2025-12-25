@@ -300,6 +300,12 @@
                       (ws.s "param" (list "i64"))
                       (ws.s "result" (list "i64"))
             )))))
+            (temp_reset_type (ws.s "type"
+                (list "$temp_reset_type"
+                  (ws.s "func"
+                    (list
+                      (ws.s "result" (list "i64"))
+            )))))
             (record_get_type (ws.s "type"
                 (list "$record_get_type"
                   (ws.s "func"
@@ -325,6 +331,7 @@
                     i64_to_string_type
                     str_concat_type
                     str_eq_type
+                    temp_reset_type
                     record_get_type
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "print") (ws.s "func" (list "$host.print" (ws.s "type" (list "$print_type"))))))
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "parse_i64") (ws.s "func" (list "$host.parse_i64" (ws.s "type" (list "$parse_i64_type"))))))
@@ -332,7 +339,9 @@
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "args_list") (ws.s "func" (list "$host.args_list" (ws.s "type" (list "$args_list_type"))))))
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "i64_to_string") (ws.s "func" (list "$host.i64_to_string" (ws.s "type" (list "$i64_to_string_type"))))))
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "str_concat") (ws.s "func" (list "$host.str_concat" (ws.s "type" (list "$str_concat_type"))))))
+                    (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "str_concat_temp") (ws.s "func" (list "$host.str_concat_temp" (ws.s "type" (list "$str_concat_type"))))))
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "str_eq") (ws.s "func" (list "$host.str_eq" (ws.s "type" (list "$str_eq_type"))))))
+                    (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "temp_reset") (ws.s "func" (list "$host.temp_reset" (ws.s "type" (list "$temp_reset_type"))))))
                     (ws.s "import" (list (ws.quote_string "host") (ws.quote_string "record_get") (ws.s "func" (list "$host.record_get" (ws.s "type" (list "$record_get_type"))))))
                 ))
             ))
@@ -451,6 +460,7 @@
                   (ws.indent2 (ws.s "local" (list (ws.local_id "end") "i64")))
                   (ws.indent2 (ws.s "local" (list (ws.local_id "mem_pages") "i64")))
                   (ws.indent2 (ws.s "local" (list (ws.local_id "mem_bytes") "i64")))
+                  (ws.indent2 (ws.s "local" (list (ws.local_id "end_with_temp") "i64")))
                   (ws.indent2 (ws.s "local" (list (ws.local_id "delta") "i64")))
                   (ws.indent2 (ws.s "local" (list (ws.local_id "grow_pages") "i64")))
                   (ws.indent2 (ws.s "local.set" (list
@@ -471,6 +481,13 @@
                     ))
                   )))
                   (ws.indent2 (ws.s "local.set" (list
+                    (ws.local_id "end_with_temp")
+                    (ws.s "i64.add" (list
+                      (ws.s "local.get" (list (ws.local_id "end")))
+                      (ws.s "i64.const" (list "65536"))
+                    ))
+                  )))
+                  (ws.indent2 (ws.s "local.set" (list
                     (ws.local_id "mem_pages")
                     (ws.s "i64.extend_i32_u" (list (ws.s "memory.size" (list))))
                   )))
@@ -483,14 +500,14 @@
                   )))
                   (ws.indent2 (ws.s "if" (list
                     (ws.s "i64.gt_u" (list
-                      (ws.s "local.get" (list (ws.local_id "end")))
+                      (ws.s "local.get" (list (ws.local_id "end_with_temp")))
                       (ws.s "local.get" (list (ws.local_id "mem_bytes")))
                     ))
                     (ws.s "then" (list
                       (ws.s "local.set" (list
                         (ws.local_id "delta")
                         (ws.s "i64.sub" (list
-                          (ws.s "local.get" (list (ws.local_id "end")))
+                          (ws.s "local.get" (list (ws.local_id "end_with_temp")))
                           (ws.s "local.get" (list (ws.local_id "mem_bytes")))
                         ))
                       ))

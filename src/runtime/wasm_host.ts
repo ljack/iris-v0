@@ -16,6 +16,8 @@ export class IrisWasmHost {
     private argsPtrs = new Map<number, bigint>();
     private allocCursor: number | null = null;
     private allocFn: ((size: bigint) => bigint) | null = null;
+    private tempCursor: number | null = null;
+    private tempSize = 65536;
 
     constructor(options: WasmHostOptions = {}) {
         this.tools = options.tools || {};
@@ -26,6 +28,7 @@ export class IrisWasmHost {
     attachMemory(memory: WebAssembly.Memory) {
         this.memory = memory;
         this.allocCursor = memory.buffer.byteLength;
+        this.tempCursor = null;
     }
 
     attachAlloc(fn: (size: bigint) => bigint) {
@@ -39,7 +42,9 @@ export class IrisWasmHost {
                 parse_i64: (ptr: bigint) => this.parseI64(ptr),
                 i64_to_string: (value: bigint) => this.i64ToString(value),
                 str_concat: (aPtr: bigint, bPtr: bigint) => this.strConcat(aPtr, bPtr),
+                str_concat_temp: (aPtr: bigint, bPtr: bigint) => this.strConcatTemp(aPtr, bPtr),
                 str_eq: (aPtr: bigint, bPtr: bigint) => this.strEq(aPtr, bPtr),
+                temp_reset: () => this.resetTemp(),
                 rand_u64: () => this.randU64(),
                 args_list: () => this.argsList(),
                 record_get: (recordPtr: bigint, keyPtr: bigint) => this.recordGet(recordPtr, keyPtr),
@@ -118,6 +123,22 @@ export class IrisWasmHost {
             throw new Error(`str_concat: b ${err?.message ?? err}`);
         }
         return this.writeString(a + b);
+    }
+
+    private strConcatTemp(aPtr: bigint, bPtr: bigint): bigint {
+        let a = '';
+        let b = '';
+        try {
+            a = this.readString(aPtr);
+        } catch (err: any) {
+            throw new Error(`str_concat_temp: a ${err?.message ?? err}`);
+        }
+        try {
+            b = this.readString(bPtr);
+        } catch (err: any) {
+            throw new Error(`str_concat_temp: b ${err?.message ?? err}`);
+        }
+        return this.writeStringTemp(a + b);
     }
 
     private strEq(aPtr: bigint, bPtr: bigint): bigint {
@@ -202,6 +223,12 @@ export class IrisWasmHost {
         }
     }
 
+    private resetTemp(): bigint {
+        if (!this.memory) return 0n;
+        this.tempCursor = this.getTempBase();
+        return 0n;
+    }
+
     private writeString(value: string): bigint {
         if (!this.memory) return 0n;
         const encoder = new TextEncoder();
@@ -209,6 +236,19 @@ export class IrisWasmHost {
         const total = 8 + bytes.length;
         const buf = new Uint8Array(this.memory.buffer);
         const p = this.writeAlloc(total);
+        const view = new DataView(this.memory.buffer);
+        view.setBigInt64(p, BigInt(bytes.length), true);
+        buf.set(bytes, p + 8);
+        return BigInt(p);
+    }
+
+    private writeStringTemp(value: string): bigint {
+        if (!this.memory) return 0n;
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(value);
+        const total = 8 + bytes.length;
+        const p = this.writeTempAlloc(total);
+        const buf = new Uint8Array(this.memory.buffer);
         const view = new DataView(this.memory.buffer);
         view.setBigInt64(p, BigInt(bytes.length), true);
         buf.set(bytes, p + 8);
@@ -227,6 +267,32 @@ export class IrisWasmHost {
         const p = cursor - size;
         if (p <= 0) throw new Error('WASM host out of memory');
         this.allocCursor = p;
+        return p;
+    }
+
+    private getTempBase(): number {
+        if (!this.memory) return 0;
+        const base = this.memory.buffer.byteLength - this.tempSize;
+        if (base < 0) {
+            throw new Error(`WASM temp buffer invalid (mem=${this.memory.buffer.byteLength})`);
+        }
+        return base;
+    }
+
+    private writeTempAlloc(size: number): number {
+        if (!this.memory) return 0;
+        if (size > this.tempSize - 8) {
+            throw new Error(`WASM temp buffer overflow (size=${size})`);
+        }
+        const base = this.getTempBase();
+        if (this.tempCursor === null || this.tempCursor < base || this.tempCursor > base + this.tempSize) {
+            this.tempCursor = base;
+        }
+        if (this.tempCursor + size > base + this.tempSize) {
+            this.tempCursor = base;
+        }
+        const p = this.tempCursor;
+        this.tempCursor += size;
         return p;
     }
 }

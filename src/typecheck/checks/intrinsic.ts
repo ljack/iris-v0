@@ -136,7 +136,11 @@ export function checkIntrinsic(check: CheckFn, ctx: TypeCheckerContext, expr: Ex
             if (argTypes[0].type !== 'Str') throw new Error("str.len expects Str");
             return { type: { type: 'I64' }, eff: joinedEff };
         }
-        if (expr.op === 'str.concat') return { type: { type: 'Str' }, eff: joinedEff };
+        if (expr.op === 'str.concat' || expr.op === 'str.concat_temp') return { type: { type: 'Str' }, eff: joinedEff };
+        if (expr.op === 'str.temp_reset') {
+            if (argTypes.length !== 0) throw new Error("str.temp_reset expects 0 args");
+            return { type: { type: 'I64' }, eff: joinedEff };
+        }
         if (expr.op === 'str.eq') return { type: { type: 'Bool' }, eff: joinedEff };
         if (expr.op === 'str.contains' || expr.op === 'str.ends_with') return { type: { type: 'Bool' }, eff: joinedEff };
         if (expr.op === 'str.get') {

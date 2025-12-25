@@ -113,11 +113,14 @@ class WasmHost {
     this.allocCursor = null;
     this.alloc = null;
     this.argsPtr = null;
+    this.tempCursor = null;
+    this.tempSize = 65536;
   }
 
   attachMemory(memory) {
     this.memory = memory;
     this.allocCursor = memory.buffer.byteLength;
+    this.tempCursor = null;
   }
 
   attachAlloc(allocFn) {
@@ -131,7 +134,9 @@ class WasmHost {
         parse_i64: (ptr) => this.parseI64(ptr),
         i64_to_string: (value) => this.i64ToString(value),
         str_concat: (a, b) => this.strConcat(a, b),
+        str_concat_temp: (a, b) => this.strConcatTemp(a, b),
         str_eq: (a, b) => this.strEq(a, b),
+        temp_reset: () => this.resetTemp(),
         rand_u64: () => this.randU64(),
         args_list: () => this.argsList(),
         record_get: (recordPtr, keyPtr) => this.recordGet(recordPtr, keyPtr)
@@ -161,6 +166,12 @@ class WasmHost {
     return this.writeString(a + b);
   }
 
+  strConcatTemp(aPtr, bPtr) {
+    const a = this.readString(aPtr);
+    const b = this.readString(bPtr);
+    return this.writeStringTemp(a + b);
+  }
+
   strEq(aPtr, bPtr) {
     const a = this.readString(aPtr);
     const b = this.readString(bPtr);
@@ -171,6 +182,11 @@ class WasmHost {
     const hi = Math.floor(Math.random() * 0x80000000);
     const lo = Math.floor(Math.random() * 0x100000000);
     return (BigInt(hi) << 32n) | BigInt(lo);
+  }
+
+  resetTemp() {
+    this.tempCursor = this.getTempBase();
+    return 0n;
   }
 
   argsList() {
@@ -202,6 +218,41 @@ class WasmHost {
       }
     }
     throw new Error(`record_get: missing field ${key}`);
+  }
+
+  getTempBase() {
+    const base = this.memory.buffer.byteLength - this.tempSize;
+    if (base < 0) {
+      throw new Error(`WASM temp buffer invalid (mem=${this.memory.buffer.byteLength})`);
+    }
+    return base;
+  }
+
+  writeStringTemp(value) {
+    const bytes = new TextEncoder().encode(value);
+    const total = 8 + bytes.length;
+    const p = this.writeTempAlloc(total);
+    const buf = new Uint8Array(this.memory.buffer);
+    const view = new DataView(this.memory.buffer);
+    view.setBigInt64(p, BigInt(bytes.length), true);
+    buf.set(bytes, p + 8);
+    return BigInt(p);
+  }
+
+  writeTempAlloc(size) {
+    if (size > this.tempSize - 8) {
+      throw new Error(`WASM temp buffer overflow (size=${size})`);
+    }
+    const base = this.getTempBase();
+    if (this.tempCursor === null || this.tempCursor < base || this.tempCursor > base + this.tempSize) {
+      this.tempCursor = base;
+    }
+    if (this.tempCursor + size > base + this.tempSize) {
+      this.tempCursor = base;
+    }
+    const p = this.tempCursor;
+    this.tempCursor += size;
+    return p;
   }
 
   readString(ptr) {

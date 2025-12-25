@@ -11,24 +11,38 @@
       (body (str.concat key (str.concat "=" val)))
     )
 
+    (deffn (name tconcat) (args (a Str) (b Str)) (ret Str) (eff !Pure)
+      (body (str.concat_temp a b))
+    )
+
+    (deffn (name kv_i64_temp) (args (key Str) (val I64)) (ret Str) (eff !Pure)
+      (body (tconcat key (tconcat "=" (i64.to_string val))))
+    )
+
+    (deffn (name kv_str_temp) (args (key Str) (val Str)) (ret Str) (eff !Pure)
+      (body (tconcat key (tconcat "=" val)))
+    )
+
     (deffn (name emit_evt)
       (args (alg Str) (step I64) (n I64) (a I64) (b I64) (val I64))
       (ret I64) (eff !IO)
       (body
         (if (> step 200)
           0
-          (io.print
-            (str.concat "EVT "
-              (str.concat (kv_str "alg" alg)
-                (str.concat " "
-                  (str.concat (kv_i64 "step" step)
-                    (str.concat " "
-                      (str.concat (kv_i64 "n" n)
-                        (str.concat " "
-                          (str.concat (kv_i64 "a" a)
-                            (str.concat " "
-                              (str.concat (kv_i64 "b" b)
-                                (str.concat " " (kv_i64 "val" val)))))))))))))
+          (let (_ (str.temp_reset))
+            (io.print
+              (tconcat "EVT "
+                (tconcat (kv_str_temp "alg" alg)
+                  (tconcat " "
+                    (tconcat (kv_i64_temp "step" step)
+                      (tconcat " "
+                        (tconcat (kv_i64_temp "n" n)
+                          (tconcat " "
+                            (tconcat (kv_i64_temp "a" a)
+                              (tconcat " "
+                                (tconcat (kv_i64_temp "b" b)
+                                  (tconcat " " (kv_i64_temp "val" val)))))))))))))
+          )
         )
       )
     )
@@ -37,12 +51,14 @@
       (args (alg Str) (steps I64) (result I64))
       (ret I64) (eff !IO)
       (body
-        (io.print
-          (str.concat "METRIC "
-            (str.concat (kv_str "alg" alg)
-              (str.concat " "
-                (str.concat (kv_i64 "steps" steps)
-                  (str.concat " " (kv_i64 "result" result)))))))
+        (let (_ (str.temp_reset))
+          (io.print
+            (tconcat "METRIC "
+              (tconcat (kv_str_temp "alg" alg)
+                (tconcat " "
+                  (tconcat (kv_i64_temp "steps" steps)
+                    (tconcat " " (kv_i64_temp "result" result)))))))
+        )
       )
     )
 

@@ -502,11 +502,12 @@ function evalIntrinsicSync(
     return t.items[idx];
   }
 
-  if (op === "str.concat")
+  if (op === "str.concat" || op === "str.concat_temp")
     return {
       kind: "Str",
       value: ((args[0] as any)?.value || "") + ((args[1] as any)?.value || ""),
     };
+  if (op === "str.temp_reset") return { kind: "I64", value: 0n };
   if (op === "str.eq")
     return {
       kind: "Bool",

@@ -3,7 +3,10 @@ import { Value, IntrinsicOp } from '../../types';
 import { valueToKey, keyToValue } from '../utils';
 
 export function evalData(op: IntrinsicOp, args: Value[]): Value | undefined {
-    if (op === 'str.concat') return { kind: 'Str', value: ((args[0] as any)?.value || "") + ((args[1] as any)?.value || "") };
+    if (op === 'str.concat' || op === 'str.concat_temp') {
+        return { kind: 'Str', value: ((args[0] as any)?.value || "") + ((args[1] as any)?.value || "") };
+    }
+    if (op === 'str.temp_reset') return { kind: 'I64', value: 0n };
     if (op === 'str.eq') return { kind: 'Bool', value: ((args[0] as any)?.value || "") === ((args[1] as any)?.value || "") };
     if (op === 'str.len') return { kind: 'I64', value: BigInt(((args[0] as any)?.value || "").length) };
     if (op === 'str.get') {
