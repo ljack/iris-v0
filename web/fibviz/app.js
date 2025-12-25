@@ -73,11 +73,18 @@ function parseKV(text) {
 
 function renderMetrics() {
   els.metrics.innerHTML = '';
+  const algoLinks = {
+    iterative: 'https://en.wikipedia.org/wiki/Fibonacci_number#Computation_by_rounding',
+    recursive: 'https://en.wikipedia.org/wiki/Fibonacci_number#Recursive_definition',
+    'fast-doubling': 'https://www.nayuki.io/page/fast-fibonacci-algorithms'
+  };
   for (const [alg, metric] of state.metrics.entries()) {
     const div = document.createElement('div');
     div.className = 'metric';
     const duration = metric.durationMs ? `${metric.durationMs.toFixed(1)} ms` : '—';
-    div.innerHTML = `<strong>${alg}</strong><span>steps: ${metric.steps} | result: ${metric.result} | time: ${duration}</span>`;
+    const link = algoLinks[alg];
+    const label = link ? `<a href="${link}" target="_blank" rel="noopener noreferrer">${alg}</a>` : alg;
+    div.innerHTML = `<strong>${label}</strong><span>steps: ${metric.steps} | result: ${metric.result} | time: ${duration}</span>`;
     els.metrics.appendChild(div);
   }
 }
