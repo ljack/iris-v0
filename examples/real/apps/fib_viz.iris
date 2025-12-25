@@ -24,7 +24,7 @@
     )
 
     (deffn (name emit_evt)
-      (args (alg Str) (step I64) (n I64) (a I64) (b I64) (val I64))
+      (args (alg Str) (step I64) (n I64) (depth I64) (a I64) (b I64) (val I64))
       (ret I64) (eff !IO)
       (body
         (if (> step 200)
@@ -38,10 +38,12 @@
                       (tconcat " "
                         (tconcat (kv_i64_temp "n" n)
                           (tconcat " "
-                            (tconcat (kv_i64_temp "a" a)
+                            (tconcat (kv_i64_temp "depth" depth)
                               (tconcat " "
-                                (tconcat (kv_i64_temp "b" b)
-                                  (tconcat " " (kv_i64_temp "val" val)))))))))))))
+                                (tconcat (kv_i64_temp "a" a)
+                                  (tconcat " "
+                                    (tconcat (kv_i64_temp "b" b)
+                                      (tconcat " " (kv_i64_temp "val" val)))))))))))))))
           )
         )
       )
@@ -80,7 +82,7 @@
       (body
         (if (>= i n)
           (record (value b) (steps steps))
-          (let (_ (emit_evt alg steps n a b b))
+          (let (_ (emit_evt alg steps n i a b b))
             (let (next (+ a b))
               (loop_iter alg n b next (+ i 1) (+ steps 1))))))
     )
@@ -89,7 +91,7 @@
       (args (n I64) (alg Str) (depth I64) (steps I64))
       (ret (Record (value I64) (steps I64))) (eff !IO)
       (body
-        (let (_ (emit_evt alg steps n depth 0 n))
+        (let (_ (emit_evt alg steps n depth 0 0 n))
           (if (< n 2)
             (record (value n) (steps (+ steps 1)))
             (let (left (fib_recursive_trace (- n 1) alg (+ depth 1) (+ steps 1)))
@@ -118,14 +120,14 @@
                           (record (a d) (b (+ c d)) (steps s1))))))))))))
     )
 
-    (deffn (name fib_fast_doubling_pair_trace) (args (n I64) (alg Str) (steps I64))
+    (deffn (name fib_fast_doubling_pair_trace) (args (n I64) (alg Str) (steps I64) (depth I64))
       (ret (Record (a I64) (b I64) (steps I64))) (eff !IO)
       (body
         (if (= n 0)
           (let (res (record (a 0) (b 1) (steps (+ steps 1))))
-            (let (_ (emit_evt alg (record.get res "steps") n 0 1 0))
+            (let (_ (emit_evt alg (record.get res "steps") n depth 0 1 0))
               res))
-          (let (half (fib_fast_doubling_pair_trace (/ n 2) alg (+ steps 1)))
+          (let (half (fib_fast_doubling_pair_trace (/ n 2) alg (+ steps 1) (+ depth 1)))
             (let (a (record.get half "a"))
               (let (b (record.get half "b"))
                 (let (s1 (record.get half "steps"))
@@ -135,7 +137,7 @@
                         (let (res (if (= (% n 2) 0)
                           (record (a c) (b d) (steps s1))
                           (record (a d) (b (+ c d)) (steps s1))))
-                          (let (_ (emit_evt alg (record.get res "steps") n (record.get res "a") (record.get res "b") (record.get res "a")))
+                          (let (_ (emit_evt alg (record.get res "steps") n depth (record.get res "a") (record.get res "b") (record.get res "a")))
                             res))))))))))
       )
     )
@@ -149,7 +151,7 @@
 
     (deffn (name fib_fast_doubling_trace) (args (n I64) (alg Str)) (ret (Record (value I64) (steps I64))) (eff !IO)
       (body
-        (let (res (fib_fast_doubling_pair_trace n alg 0))
+        (let (res (fib_fast_doubling_pair_trace n alg 0 0))
           (record (value (record.get res "a")) (steps (record.get res "steps"))))
       )
     )

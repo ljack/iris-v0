@@ -11,7 +11,8 @@ const els = {
   runBtn: document.getElementById('runBtn'),
   metrics: document.getElementById('metrics'),
   charts: document.getElementById('charts'),
-  log: document.getElementById('log')
+  log: document.getElementById('log'),
+  xMode: document.getElementById('xMode')
 };
 
 let wasmBytes = null;
@@ -34,6 +35,7 @@ function parseLine(line) {
     if (!state.events.has(alg)) state.events.set(alg, []);
     state.events.get(alg).push({
       step: Number(payload.step || 0),
+      depth: Number(payload.depth || 0),
       n: Number(payload.n || 0),
       a: Number(payload.a || 0),
       b: Number(payload.b || 0),
@@ -91,6 +93,7 @@ function renderMetrics() {
 
 function renderCharts() {
   els.charts.innerHTML = '';
+  const mode = els.xMode ? els.xMode.value : 'step';
   for (const [alg, events] of state.events.entries()) {
     const card = document.createElement('div');
     card.className = 'chart-card';
@@ -102,18 +105,26 @@ function renderCharts() {
     card.appendChild(title);
     card.appendChild(canvas);
     els.charts.appendChild(card);
-    drawSeries(canvas, events);
+    const series = alg === 'fast-doubling'
+      ? [
+        { key: 'a', color: '#cc4c2a', label: 'a' },
+        { key: 'b', color: '#4c9bcc', label: 'b' },
+      ]
+      : [{ key: 'val', color: '#cc4c2a', label: 'value' }];
+    drawSeries(canvas, events, { xMode: mode, series, alg });
   }
 }
 
-function drawSeries(canvas, events) {
+function drawSeries(canvas, events, { xMode, series, alg }) {
   if (!events.length) return;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const padding = 20;
-  const maxStep = Math.max(...events.map(e => e.step));
-  const maxVal = Math.max(...events.map(e => e.val));
-  const scaleX = (canvas.width - padding * 2) / Math.max(1, maxStep);
+  const useDepth = xMode === 'depth' && events.some(e => e.depth > 0);
+  const xKey = useDepth ? 'depth' : 'step';
+  const maxX = Math.max(...events.map(e => e[xKey]));
+  const maxVal = Math.max(...events.flatMap(e => series.map(s => e[s.key])));
+  const scaleX = (canvas.width - padding * 2) / Math.max(1, maxX);
   const scaleY = (canvas.height - padding * 2) / Math.max(1, maxVal);
 
   // Axes
@@ -125,43 +136,61 @@ function drawSeries(canvas, events) {
   ctx.lineTo(canvas.width - padding, canvas.height - padding);
   ctx.stroke();
 
-  ctx.strokeStyle = '#cc4c2a';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  events.forEach((evt, idx) => {
-    const x = padding + evt.step * scaleX;
-    const y = canvas.height - padding - evt.val * scaleY;
-    if (idx === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-  // Draw points for sparse series (e.g. fast-doubling).
-  ctx.fillStyle = '#cc4c2a';
-  events.forEach((evt) => {
-    const x = padding + evt.step * scaleX;
-    const y = canvas.height - padding - evt.val * scaleY;
+  series.forEach((seriesDef) => {
+    ctx.strokeStyle = seriesDef.color;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fill();
+    events.forEach((evt, idx) => {
+      const x = padding + evt[xKey] * scaleX;
+      const y = canvas.height - padding - evt[seriesDef.key] * scaleY;
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Draw points for sparse series (e.g. fast-doubling).
+    ctx.fillStyle = seriesDef.color;
+    events.forEach((evt) => {
+      const x = padding + evt[xKey] * scaleX;
+      const y = canvas.height - padding - evt[seriesDef.key] * scaleY;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
   });
 
   // Axis labels for quick orientation.
   ctx.fillStyle = '#9aa4b2';
   ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText('step', canvas.width - padding - 28, canvas.height - 6);
+  const xLabel = xKey === 'depth' ? 'depth' : 'step';
+  const yLabel = series.length > 1 ? 'a/b' : 'value';
+  ctx.fillText(xLabel, canvas.width - padding - 32, canvas.height - 6);
   ctx.save();
   ctx.translate(8, padding + 8);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillText('value', 0, 0);
+  ctx.fillText(yLabel, 0, 0);
   ctx.restore();
 
   // Tick labels (min/max).
   ctx.fillStyle = '#7c8796';
   ctx.font = '11px system-ui, sans-serif';
   ctx.fillText('0', padding - 6, canvas.height - padding + 12);
-  ctx.fillText(String(maxStep), canvas.width - padding - 8, canvas.height - padding + 12);
+  ctx.fillText(String(maxX), canvas.width - padding - 8, canvas.height - padding + 12);
   ctx.fillText(String(maxVal), padding - 18, padding + 4);
+
+  if (series.length > 1) {
+    ctx.fillStyle = '#9aa4b2';
+    ctx.font = '11px system-ui, sans-serif';
+    const legendX = canvas.width - padding - 60;
+    const legendY = padding + 8;
+    series.forEach((seriesDef, idx) => {
+      const y = legendY + idx * 14;
+      ctx.fillStyle = seriesDef.color;
+      ctx.fillRect(legendX, y - 8, 10, 10);
+      ctx.fillStyle = '#9aa4b2';
+      ctx.fillText(seriesDef.label, legendX + 14, y);
+    });
+  }
 }
 
 class WasmHost {
