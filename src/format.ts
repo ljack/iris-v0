@@ -104,6 +104,99 @@ export function hideParens(source: string): string {
   return out.join('');
 }
 
+export function formatSourcePreserveComments(source: string, indentSize = INDENT): string {
+  const lines = source.split('\n');
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  const out: string[] = [];
+
+  for (const line of lines) {
+    if (inString) {
+      out.push(line);
+      const scan = scanLineForDepth(line, inString, escape);
+      depth = Math.max(0, depth + scan.delta);
+      inString = scan.inString;
+      escape = scan.escape;
+      continue;
+    }
+
+    const trimmed = line.replace(/^[\t ]+/, '');
+    if (trimmed.length === 0) {
+      out.push('');
+      continue;
+    }
+
+    const leadingClose = countLeadingCloseParens(trimmed);
+    const lineDepth = Math.max(0, depth - leadingClose);
+    out.push(`${' '.repeat(lineDepth * indentSize)}${trimmed}`);
+
+    const scan = scanLineForDepth(trimmed, inString, escape);
+    depth = Math.max(0, depth + scan.delta);
+    inString = scan.inString;
+    escape = scan.escape;
+  }
+
+  return out.join('\n');
+}
+
+function countLeadingCloseParens(line: string): number {
+  let count = 0;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === ';') break;
+    if (ch === ')') {
+      count += 1;
+      continue;
+    }
+    if (ch === '(') break;
+    if (!/\s/.test(ch)) break;
+  }
+  return count;
+}
+
+function scanLineForDepth(
+  line: string,
+  inString: boolean,
+  escape: boolean,
+): { delta: number; inString: boolean; escape: boolean } {
+  let delta = 0;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === ';') {
+      break;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '(') {
+      delta += 1;
+      continue;
+    }
+    if (ch === ')') {
+      delta -= 1;
+      continue;
+    }
+  }
+  return { delta, inString, escape };
+}
+
 function formatDefinition(def: Definition, level: number, options: FormatOptions): string[] {
   const lines: string[] = [];
   if (def.kind === 'DefConst') {

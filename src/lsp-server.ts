@@ -27,7 +27,7 @@ import path from "path";
 import fs from "fs";
 import { spawn } from "child_process";
 import { buildDiagnosticsForError } from "./lsp-diagnostics";
-import { formatProgram } from "./format";
+import { formatProgram, formatSourcePreserveComments } from "./format";
 import {
   collectIrisFiles,
   uriToPath,
@@ -158,12 +158,16 @@ connection.onDocumentFormatting((params) => {
     return [];
   }
   try {
-    const parser = new Parser(doc.getText(), false);
-    const program = parser.parse();
-    const formatted = formatProgram(program, { preserveSugar: true });
+    const source = doc.getText();
+    let formatted = formatSourcePreserveComments(source);
+    if (!source.includes(';')) {
+      const parser = new Parser(source, false);
+      const program = parser.parse();
+      formatted = formatProgram(program, { preserveSugar: true });
+    }
     const fullRange = Range.create(
       doc.positionAt(0),
-      doc.positionAt(doc.getText().length),
+      doc.positionAt(source.length),
     );
     return [TextEdit.replace(fullRange, formatted)];
   } catch (err) {
