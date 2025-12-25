@@ -1,5 +1,6 @@
 ;; Web server for the Fibonacci visualizer assets in web/fibviz/.
-;; Serve index.html, app.js, style.css, fib_viz.wasm on http://localhost:8080
+;; Usage: bin/iris run examples/real/apps/fibviz_server.iris [port]
+;; Default port: 8080
 (program
   (module (name "fibviz_server") (version 0))
   (defs
@@ -10,6 +11,7 @@
           (case (str.ends_with path ".js") "text/javascript")
           (case (str.ends_with path ".css") "text/css")
           (case (str.ends_with path ".wasm") "application/wasm")
+          (case (str.ends_with path ".b64") "text/plain")
           (else "text/plain")))
     )
 
@@ -58,14 +60,24 @@
           (case (tag "Err" (_)) (loop server_sock))))
     )
 
+    (deffn (name parse_port) (args (args (List Str))) (ret I64) (eff !Pure)
+      (body
+        (match (list.get args 0)
+          (case (tag "Some" (raw))
+            (i64.from_string raw))
+          (case (tag "None") 8080)))
+    )
+
     (deffn (name main) (args) (ret I64) (eff !Net)
       (body
-        (match (net.listen 8080)
-          (case (tag "Ok" (server_sock))
-            (let (_ (io.print "Serving fibviz on http://localhost:8080"))
-              (loop server_sock)))
-          (case (tag "Err" (_))
-            (let (_ (io.print "Failed to listen on 8080")) 1))))
+        (let (port (parse_port (sys.args)))
+          (match (net.listen port)
+            (case (tag "Ok" (server_sock))
+              (let (_ (io.print (str.concat "Serving fibviz on http://localhost:" (i64.to_string port))))
+                (loop server_sock)))
+            (case (tag "Err" (_))
+              (let (_ (io.print (str.concat "Failed to listen on " (i64.to_string port)))) 1))))
+      )
     )
   )
 )

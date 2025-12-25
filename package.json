@@ -11,6 +11,8 @@
   "scripts": {
     "test": "ts-node src/tests.ts",
     "test:web": "ts-node tests/test_web.ts",
+    "test:browser": "playwright test",
+    "test:browser:install": "playwright install chromium",
     "test-cli": "ts-node src/tests_cli.ts",
     "test:wasm": "ts-node src/tests.ts --grep wasm",
     "test:wasm:validate": "ts-node src/tests.ts --grep wasm && npm run validate:wasm",
@@ -24,6 +26,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/node": "^25.0.3",
     "c8": "^10.1.3",
     "esbuild": "^0.27.1",

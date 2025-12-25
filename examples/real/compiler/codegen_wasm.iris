@@ -308,7 +308,7 @@
                                     (ws.s "param" (list "i64"))
                                     (ws.s "result" (list "i64"))
                                   )))))
-               (memory (ws.s "memory" (list "$memory" "1")))
+               (memory (ws.s "memory" (list "$memory" "4")))
                (mem_export (ws.s "export" (list (ws.quote_string "memory") (ws.s "memory" (list "$memory"))))))
           (let (prefix
             (if (= profile "wasi")

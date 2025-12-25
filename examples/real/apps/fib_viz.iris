@@ -15,18 +15,21 @@
       (args (alg Str) (step I64) (n I64) (a I64) (b I64) (val I64))
       (ret I64) (eff !IO)
       (body
-        (io.print
-          (str.concat "EVT "
-            (str.concat (kv_str "alg" alg)
-              (str.concat " "
-                (str.concat (kv_i64 "step" step)
-                  (str.concat " "
-                    (str.concat (kv_i64 "n" n)
-                      (str.concat " "
-                        (str.concat (kv_i64 "a" a)
-                          (str.concat " "
-                            (str.concat (kv_i64 "b" b)
-                              (str.concat " " (kv_i64 "val" val)))))))))))))
+        (if (> step 200)
+          0
+          (io.print
+            (str.concat "EVT "
+              (str.concat (kv_str "alg" alg)
+                (str.concat " "
+                  (str.concat (kv_i64 "step" step)
+                    (str.concat " "
+                      (str.concat (kv_i64 "n" n)
+                        (str.concat " "
+                          (str.concat (kv_i64 "a" a)
+                            (str.concat " "
+                              (str.concat (kv_i64 "b" b)
+                                (str.concat " " (kv_i64 "val" val)))))))))))))
+        )
       )
     )
 
@@ -155,17 +158,19 @@
                 (let (final_algs (if (> (list.length algs) 0)
                   algs
                   (list "iterative" "fast-doubling" "recursive")))
-                  (run_all final_algs n)))))))
+                  (run_all final_algs n 0)))))))
     )
 
-    (deffn (name run_all) (args (algs (List Str)) (n I64)) (ret I64) (eff !IO)
+    (deffn (name run_all) (args (algs (List Str)) (n I64) (idx I64)) (ret I64) (eff !IO)
       (body
-        (match algs
-          (case (tag "nil") 0)
-          (case (tag "cons" (h t))
-            (let (_ (io.print (str.concat "RUN alg=" (str.concat h (str.concat " n=" (i64.to_string n))))))
-              (let (_ (run_alg h n))
-                (run_all t n)))))
+        (if (>= idx (list.length algs))
+          0
+          (match (list.get algs idx)
+            (case (tag "Some" (h))
+              (let (_ (io.print (str.concat "RUN alg=" (str.concat h (str.concat " n=" (i64.to_string n))))))
+                (let (_ (run_alg h n))
+                  (run_all algs n (+ idx 1)))))
+            (case (tag "None") 0)))
       )
     )
   )

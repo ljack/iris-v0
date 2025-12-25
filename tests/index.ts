@@ -92,6 +92,7 @@ export { t509_fib_wasm } from './t509_fib_wasm';
 export { t507_examples_typecheck } from './t507_examples_typecheck';
 export { t510_let_star, t511_record_update, t512_cond, t513_do, t515_dot_access } from './t510_syntax_sugar';
 export { t514_parser_metadata, t514_parser_unknown_section_trace } from './t514_parser_metadata';
+export { t510_fibviz_browser } from './t510_fibviz_browser';
 export { t520_capability_profiles } from './t520_capability_profiles';
 export { t521_wasm_host_imports } from './t521_wasm_host_imports';
 export { t80 } from './t80';
@@ -232,6 +233,7 @@ import { t129 } from './t129_recursive_types';
 import { t500_llm_metadata } from './t500_llm_metadata';
 import { t501_web_tools } from './t501_web_tools';
 import { t502_wasm_host } from './t502_wasm_host';
+import { t510_fibviz_browser } from './t510_fibviz_browser';
 import { t146_wasm_syntax_builder } from './t146_wasm_syntax_builder';
 import { t147_wasm_snippet_list_get } from './t147_wasm_snippet_list_get';
 import { t148_wasm_snippet_cons } from './t148_wasm_snippet_cons';
@@ -478,6 +480,7 @@ export const TESTS = [
   t500_llm_metadata,
   t501_web_tools,
   t502_wasm_host,
+  t510_fibviz_browser,
   t146_wasm_syntax_builder,
   t147_wasm_snippet_list_get,
   t148_wasm_snippet_cons,

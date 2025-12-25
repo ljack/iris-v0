@@ -111,12 +111,17 @@ class WasmHost {
     this.onPrint = onPrint;
     this.memory = null;
     this.allocCursor = null;
+    this.alloc = null;
     this.argsPtr = null;
   }
 
   attachMemory(memory) {
     this.memory = memory;
     this.allocCursor = memory.buffer.byteLength;
+  }
+
+  attachAlloc(allocFn) {
+    this.alloc = allocFn;
   }
 
   getImportObject() {
@@ -218,6 +223,11 @@ class WasmHost {
   }
 
   writeAlloc(size) {
+    if (this.alloc) {
+      const ptr = Number(this.alloc(BigInt(size)));
+      if (ptr <= 0) throw new Error('WASM host alloc failed');
+      return ptr;
+    }
     const cursor = this.allocCursor ?? this.memory.buffer.byteLength;
     const next = cursor - size;
     if (next <= 0) throw new Error('WASM host out of memory');
@@ -228,9 +238,19 @@ class WasmHost {
 
 async function loadWasm() {
   if (wasmBytes) return wasmBytes;
-  const res = await fetch('./fib_viz.wasm');
-  wasmBytes = new Uint8Array(await res.arrayBuffer());
+  const res = await fetch('./fib_viz.wasm.b64');
+  const b64 = await res.text();
+  wasmBytes = decodeBase64(b64.trim());
   return wasmBytes;
+}
+
+function decodeBase64(input) {
+  const raw = atob(input);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) {
+    bytes[i] = raw.charCodeAt(i);
+  }
+  return bytes;
 }
 
 async function runViz() {
@@ -249,6 +269,9 @@ async function runViz() {
   const result = await WebAssembly.instantiate(bytes, host.getImportObject());
   const instance = result.instance ?? result;
   host.attachMemory(instance.exports.memory);
+  if (instance.exports.alloc) {
+    host.attachAlloc(instance.exports.alloc);
+  }
   if (!instance.exports.main) {
     throw new Error('WASM module does not export main.');
   }

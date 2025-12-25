@@ -15,6 +15,7 @@ export class IrisWasmHost {
     private args: string[];
     private argsPtrs = new Map<number, bigint>();
     private allocCursor: number | null = null;
+    private allocFn: ((size: bigint) => bigint) | null = null;
 
     constructor(options: WasmHostOptions = {}) {
         this.tools = options.tools || {};
@@ -25,6 +26,10 @@ export class IrisWasmHost {
     attachMemory(memory: WebAssembly.Memory) {
         this.memory = memory;
         this.allocCursor = memory.buffer.byteLength;
+    }
+
+    attachAlloc(fn: (size: bigint) => bigint) {
+        this.allocFn = fn;
     }
 
     getImportObject() {
@@ -212,6 +217,11 @@ export class IrisWasmHost {
 
     private writeAlloc(size: number): number {
         if (!this.memory) return 0;
+        if (this.allocFn) {
+            const ptr = Number(this.allocFn(BigInt(size)));
+            if (ptr <= 0) throw new Error('WASM host alloc failed');
+            return ptr;
+        }
         const buf = new Uint8Array(this.memory.buffer);
         const cursor = this.allocCursor ?? buf.length;
         const p = cursor - size;

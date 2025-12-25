@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.log
 examples_test
+artifacts/
+playwright-report/
+test-results/

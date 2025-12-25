@@ -481,6 +481,8 @@ export async function cli(args: string[]) {
                 const instance = instResult.instance ?? (instantiated as WebAssembly.Instance);
                 const memory = (instance.exports.memory as WebAssembly.Memory) ?? null;
                 if (memory) host.attachMemory(memory);
+                const alloc = instance.exports.alloc as ((size: bigint) => bigint) | undefined;
+                if (alloc) host.attachAlloc(alloc);
                 const main = instance.exports.main as (() => bigint) | undefined;
                 if (!main) {
                     console.error('Error: wasm module does not export main.');
