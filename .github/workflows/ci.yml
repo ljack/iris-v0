@@ -50,6 +50,12 @@ jobs:
     - name: Run Web Tests
       run: npm run test:web
 
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Run Browser Tests
+      run: npm run test:browser
+
     - name: Run CLI Tests
       run: npm run test-cli
 
