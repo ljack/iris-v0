@@ -93,6 +93,15 @@ function drawSeries(canvas, events) {
   const scaleX = (canvas.width - padding * 2) / Math.max(1, maxStep);
   const scaleY = (canvas.height - padding * 2) / Math.max(1, maxVal);
 
+  // Axes
+  ctx.strokeStyle = '#2d3440';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding, padding);
+  ctx.lineTo(padding, canvas.height - padding);
+  ctx.lineTo(canvas.width - padding, canvas.height - padding);
+  ctx.stroke();
+
   ctx.strokeStyle = '#cc4c2a';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -103,6 +112,33 @@ function drawSeries(canvas, events) {
     else ctx.lineTo(x, y);
   });
   ctx.stroke();
+
+  // Draw points for sparse series (e.g. fast-doubling).
+  ctx.fillStyle = '#cc4c2a';
+  events.forEach((evt) => {
+    const x = padding + evt.step * scaleX;
+    const y = canvas.height - padding - evt.val * scaleY;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Axis labels for quick orientation.
+  ctx.fillStyle = '#9aa4b2';
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText('step', canvas.width - padding - 28, canvas.height - 6);
+  ctx.save();
+  ctx.translate(8, padding + 8);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('value', 0, 0);
+  ctx.restore();
+
+  // Tick labels (min/max).
+  ctx.fillStyle = '#7c8796';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillText('0', padding - 6, canvas.height - padding + 12);
+  ctx.fillText(String(maxStep), canvas.width - padding - 8, canvas.height - padding + 12);
+  ctx.fillText(String(maxVal), padding - 18, padding + 4);
 }
 
 class WasmHost {

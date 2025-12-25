@@ -118,9 +118,38 @@
                           (record (a d) (b (+ c d)) (steps s1))))))))))))
     )
 
+    (deffn (name fib_fast_doubling_pair_trace) (args (n I64) (alg Str) (steps I64))
+      (ret (Record (a I64) (b I64) (steps I64))) (eff !IO)
+      (body
+        (if (= n 0)
+          (let (res (record (a 0) (b 1) (steps (+ steps 1))))
+            (let (_ (emit_evt alg (record.get res "steps") n 0 1 0))
+              res))
+          (let (half (fib_fast_doubling_pair_trace (/ n 2) alg (+ steps 1)))
+            (let (a (record.get half "a"))
+              (let (b (record.get half "b"))
+                (let (s1 (record.get half "steps"))
+                  (let (two_b (- (* 2 b) a))
+                    (let (c (* a two_b))
+                      (let (d (+ (* a a) (* b b)))
+                        (let (res (if (= (% n 2) 0)
+                          (record (a c) (b d) (steps s1))
+                          (record (a d) (b (+ c d)) (steps s1))))
+                          (let (_ (emit_evt alg (record.get res "steps") n (record.get res "a") (record.get res "b") (record.get res "a")))
+                            res))))))))))
+      )
+    )
+
     (deffn (name fib_fast_doubling) (args (n I64)) (ret (Record (value I64) (steps I64))) (eff !Pure)
       (body
         (let (res (fib_fast_doubling_pair n 0))
+          (record (value (record.get res "a")) (steps (record.get res "steps"))))
+      )
+    )
+
+    (deffn (name fib_fast_doubling_trace) (args (n I64) (alg Str)) (ret (Record (value I64) (steps I64))) (eff !IO)
+      (body
+        (let (res (fib_fast_doubling_pair_trace n alg 0))
           (record (value (record.get res "a")) (steps (record.get res "steps"))))
       )
     )
@@ -140,7 +169,7 @@
                 (let (_ (emit_metric alg (record.get res "steps") (record.get res "value")))
                   (record.get res "value")))))
           (case (str.eq alg "fast-doubling")
-            (let (res (fib_fast_doubling n))
+            (let (res (fib_fast_doubling_trace n alg))
               (let (_ (emit_metric alg (record.get res "steps") (record.get res "value")))
                 (record.get res "value"))))
           (else
