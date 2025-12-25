@@ -155,6 +155,13 @@ main {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.chart-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: -0.3rem;
+  margin-bottom: 0.5rem;
+}
+
 canvas {
   width: 100%;
   height: 220px;

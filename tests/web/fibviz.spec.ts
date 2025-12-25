@@ -67,6 +67,9 @@ test('fibviz renders and produces metrics', async ({ page }) => {
       timeout: 20_000,
     });
     await expect(page.locator('#log')).toContainText('METRIC', { timeout: 20_000 });
+    await expect(page.locator('.chart-meta').first()).toContainText('x: step');
+    await page.selectOption('#xMode', 'depth');
+    await expect(page.locator('.chart-meta').first()).toContainText('x: depth');
 
     const artifactsDir = path.join(root, 'artifacts');
     fs.mkdirSync(artifactsDir, { recursive: true });

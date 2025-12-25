@@ -99,10 +99,14 @@ function renderCharts() {
     card.className = 'chart-card';
     const title = document.createElement('h3');
     title.textContent = alg;
+    const meta = document.createElement('div');
+    meta.className = 'chart-meta';
+    meta.textContent = `x: ${mode}`;
     const canvas = document.createElement('canvas');
     canvas.width = 800;
     canvas.height = 220;
     card.appendChild(title);
+    card.appendChild(meta);
     card.appendChild(canvas);
     els.charts.appendChild(card);
     const series = alg === 'fast-doubling'
@@ -426,3 +430,9 @@ els.runBtn.addEventListener('click', () => {
     els.log.textContent = String(err);
   });
 });
+
+if (els.xMode) {
+  els.xMode.addEventListener('change', () => {
+    renderCharts();
+  });
+}
