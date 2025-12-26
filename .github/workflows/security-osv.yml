@@ -1,0 +1,27 @@
+name: OSV-Scanner
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '30 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Dependency scan (OSV)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action@v1.7.1
+        with:
+          args: >-
+            --lockfile=package-lock.json
+            --lockfile=package.json
