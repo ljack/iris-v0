@@ -70,6 +70,20 @@ test('fibviz renders and produces metrics', async ({ page }) => {
       timeout: 20_000,
     });
     await expect(page.locator('#log')).toContainText('METRIC', { timeout: 20_000 });
+    await page.waitForFunction(() => document.querySelectorAll('#eventTableBody tr').length > 0, null, {
+      timeout: 20_000,
+    });
+
+    const tableRows = page.locator('#eventTableBody tr');
+    expect(await tableRows.count()).toBeGreaterThan(0);
+
+    await page.fill('#eventStepMin', '9999');
+    await expect(page.locator('#eventTableBody tr')).toHaveCount(0);
+    await page.fill('#eventStepMin', '');
+    await page.waitForFunction(() => document.querySelectorAll('#eventTableBody tr').length > 0, null, {
+      timeout: 20_000,
+    });
+
     await expect(page.locator('.chart-meta').first()).toContainText('x: depth');
     await page.selectOption('#xMode', 'step');
     await expect(page.locator('.chart-meta').first()).toContainText('x: step');
