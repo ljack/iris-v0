@@ -24,7 +24,7 @@ IRIS is a minimal, deterministic programming language designed for AI systems th
 ### 🔒 Safety Features
 - **Type Safety**: All operations type-checked at compile time
 - **No Null/Undefined**: Use `Option<T>` and `Result<T, E>` for safe error handling
-- **Deterministic**: 100% reproducible execution (no randomness, no concurrency hazards)
+- **Deterministic by Default**: Pure programs are reproducible; effects are explicit
 - **Canonical Output**: Sorted record fields ensure consistent results
 - **Static Dispatch**: No dynamic dispatch, easy to reason about
 
@@ -37,11 +37,17 @@ Functions:     Fn (first-class functions)
 
 ### 🛠 Standard Operations
 - **Arithmetic**: `+`, `-`, `*`, `/`, `%`
-- **Comparison**: `<`, `<=`, `=`
+- **Comparison**: `<`, `<=`, `>`, `>=`, `=`
 - **Collections**: `List`, `Tuple`, `Record`
 - **Option/Result**: `Some`, `None`, `Ok`, `Err`
 - **I/O**: `io.read_file`, `io.write_file`, `io.print`
 - **Functions**: User-defined with static dispatch
+
+### 🧰 Tooling
+- **CLI**: `bin/iris` for `run`, `check`, `run-wasm`, and helpers
+- **LSP**: Diagnostics, hover docs, go-to, references
+- **Formatter / View**: Source formatting and humanized view
+- **Wasm**: Emits wasm + host ABI for web demos
 
 ## Quick Start
 
@@ -64,7 +70,7 @@ npm test
 Pass extra arguments after the file path. They are available via `sys.args` as a list of strings.
 
 ```bash
-iris run examples/real/apps/fib.iris 10
+bin/iris run examples/real/apps/fib.iris 10
 ```
 
 ## Iris Guardrails
@@ -143,39 +149,25 @@ This runs `./bin/iris check` on staged `.iris` files and blocks commits on parse
 
 ```
 iris-v0/
-├── src/                    # Core implementation (1,108 lines)
-│   ├── main.ts            # Entry point - orchestrates pipeline
-│   ├── sexp.ts            # S-expression parser & printer
-│   ├── typecheck.ts       # Type checker with effect inference
-│   ├── eval.ts            # Interpreter/evaluator
-│   ├── types.ts           # Type system definitions
-│   ├── tests.ts           # Test runner harness
-│   └── test-types.ts      # Test type definitions
-│
-├── tests/                 # Comprehensive test suite
-│   ├── t01-t10.ts        # Tier 1: Core features
-│   ├── t11-t20.ts        # Tier 2: Advanced features
-│   ├── t21-t30.ts        # Tier 3a: Effect lattice
-│   └── t31+.ts           # Tier 3b: Adversarial/edge cases
-│
-├── specs/                # Specification documents
-│   ├── iris-v0.1.md      # Core language specification
-│   ├── iris-v0.2.md      # Effect lattice & inference
-│   └── iris-v0.3.md      # Testing & quality guidelines
-│
-├── goals/                # Strategic goals
-│   ├── goal-4.md         # HTTP server objective
-│   └── GOAL-4-ROADMAP.md # Goal 4 detailed roadmap
-│
-├── docs/                   # Documentation and Roadmap
-├── examples/             # Example programs and fixtures
-│   ├── real/             # Real Iris sources for demos/tooling
-│   │   ├── apps/         # Runnable apps (hello, fib, http server)
-│   │   └── compiler/     # Iris compiler pipeline modules
-│   ├── tests/            # Test fixtures for LSP/compiler
-│   └── sandbox/          # Scratchpad files
-├── package.json         # NPM configuration
-└── tsconfig.json        # TypeScript configuration
+├── src/                    # Core implementation
+│   ├── cli.ts              # CLI entry (bin/iris)
+│   ├── main.ts             # Compiler pipeline entry
+│   ├── sexp/               # S-expression lexer/parser/printer
+│   ├── typecheck/          # Type checker + effect inference
+│   ├── eval/               # Interpreter + sync runtime
+│   ├── lsp-*.ts            # LSP server + helpers
+│   ├── wasm_*              # Wasm emitter/runtime
+│   └── tests.ts            # Test runner harness
+├── tests/                  # TypeScript tests + Iris tests
+│   ├── iris/               # Iris test programs (t8xx_*.iris)
+│   └── t_unit_*.ts          # Unit and integration tests
+├── stdlib/                 # Standard library modules
+├── examples/               # Example programs and fixtures
+│   └── real/               # Real Iris sources for demos/tooling
+├── docs/                   # Documentation and roadmap
+├── specs/                  # Language specs by version
+├── web/                    # Web demos (fibviz)
+└── scripts/                # Build/test utilities
 ```
 
 ## Contributor Guide
@@ -195,35 +187,31 @@ This repo no longer tracks the `zed/` directory or the `tree-sitter-iris` gramma
 ```
 Source Code
     ↓
-Parser (sexp.ts)
+Parser (src/sexp)
     ↓ AST
-Type Checker (typecheck.ts)
+Type Checker (src/typecheck)
     ↓ Validated AST
-Evaluator (eval.ts)
+Evaluator (src/eval)
     ↓ Value
-Printer (sexp.ts)
+Printer (src/sexp)
     ↓
 Output
 ```
 
 ### Key Components
 
-**Parser (sexp.ts - 481 lines)**
-- Tokenizer: Parentheses, symbols, integers, strings, booleans
-- Recursive descent parser
+**Parser (`src/sexp/`)**
+- Tokenizer + recursive descent parser
 - Canonical printer with sorted record fields
 
-**Type Checker (typecheck.ts - 302 lines)**
+**Type Checker (`src/typecheck/`)**
 - Two-pass checking (signature collection, validation)
 - Effect inference with lattice semantics
 - Support for `!Infer` automatic inference
-- Full type unification
 
-**Evaluator (eval.ts - 171 lines)**
+**Evaluator (`src/eval/`)**
 - Expression evaluation with environment management
-- Pattern matching for Option/Result
-- Intrinsic operations
-- File system simulation
+- Intrinsic operations and sync runtime
 
 ## Testing
 
@@ -233,14 +221,10 @@ All tests pass in CI:
 npm test
 ```
 
-### Test Tiers
+### Test Layout
 
-| Tier | Range | Focus |
-|------|-------|-------|
-| Tier 1 | T01-T10 | Core features (literals, arithmetic, control flow) |
-| Tier 2 | T11-T20 | Advanced features (records, Results, fuel limits) |
-| Tier 3a | T21-T30 | Effect lattice and inference |
-| Tier 3b | T31+ | Adversarial and edge cases |
+- `tests/t_unit_*.ts`: unit and integration tests
+- `tests/iris/*.iris`: Iris language tests (run by `npm test`)
 
 ## Language Specification
 
@@ -303,10 +287,10 @@ npx tsc --noEmit
 
 ```bash
 # Run a program
-npx ts-node src/main.ts < program.iris
+bin/iris run examples/real/apps/hello_full.iris
 
-# Run with custom filesystem
-npx ts-node -e "const {run} = require('./src/main'); console.log(run(source, fs))"
+# Run wasm output
+bin/iris run-wasm examples/real/apps/hello_full.iris
 ```
 
 ## Roadmap
@@ -335,9 +319,10 @@ Current implementation prioritizes correctness and clarity over performance. Pla
 ## Documentation
 
 - **[Language Specification](./docs/iris-v0-specification.md)** - Complete language design
+- **[Quick Reference](./docs/QUICK_REFERENCE.md)** - Syntax and examples
+- **[Architecture](./docs/ARCHITECTURE.md)** - Compiler/runtime overview
 - **[Effect System](./specs/iris-v0.2.md)** - Effect lattice and inference rules
-- **[Implementation Guide](./docs/IMPLEMENTATION.md)** - For contributors
-- **[API Reference](./docs/API.md)** - Standard library reference
+- **[Wasm ABI](./docs/WASM-ABI.md)** - Host ABI for wasm targets
 
 ## Examples
 
@@ -431,9 +416,9 @@ Note: Current implementation prioritizes correctness. Performance optimizations 
 ## Limitations
 
 - Single-threaded execution (async planned)
-- No generics yet (planned for v0.5)
-- No custom types (records only)
-- No standard library modules yet (planned with module system)
+- No user-defined generics yet (built-in `List/Option/Result` only)
+- Custom types are records/unions; full type system is still evolving
+- Standard library is still small and expanding
 - Limited intrinsic functions (expanding)
 
 ## Related Work
@@ -444,8 +429,6 @@ IRIS draws inspiration from:
 - **Haskell**: Pure functions and effect monad concepts
 - **Lisp**: S-expression syntax and homoiconicity
 - **Lua**: Simplicity and embeddability
-
-See [INSPIRATIONS.md](./docs/INSPIRATIONS.md) for detailed comparison.
 
 ## FAQ
 
@@ -508,13 +491,6 @@ For detailed license comparison, see [LICENSE](./LICENSE) and [docs/LICENSE-COMP
 
 - **Issues**: [GitHub Issues](https://github.com/ljack/iris-v0/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/ljack/iris-v0/discussions)
-- **Email**: iris-dev@example.com
-
-## Authors
-
-IRIS v0 was created by the IRIS Development Team with contributions from the community.
-
-See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for full contributor list.
 
 ## Acknowledgments
 
@@ -524,11 +500,18 @@ See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for full contributor list.
 
 ## Changelog
 
-### v0.3 (Current)
-- Comprehensive test suite (all passing)
-- Complete effect lattice system
-- Adversarial test suite (T31+)
-- Module system planning (Goal 4)
+### v0.5 (Current)
+- Wasm backend with host ABI
+- LSP + formatter/view tooling
+- Web demo (fibviz) and browser host integration
+
+### v0.4
+- Expanded specs and runtime notes
+- More stdlib surface area
+
+### v0.3
+- Comprehensive test suite
+- Effect lattice system
 
 ### v0.2
 - Effect system implementation
@@ -539,8 +522,6 @@ See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for full contributor list.
 - Core language foundation
 - Basic type system
 - Parser and evaluator
-
-See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
 ## Citation
 
@@ -567,5 +548,5 @@ If you use IRIS in academic work, please cite:
 ---
 
 **Project Status**: Active Development ✨
-**Latest Version**: 0.3
-**Last Updated**: 2025-12-15
+**Latest Version**: 0.5.15
+**Last Updated**: 2025-12-26
