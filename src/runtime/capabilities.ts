@@ -21,13 +21,24 @@ export interface CapabilityProfile {
 export const HOST_ABI_VERSION = 'iris-host-abi/0.1.0';
 
 export const capabilityImportMap: Record<Capability, string[]> = {
-    '!Pure': ['limits.fuel_remaining', 'limits.request_yield', 'log.debug'],
-    '!IO': ['io.print_utf8', 'io.read_line'],
-    '!Net': ['net.http_request'],
-    '!FS': ['fs.open_dir', 'fs.read_file', 'fs.write_file'],
-    '!Clock': ['clock.monotonic_ms', 'clock.wall_ms'],
-    '!Rand': ['rand.u64', 'rand.bytes'],
-    '!Device': ['device.gpio_write', 'device.gpio_read', 'device.i2c_tx', 'device.i2c_rx']
+    '!Pure': [],
+    '!IO': [
+        'host.print',
+        'host.parse_i64',
+        'host.i64_to_string',
+        'host.str_concat',
+        'host.str_concat_temp',
+        'host.str_eq',
+        'host.temp_reset',
+        'host.args_list',
+        'host.record_get',
+        'host.tool_call_json'
+    ],
+    '!Net': [],
+    '!FS': [],
+    '!Clock': [],
+    '!Rand': ['host.rand_u64'],
+    '!Device': []
 };
 
 export const capabilityProfiles: Record<CapabilityProfileName, CapabilityProfile> = {

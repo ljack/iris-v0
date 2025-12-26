@@ -1,4 +1,4 @@
-# WASM Host ABI (Draft)
+# WASM Host ABI
 
 This document defines the host import surface for running IRIS-generated WASM in browser or server runtimes.
 
@@ -10,42 +10,49 @@ All functions use 64-bit integers (`i64`) for pointers/handles. Strings are UTF-
 [len: i64][bytes...]
 ```
 
-## Functions (Proposed)
-### Logging
-- `host.print(ptr: i64) -> i64`
-  - Prints a string at `ptr` (Iris string layout).
-  - Returns `0` on success, non-zero on error.
+### Common layout types
+- **List of pointers**: `[len: i64][ptr1: i64][ptr2: i64]...`
+- **Record**: `[len: i64][key_ptr: i64][val_ptr: i64]...`
 
-### Tools (Host-Provided)
-- `host.tool_call(name_ptr: i64, args_ptr: i64) -> i64`
-  - `name_ptr`: Iris string tool name.
-  - `args_ptr`: pointer to serialized argument list (format TBD).
-  - Returns pointer to serialized result or error.
+## Current host imports (v0.5.x)
 
-### Filesystem
-- `host.fs_read(path_ptr: i64) -> i64`
-  - Returns pointer to `Result<Str, Str>` payload (format TBD).
-- `host.fs_write(path_ptr: i64, data_ptr: i64) -> i64`
-  - Returns pointer to `Result<I64, Str>` payload (format TBD).
-- `host.fs_exists(path_ptr: i64) -> i64`
-  - Returns `0/1` boolean.
-- `host.fs_read_dir(path_ptr: i64) -> i64`
-  - Returns pointer to `Result<List<Str>, Str>` payload (format TBD).
+### Logging / formatting
+- `host.print(ptr: i64) -> i64`  
+  Prints a string at `ptr`. Returns `0` on success.
+- `host.parse_i64(ptr: i64) -> i64`  
+  Parses an Iris string into an `i64`.
+- `host.i64_to_string(val: i64) -> i64`  
+  Returns an Iris string pointer for `val`.
+- `host.str_concat(a: i64, b: i64) -> i64`  
+  Allocates a new string `a + b`.
+- `host.str_concat_temp(a: i64, b: i64) -> i64`  
+  Allocates in the temp buffer.
+- `host.str_eq(a: i64, b: i64) -> i64`  
+  Returns `1` if equal, else `0`.
+- `host.temp_reset() -> i64`  
+  Resets temp buffer cursor.
 
-### Network (Optional)
-- `host.net_listen(port: i64) -> i64`
-- `host.net_accept(handle: i64) -> i64`
-- `host.net_read(handle: i64) -> i64`
-- `host.net_write(handle: i64, data_ptr: i64) -> i64`
-- `host.net_close(handle: i64) -> i64`
-- `host.net_connect(host_ptr: i64, port: i64) -> i64`
+### Runtime helpers
+- `host.args_list() -> i64`  
+  Returns list of argument string pointers.
+- `host.rand_u64() -> i64`  
+  Random `u64` (effectful).
+- `host.record_get(record_ptr: i64, key_ptr: i64) -> i64`  
+  Returns the value pointer for a record field or traps on missing.
+
+### Tool host
+- `host.tool_call_json(name_ptr: i64, args_ptr: i64) -> i64`  
+  JSON bridge for tools. `args_ptr` points to an Iris string containing JSON.
+
+## Exports
+- `memory`: linear memory
+- `main() -> i64`: entry point
+- `alloc(size: i64) -> i64`: optional allocator (preferred by host)
 
 ## Notes
-- Serialization for tool arguments/results and Result/Option/Record should mirror IRIS value encoding. A small binary schema is preferred over JSON for size.
-- First implementation can use JSON for simplicity, then swap to binary later.
-- Errors should return a typed `Result` payload where possible, not trap.
+- JSON tool calls are the initial bridge; binary format can replace this later.
+- Errors should return typed `Result` payloads where possible (avoid traps).
 
-## Next Steps
-1. Decide value serialization format (JSON vs binary).
-2. Implement a TypeScript host shim with these imports.
-3. Add a minimal WASM test that calls `host.print` and a tool.
+## Related docs
+- `docs/host_interface.md`
+- `docs/profiles.md`
