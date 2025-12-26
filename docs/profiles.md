@@ -25,6 +25,12 @@ restrict side effects for determinism and safety.
 - Capabilities: `!Pure`, `!IO`, `!Device`, `!Clock`
 - Intended for embedded hosts with device bindings.
 
+## CLI usage
+
+```
+bin/iris run-wasm <file.iris> --host-profile browser_playground
+```
+
 ## Notes
 - `docs/WASM-ABI.md` documents the current wasm host imports.
 - Profiles are validated by `src/runtime/capabilities.ts` and `src/host/capabilities.ts`.

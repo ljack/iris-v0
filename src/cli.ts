@@ -47,6 +47,7 @@ Options:
   --wasm-out <file>  For run-wasm: write wasm binary to file
   --compiler <file>  For run-wasm: path to compiler.iris
   --wasm-profile <host|wasi>  For run-wasm: select ABI profile (default: host)
+  --host-profile <profile>    For run-wasm: host capabilities (pure, browser_playground, server_agent, iot_min)
   --write       For format: overwrite the input file
   --preserve-sugar  For format: keep let*, cond, record.update when possible
   --outline     For view: show structured outline instead of source view
@@ -348,6 +349,7 @@ export async function cli(args: string[]) {
             let wasmOut: string | null = null;
             let compilerOverride: string | null = null;
             let wasmProfile: 'host' | 'wasi' = 'host';
+            let hostProfile: 'pure' | 'browser_playground' | 'server_agent' | 'iot_min' = 'browser_playground';
 
             for (let i = 0; i < wasmArgs.length; i++) {
                 const arg = wasmArgs[i];
@@ -374,6 +376,15 @@ export async function cli(args: string[]) {
                         wasmProfile = next;
                     } else {
                         console.error('Error: --wasm-profile must be host or wasi.');
+                        process.exit(1);
+                    }
+                    i++;
+                } else if (arg === '--host-profile') {
+                    const next = wasmArgs[i + 1];
+                    if (next === 'pure' || next === 'browser_playground' || next === 'server_agent' || next === 'iot_min') {
+                        hostProfile = next;
+                    } else {
+                        console.error('Error: --host-profile must be pure, browser_playground, server_agent, or iot_min.');
                         process.exit(1);
                     }
                     i++;
@@ -467,13 +478,13 @@ export async function cli(args: string[]) {
                 if (arg === '--no-run' || arg === '--quiet' || arg === '--print-wat' || arg === '--format-wat') {
                     continue;
                 }
-                if (arg === '--wat-out' || arg === '--wasm-out' || arg === '--compiler' || arg === '--wasm-profile') {
+                if (arg === '--wat-out' || arg === '--wasm-out' || arg === '--compiler' || arg === '--wasm-profile' || arg === '--host-profile') {
                     i++;
                     continue;
                 }
                 programArgs.push(arg);
             }
-            const host = new IrisWasmHost({ onPrint: (text) => console.log(text), args: programArgs });
+            const host = new IrisWasmHost({ onPrint: (text) => console.log(text), args: programArgs, profile: hostProfile });
             const importObj = host.getImportObject();
             try {
                 const instantiated = await WebAssembly.instantiate(wasmBytes, importObj);

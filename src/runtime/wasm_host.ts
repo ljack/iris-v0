@@ -1,4 +1,5 @@
 import { ToolRegistry } from './tool-host';
+import { CapabilityProfileName, capabilityImportMap, capabilityProfiles } from './capabilities';
 
 export type WasmMemory = WebAssembly.Memory | null;
 
@@ -6,6 +7,7 @@ export interface WasmHostOptions {
     tools?: ToolRegistry;
     onPrint?: (text: string) => void;
     args?: string[];
+    profile?: CapabilityProfileName;
 }
 
 export class IrisWasmHost {
@@ -19,10 +21,13 @@ export class IrisWasmHost {
     private tempCursor: number | null = null;
     private tempSize = 65536;
 
+    private profile: CapabilityProfileName;
+
     constructor(options: WasmHostOptions = {}) {
         this.tools = options.tools || {};
         this.onPrint = options.onPrint || ((text) => console.log(text));
         this.args = options.args || [];
+        this.profile = options.profile || 'browser_playground';
     }
 
     attachMemory(memory: WebAssembly.Memory) {
@@ -36,21 +41,36 @@ export class IrisWasmHost {
     }
 
     getImportObject() {
-        return {
-            host: {
-                print: (ptr: bigint) => this.print(ptr),
-                parse_i64: (ptr: bigint) => this.parseI64(ptr),
-                i64_to_string: (value: bigint) => this.i64ToString(value),
-                str_concat: (aPtr: bigint, bPtr: bigint) => this.strConcat(aPtr, bPtr),
-                str_concat_temp: (aPtr: bigint, bPtr: bigint) => this.strConcatTemp(aPtr, bPtr),
-                str_eq: (aPtr: bigint, bPtr: bigint) => this.strEq(aPtr, bPtr),
-                temp_reset: () => this.resetTemp(),
-                rand_u64: () => this.randU64(),
-                args_list: () => this.argsList(),
-                record_get: (recordPtr: bigint, keyPtr: bigint) => this.recordGet(recordPtr, keyPtr),
-                tool_call_json: (namePtr: bigint, argsPtr: bigint) => this.toolCallJson(namePtr, argsPtr)
+        const allowedImports = new Set<string>();
+        const profile = capabilityProfiles[this.profile];
+        for (const cap of profile.capabilities) {
+            for (const imp of capabilityImportMap[cap]) {
+                allowedImports.add(imp);
             }
+        }
+
+        const withAllowed = <T extends (...args: any[]) => any>(name: string, fn: T) => {
+            return allowedImports.has(name) ? fn : undefined;
         };
+
+        const entries: [string, (...args: any[]) => any][] = [];
+        const add = (name: string, fn?: (...args: any[]) => any) => {
+            if (fn) entries.push([name, fn]);
+        };
+
+        add('print', withAllowed('host.print', (ptr: bigint) => this.print(ptr)));
+        add('parse_i64', withAllowed('host.parse_i64', (ptr: bigint) => this.parseI64(ptr)));
+        add('i64_to_string', withAllowed('host.i64_to_string', (value: bigint) => this.i64ToString(value)));
+        add('str_concat', withAllowed('host.str_concat', (aPtr: bigint, bPtr: bigint) => this.strConcat(aPtr, bPtr)));
+        add('str_concat_temp', withAllowed('host.str_concat_temp', (aPtr: bigint, bPtr: bigint) => this.strConcatTemp(aPtr, bPtr)));
+        add('str_eq', withAllowed('host.str_eq', (aPtr: bigint, bPtr: bigint) => this.strEq(aPtr, bPtr)));
+        add('temp_reset', withAllowed('host.temp_reset', () => this.resetTemp()));
+        add('rand_u64', withAllowed('host.rand_u64', () => this.randU64()));
+        add('args_list', withAllowed('host.args_list', () => this.argsList()));
+        add('record_get', withAllowed('host.record_get', (recordPtr: bigint, keyPtr: bigint) => this.recordGet(recordPtr, keyPtr)));
+        add('tool_call_json', withAllowed('host.tool_call_json', (namePtr: bigint, argsPtr: bigint) => this.toolCallJson(namePtr, argsPtr)));
+
+        return { host: Object.fromEntries(entries) };
     }
 
     private readString(ptr: bigint): string {

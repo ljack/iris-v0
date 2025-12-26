@@ -21,9 +21,7 @@ export interface CapabilityProfile {
 export const HOST_ABI_VERSION = 'iris-host-abi/0.1.0';
 
 export const capabilityImportMap: Record<Capability, string[]> = {
-    '!Pure': [],
-    '!IO': [
-        'host.print',
+    '!Pure': [
         'host.parse_i64',
         'host.i64_to_string',
         'host.str_concat',
@@ -31,9 +29,9 @@ export const capabilityImportMap: Record<Capability, string[]> = {
         'host.str_eq',
         'host.temp_reset',
         'host.args_list',
-        'host.record_get',
-        'host.tool_call_json'
+        'host.record_get'
     ],
+    '!IO': ['host.print', 'host.tool_call_json'],
     '!Net': [],
     '!FS': [],
     '!Clock': [],
