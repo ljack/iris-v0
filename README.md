@@ -184,11 +184,8 @@ iris-v0/
 
 ## Zed Extension
 
-The Zed editor extension is maintained in a separate repo. Local path:
-
-```
-/Users/jarkko/_dev/iris-zed
-```
+The Zed editor extension is maintained in a separate repo. GitHub repo:
+https://github.com/ljack/iris-zed
 
 This repo no longer tracks the `zed/` directory or the `tree-sitter-iris` grammar (now housed in `iris-zed`).
 
